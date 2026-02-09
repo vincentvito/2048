@@ -1,0 +1,491 @@
+"use client";
+
+import React, { useRef, useEffect, useCallback, useState } from "react";
+
+const GAP = 12;
+const ANIM_DURATION = 50;
+const PULSE_DURATION = 120;
+const MOVE_DELAY = 60;
+const REPEAT_DELAY = 200;
+const MIN_SWIPE_DISTANCE = 30;
+const DIR_MAP: Record<string, number> = { ArrowLeft: 0, ArrowRight: 1, ArrowUp: 2, ArrowDown: 3 };
+
+const COLORS: Record<number, [string, string]> = {
+  0: ["#ffffff26", "#78350f"],
+  2: ["#fef3c7", "#92400e"],
+  4: ["#fde68a", "#92400e"],
+  8: ["#fdba74", "#fff"],
+  16: ["#fb923c", "#fff"],
+  32: ["#f97316", "#fff"],
+  64: ["#ea580c", "#fff"],
+  128: ["#fcd34d", "#fff"],
+  256: ["#fbbf24", "#fff"],
+  512: ["#f59e0b", "#fff"],
+  1024: ["#d97706", "#fff"],
+  2048: ["#b45309", "#fff"],
+  4096: ["#7c2d12", "#fff"],
+  8192: ["#1c1917", "#fcd34d"],
+};
+
+interface Tile {
+  value: number;
+  r: number;
+  c: number;
+  fromR: number;
+  fromC: number;
+  scale: number;
+  merged: boolean;
+}
+
+interface Game2048Props {
+  onGameOver?: (score: number, gridSize: number) => void;
+}
+
+export default function Game2048({ onGameOver }: Game2048Props): React.ReactElement {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const scoreElRef = useRef<HTMLElement>(null);
+  const bestElRef = useRef<HTMLElement>(null);
+  const onGameOverRef = useRef(onGameOver);
+  const [displaySize, setDisplaySize] = useState(4);
+
+  useEffect(() => {
+    onGameOverRef.current = onGameOver;
+  }, [onGameOver]);
+
+  useEffect(() => {
+    if (!canvasRef.current || !containerRef.current) return;
+    const canvas = canvasRef.current!;
+    const ctx = canvas.getContext("2d")!;
+    const container = containerRef.current!;
+    const scoreEl = scoreElRef.current;
+    const bestEl = bestElRef.current;
+
+    const dpr = window.devicePixelRatio || 1;
+
+    let SIZE = 4;
+    let CELL = 100;
+    let GRID_SIZE = 0;
+    let grid = new Uint16Array(16);
+    let score = 0;
+    let best = 0;
+    let gameOver = false;
+    let won = false;
+    let keepPlaying = false;
+    const tiles: Tile[] = [];
+    let animating = false;
+    let animStart = 0;
+
+    function cellPos(i: number) {
+      return GAP + i * (CELL + GAP);
+    }
+
+    function idx(r: number, c: number) {
+      return r * SIZE + c;
+    }
+
+    function setSizeInternal(newSize: number) {
+      SIZE = newSize;
+      CELL = newSize === 4 ? 100 : 56;
+      GRID_SIZE = SIZE * CELL + (SIZE + 1) * GAP;
+      canvas.width = GRID_SIZE * dpr;
+      canvas.height = GRID_SIZE * dpr;
+      canvas.style.width = GRID_SIZE + "px";
+      canvas.style.height = GRID_SIZE + "px";
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(dpr, dpr);
+      grid = new Uint16Array(SIZE * SIZE);
+      setDisplaySize(newSize);
+    }
+
+    function addTile() {
+      const empty: number[] = [];
+      const total = SIZE * SIZE;
+      for (let i = 0; i < total; i++) {
+        if (grid[i] === 0) empty.push(i);
+      }
+      if (empty.length === 0) return false;
+      const i = empty[(Math.random() * empty.length) | 0];
+      grid[i] = Math.random() < 0.9 ? 2 : 4;
+      tiles.push({
+        value: grid[i],
+        r: (i / SIZE) | 0,
+        c: i % SIZE,
+        fromR: (i / SIZE) | 0,
+        fromC: i % SIZE,
+        scale: 0,
+        merged: false,
+      });
+      return true;
+    }
+
+    function updateScore() {
+      if (scoreEl) scoreEl.textContent = String(score);
+      if (score > best) {
+        best = score;
+        if (bestEl) bestEl.textContent = String(best);
+      }
+    }
+
+    function canMove() {
+      const total = SIZE * SIZE;
+      for (let i = 0; i < total; i++) {
+        if (grid[i] === 0) return true;
+      }
+      for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+          const v = grid[idx(r, c)];
+          if (c < SIZE - 1 && grid[idx(r, c + 1)] === v) return true;
+          if (r < SIZE - 1 && grid[idx(r + 1, c)] === v) return true;
+        }
+      }
+      return false;
+    }
+
+    function render(t = 1) {
+      ctx.fillStyle = "#b45309";
+      ctx.beginPath();
+      ctx.roundRect(0, 0, GRID_SIZE, GRID_SIZE, 16);
+      ctx.fill();
+
+      ctx.fillStyle = "#ffffff26";
+      for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+          ctx.beginPath();
+          ctx.roundRect(cellPos(c), cellPos(r), CELL, CELL, 12);
+          ctx.fill();
+        }
+      }
+
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+
+      for (const tile of tiles) {
+        const x = cellPos(tile.fromC) + (cellPos(tile.c) - cellPos(tile.fromC)) * t;
+        const y = cellPos(tile.fromR) + (cellPos(tile.r) - cellPos(tile.fromR)) * t;
+
+        let scale = tile.scale;
+        if (tile.fromR === tile.r && tile.fromC === tile.c && tile.scale === 0) {
+          scale = t;
+        } else if (tile.merged) {
+          const elapsed = performance.now() - animStart;
+          const pulseT = Math.min(1, elapsed / PULSE_DURATION);
+          scale = 1 + 0.15 * Math.sin(Math.PI * pulseT);
+        }
+
+        const colors = COLORS[tile.value] || ["#78350f", "#fff"];
+        const cx = x + CELL / 2;
+        const cy = y + CELL / 2;
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.scale(scale, scale);
+
+        ctx.fillStyle = colors[0];
+        ctx.beginPath();
+        ctx.roundRect(-CELL / 2, -CELL / 2, CELL, CELL, 12);
+        ctx.fill();
+
+        ctx.fillStyle = colors[1];
+        const fontSize =
+          SIZE === 8
+            ? tile.value >= 1000 ? 16 : tile.value >= 100 ? 20 : 24
+            : tile.value >= 1000 ? 28 : tile.value >= 100 ? 36 : 44;
+        ctx.font = `bold ${fontSize}px system-ui`;
+        ctx.fillText(String(tile.value), 0, 2);
+
+        ctx.restore();
+      }
+
+      const winOverlay = container.querySelector<HTMLDivElement>(".overlay.win");
+      const loseOverlay = container.querySelector<HTMLDivElement>(".overlay.lose");
+      if (winOverlay) winOverlay.classList.toggle("show", won && !keepPlaying);
+      if (loseOverlay) loseOverlay.classList.toggle("show", gameOver);
+    }
+
+    function animate(now: number) {
+      const moveT = Math.min((now - animStart) / ANIM_DURATION, 1);
+      const ease = moveT < 0.5 ? 2 * moveT * moveT : 1 - Math.pow(-2 * moveT + 2, 2) / 2;
+      const pulseT = (now - animStart) / PULSE_DURATION;
+
+      render(ease);
+
+      if (moveT < 1 || pulseT < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        animating = false;
+        addTile();
+        updateScore();
+        if (!canMove()) {
+          gameOver = true;
+          onGameOverRef.current?.(score, SIZE);
+        }
+        render(1);
+      }
+    }
+
+    function move(dir: number) {
+      if (gameOver || animating) return false;
+
+      tiles.length = 0;
+      let moved = false;
+      let dr = 0, dc = 0, rStart = 0, rEnd = SIZE, rStep = 1, cStart = 0, cEnd = SIZE, cStep = 1;
+
+      if (dir === 0) { dc = -1; cStart = 1; }
+      else if (dir === 1) { dc = 1; cStart = SIZE - 2; cEnd = -1; cStep = -1; }
+      else if (dir === 2) { dr = -1; rStart = 1; }
+      else { dr = 1; rStart = SIZE - 2; rEnd = -1; rStep = -1; }
+
+      const merged = new Uint8Array(SIZE * SIZE);
+
+      for (let r = rStart; r !== rEnd; r += rStep) {
+        for (let c = cStart; c !== cEnd; c += cStep) {
+          const i = idx(r, c);
+          if (grid[i] === 0) continue;
+
+          let nr = r, nc = c;
+          while (true) {
+            const nextR = nr + dr, nextC = nc + dc;
+            if (nextR < 0 || nextR >= SIZE || nextC < 0 || nextC >= SIZE) break;
+            const nextI = idx(nextR, nextC);
+            if (grid[nextI] === 0) {
+              nr = nextR;
+              nc = nextC;
+            } else if (grid[nextI] === grid[i] && !merged[nextI]) {
+              nr = nextR;
+              nc = nextC;
+              break;
+            } else break;
+          }
+
+          const ni = idx(nr, nc);
+          if (ni !== i) {
+            moved = true;
+            if (grid[ni] === grid[i]) {
+              grid[ni] *= 2;
+              score += grid[ni];
+              merged[ni] = 1;
+              if (grid[ni] === 2048 && !won && !keepPlaying) won = true;
+              tiles.push({ value: grid[ni], r: nr, c: nc, fromR: r, fromC: c, scale: 1, merged: true });
+            } else {
+              grid[ni] = grid[i];
+              tiles.push({ value: grid[i], r: nr, c: nc, fromR: r, fromC: c, scale: 1, merged: false });
+            }
+            grid[i] = 0;
+          } else {
+            tiles.push({ value: grid[i], r, c, fromR: r, fromC: c, scale: 1, merged: false });
+          }
+        }
+      }
+
+      const total = SIZE * SIZE;
+      for (let i = 0; i < total; i++) {
+        if (grid[i] !== 0 && !tiles.some((t) => t.r === ((i / SIZE) | 0) && t.c === i % SIZE)) {
+          tiles.push({
+            value: grid[i],
+            r: (i / SIZE) | 0,
+            c: i % SIZE,
+            fromR: (i / SIZE) | 0,
+            fromC: i % SIZE,
+            scale: 1,
+            merged: false,
+          });
+        }
+      }
+
+      if (moved) {
+        animating = true;
+        animStart = performance.now();
+        requestAnimationFrame(animate);
+      }
+
+      return moved;
+    }
+
+    function init() {
+      grid.fill(0);
+      tiles.length = 0;
+      score = 0;
+      gameOver = false;
+      won = false;
+      keepPlaying = false;
+      addTile();
+      addTile();
+      if (SIZE === 8) { addTile(); addTile(); }
+      updateScore();
+      render();
+    }
+
+    // React buttons can't access the useEffect closure, so we attach game functions to the container DOM node
+    (container as unknown as Record<string, () => void>)._init = init;
+    (container as unknown as Record<string, () => void>)._keepPlaying = () => {
+      keepPlaying = true;
+      won = false;
+      render();
+    };
+    (container as unknown as Record<string, (s: number) => void>)._toggleSize = (newSize: number) => {
+      setSizeInternal(newSize);
+      init();
+    };
+    (container as unknown as Record<string, () => number>)._getSize = () => SIZE;
+    (container as unknown as Record<string, () => void>)._debugEndGame = () => {
+      gameOver = true;
+      onGameOverRef.current?.(score, SIZE);
+      render(1);
+    };
+
+    const keys = new Set<string>();
+    let lastMove = 0;
+    let repeatTimeout: ReturnType<typeof setTimeout> | null = null;
+    let repeating = false;
+
+    function processInput() {
+      if (!repeating || keys.size === 0) return;
+      const now = performance.now();
+      if (now - lastMove < MOVE_DELAY) {
+        requestAnimationFrame(processInput);
+        return;
+      }
+      for (const key of keys) {
+        if (DIR_MAP[key] !== undefined) {
+          if (move(DIR_MAP[key])) lastMove = now;
+          break;
+        }
+      }
+      if (keys.size > 0 && repeating) requestAnimationFrame(processInput);
+    }
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (DIR_MAP[e.key] !== undefined) {
+        e.preventDefault();
+        if (!keys.has(e.key)) {
+          keys.add(e.key);
+          move(DIR_MAP[e.key]);
+          lastMove = performance.now();
+          if (!repeatTimeout) {
+            repeatTimeout = setTimeout(() => {
+              repeating = true;
+              processInput();
+            }, REPEAT_DELAY);
+          }
+        }
+      }
+    }
+
+    function onKeyUp(e: KeyboardEvent) {
+      keys.delete(e.key);
+      if (keys.size === 0) {
+        if (repeatTimeout) clearTimeout(repeatTimeout);
+        repeatTimeout = null;
+        repeating = false;
+      }
+    }
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    function onTouchStart(e: TouchEvent) {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    }
+
+    function onTouchEnd(e: TouchEvent) {
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      const dy = e.changedTouches[0].clientY - touchStartY;
+      const absDx = Math.abs(dx);
+      const absDy = Math.abs(dy);
+      if (Math.max(absDx, absDy) < MIN_SWIPE_DISTANCE) return;
+      if (absDx > absDy) {
+        move(dx > 0 ? 1 : 0);
+      } else {
+        move(dy > 0 ? 3 : 2);
+      }
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("keyup", onKeyUp);
+    canvas.addEventListener("touchstart", onTouchStart, { passive: true });
+    canvas.addEventListener("touchend", onTouchEnd, { passive: true });
+
+    setSizeInternal(4);
+    init();
+
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("keyup", onKeyUp);
+      canvas.removeEventListener("touchstart", onTouchStart);
+      canvas.removeEventListener("touchend", onTouchEnd);
+      if (repeatTimeout) clearTimeout(repeatTimeout);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleInit = useCallback(() => {
+    const container = containerRef.current;
+    if (container) (container as unknown as Record<string, () => void>)._init?.();
+  }, []);
+
+  const handleKeepPlaying = useCallback(() => {
+    const container = containerRef.current;
+    if (container) (container as unknown as Record<string, () => void>)._keepPlaying?.();
+  }, []);
+
+  const handleDebugEndGame = useCallback(() => {
+    const container = containerRef.current;
+    if (container) (container as unknown as Record<string, () => void>)._debugEndGame?.();
+  }, []);
+
+  const handleSizeToggle = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const getSize = (container as unknown as Record<string, () => number>)._getSize;
+    const currentSize = getSize?.() ?? 4;
+    const newSize = currentSize === 4 ? 8 : 4;
+    (container as unknown as Record<string, (s: number) => void>)._toggleSize?.(newSize);
+  }, []);
+
+  return (
+    <div className="flex flex-col items-center gap-4">
+      <div className="flex items-center gap-3">
+        <div className="score-box current">
+          <span>Score</span>
+          <strong ref={scoreElRef}>0</strong>
+        </div>
+        <div className="score-box best">
+          <span>Best</span>
+          <strong ref={bestElRef}>0</strong>
+        </div>
+        <button onClick={handleSizeToggle} className="size-btn">
+          {displaySize === 4 ? "8\u00d78" : "4\u00d74"}
+        </button>
+      </div>
+
+      <div ref={containerRef} className="game-container relative">
+        <canvas ref={canvasRef} className="rounded-2xl" />
+        <div className="overlay win">
+          <h2>You Win! 🎉</h2>
+          <div className="overlay-buttons">
+            <button onClick={handleKeepPlaying}>Keep Playing</button>
+            <button onClick={handleInit} className="secondary">
+              New Game
+            </button>
+          </div>
+        </div>
+        <div className="overlay lose">
+          <h2>Game Over!</h2>
+          <button onClick={handleInit}>Try Again</button>
+        </div>
+      </div>
+
+      <div className="flex gap-3">
+        <button onClick={handleInit} className="game-btn">
+          New Game
+        </button>
+        <button onClick={handleDebugEndGame} className="game-btn" style={{ background: "#dc2626" }}>
+          End Game (Debug)
+        </button>
+      </div>
+      <p className="text-amber-800 text-sm">Arrow keys or swipe to play</p>
+    </div>
+  );
+}

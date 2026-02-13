@@ -39,19 +39,25 @@ interface Tile {
 
 interface Game2048Props {
   onGameOver?: (score: number, gridSize: number) => void;
+  onGameWon?: (score: number, gridSize: number) => void;
 }
 
-export default function Game2048({ onGameOver }: Game2048Props): React.ReactElement {
+export default function Game2048({ onGameOver, onGameWon }: Game2048Props): React.ReactElement {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const scoreElRef = useRef<HTMLElement>(null);
   const bestElRef = useRef<HTMLElement>(null);
   const onGameOverRef = useRef(onGameOver);
+  const onGameWonRef = useRef(onGameWon);
   const [displaySize, setDisplaySize] = useState(4);
 
   useEffect(() => {
     onGameOverRef.current = onGameOver;
   }, [onGameOver]);
+
+  useEffect(() => {
+    onGameWonRef.current = onGameWon;
+  }, [onGameWon]);
 
   useEffect(() => {
     if (!canvasRef.current || !containerRef.current) return;
@@ -86,7 +92,11 @@ export default function Game2048({ onGameOver }: Game2048Props): React.ReactElem
 
     function setSizeInternal(newSize: number) {
       SIZE = newSize;
-      CELL = newSize === 4 ? 100 : 56;
+      // Board always fills the container width
+      const containerWidth = container.parentElement?.clientWidth ?? Math.min(window.innerWidth - 32, 500);
+      const maxCell = Math.floor((containerWidth - (newSize + 1) * GAP) / newSize);
+      const idealCell = newSize === 4 ? 106 : 56;
+      CELL = Math.min(idealCell, maxCell);
       GRID_SIZE = SIZE * CELL + (SIZE + 1) * GAP;
       canvas.width = GRID_SIZE * dpr;
       canvas.height = GRID_SIZE * dpr;
@@ -265,7 +275,10 @@ export default function Game2048({ onGameOver }: Game2048Props): React.ReactElem
               grid[ni] *= 2;
               score += grid[ni];
               merged[ni] = 1;
-              if (grid[ni] === 2048 && !won && !keepPlaying) won = true;
+              if (grid[ni] === 2048 && !won && !keepPlaying) {
+                won = true;
+                onGameWonRef.current?.(score, SIZE);
+              }
               tiles.push({ value: grid[ni], r: nr, c: nc, fromR: r, fromC: c, scale: 1, merged: true });
             } else {
               grid[ni] = grid[i];
@@ -328,11 +341,6 @@ export default function Game2048({ onGameOver }: Game2048Props): React.ReactElem
       init();
     };
     (container as unknown as Record<string, () => number>)._getSize = () => SIZE;
-    (container as unknown as Record<string, () => void>)._debugEndGame = () => {
-      gameOver = true;
-      onGameOverRef.current?.(score, SIZE);
-      render(1);
-    };
 
     const keys = new Set<string>();
     let lastMove = 0;
@@ -385,11 +393,17 @@ export default function Game2048({ onGameOver }: Game2048Props): React.ReactElem
     let touchStartY = 0;
 
     function onTouchStart(e: TouchEvent) {
+      e.preventDefault();
       touchStartX = e.touches[0].clientX;
       touchStartY = e.touches[0].clientY;
     }
 
+    function onTouchMove(e: TouchEvent) {
+      e.preventDefault();
+    }
+
     function onTouchEnd(e: TouchEvent) {
+      e.preventDefault();
       const dx = e.changedTouches[0].clientX - touchStartX;
       const dy = e.changedTouches[0].clientY - touchStartY;
       const absDx = Math.abs(dx);
@@ -404,8 +418,16 @@ export default function Game2048({ onGameOver }: Game2048Props): React.ReactElem
 
     document.addEventListener("keydown", onKeyDown);
     document.addEventListener("keyup", onKeyUp);
-    canvas.addEventListener("touchstart", onTouchStart, { passive: true });
-    canvas.addEventListener("touchend", onTouchEnd, { passive: true });
+    canvas.addEventListener("touchstart", onTouchStart, { passive: false });
+    canvas.addEventListener("touchmove", onTouchMove, { passive: false });
+    canvas.addEventListener("touchend", onTouchEnd, { passive: false });
+
+    // Resize board on orientation change / window resize
+    function onResize() {
+      setSizeInternal(SIZE);
+      render(1);
+    }
+    window.addEventListener("resize", onResize);
 
     setSizeInternal(4);
     init();
@@ -414,7 +436,9 @@ export default function Game2048({ onGameOver }: Game2048Props): React.ReactElem
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("keyup", onKeyUp);
       canvas.removeEventListener("touchstart", onTouchStart);
+      canvas.removeEventListener("touchmove", onTouchMove);
       canvas.removeEventListener("touchend", onTouchEnd);
+      window.removeEventListener("resize", onResize);
       if (repeatTimeout) clearTimeout(repeatTimeout);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -430,11 +454,6 @@ export default function Game2048({ onGameOver }: Game2048Props): React.ReactElem
     if (container) (container as unknown as Record<string, () => void>)._keepPlaying?.();
   }, []);
 
-  const handleDebugEndGame = useCallback(() => {
-    const container = containerRef.current;
-    if (container) (container as unknown as Record<string, () => void>)._debugEndGame?.();
-  }, []);
-
   const handleSizeToggle = useCallback(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -445,30 +464,27 @@ export default function Game2048({ onGameOver }: Game2048Props): React.ReactElem
   }, []);
 
   return (
-    <div className="flex flex-col items-center gap-4">
-      <div className="flex items-center gap-3">
-        <div className="score-box current">
+    <div className="board-section">
+      {/* Scores */}
+      <div className="score-row">
+        <div className="score-box">
           <span>Score</span>
           <strong ref={scoreElRef}>0</strong>
         </div>
-        <div className="score-box best">
+        <div className="score-box">
           <span>Best</span>
           <strong ref={bestElRef}>0</strong>
         </div>
-        <button onClick={handleSizeToggle} className="size-btn">
-          {displaySize === 4 ? "8\u00d78" : "4\u00d74"}
-        </button>
       </div>
 
-      <div ref={containerRef} className="game-container relative">
-        <canvas ref={canvasRef} className="rounded-2xl" />
+      {/* Game board */}
+      <div ref={containerRef} className="game-container">
+        <canvas ref={canvasRef} className="game-canvas" />
         <div className="overlay win">
-          <h2>You Win! 🎉</h2>
+          <h2>You Win!</h2>
           <div className="overlay-buttons">
             <button onClick={handleKeepPlaying}>Keep Playing</button>
-            <button onClick={handleInit} className="secondary">
-              New Game
-            </button>
+            <button onClick={handleInit} className="secondary">New Game</button>
           </div>
         </div>
         <div className="overlay lose">
@@ -477,15 +493,15 @@ export default function Game2048({ onGameOver }: Game2048Props): React.ReactElem
         </div>
       </div>
 
-      <div className="flex gap-3">
+      {/* Controls */}
+      <div className="button-row">
+        <button onClick={handleSizeToggle} className="size-btn">
+          {displaySize === 4 ? "4\u00d74" : "8\u00d78"}
+        </button>
         <button onClick={handleInit} className="game-btn">
           New Game
         </button>
-        <button onClick={handleDebugEndGame} className="game-btn" style={{ background: "#dc2626" }}>
-          End Game (Debug)
-        </button>
       </div>
-      <p className="text-amber-800 text-sm">Arrow keys or swipe to play</p>
     </div>
   );
 }

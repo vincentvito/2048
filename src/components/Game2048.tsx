@@ -11,15 +11,15 @@ const MIN_SWIPE_DISTANCE = 30;
 const DIR_MAP: Record<string, number> = { ArrowLeft: 0, ArrowRight: 1, ArrowUp: 2, ArrowDown: 3 };
 
 const COLORS: Record<number, [string, string]> = {
-  0: ["#ffffff26", "#78350f"],
-  2: ["#fef3c7", "#92400e"],
-  4: ["#fde68a", "#92400e"],
-  8: ["#fdba74", "#fff"],
+  0: ["rgba(255,255,255,0.15)", "#78350f"],
+  2: ["#fef3c7", "#78350f"],
+  4: ["#fde68a", "#78350f"],
+  8: ["#fdba74", "#78350f"],
   16: ["#fb923c", "#fff"],
   32: ["#f97316", "#fff"],
   64: ["#ea580c", "#fff"],
-  128: ["#fcd34d", "#fff"],
-  256: ["#fbbf24", "#fff"],
+  128: ["#fcd34d", "#78350f"],
+  256: ["#fbbf24", "#78350f"],
   512: ["#f59e0b", "#fff"],
   1024: ["#d97706", "#fff"],
   2048: ["#b45309", "#fff"],
@@ -37,18 +37,30 @@ interface Tile {
   merged: boolean;
 }
 
+interface ScorePopup {
+  value: number;
+  x: number;
+  y: number;
+  opacity: number;
+  offsetY: number;
+  startTime: number;
+}
+
 interface Game2048Props {
   onGameOver?: (score: number, gridSize: number) => void;
   onGameWon?: (score: number, gridSize: number) => void;
+  onResetReady?: (resetFn: () => void) => void;
 }
 
-export default function Game2048({ onGameOver, onGameWon }: Game2048Props): React.ReactElement {
+export default function Game2048({ onGameOver, onGameWon, onResetReady }: Game2048Props): React.ReactElement {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const scoreElRef = useRef<HTMLElement>(null);
   const bestElRef = useRef<HTMLElement>(null);
+  const announcementRef = useRef<HTMLDivElement>(null);
   const onGameOverRef = useRef(onGameOver);
   const onGameWonRef = useRef(onGameWon);
+  const onResetReadyRef = useRef(onResetReady);
   const [displaySize, setDisplaySize] = useState(4);
 
   useEffect(() => {
@@ -58,6 +70,10 @@ export default function Game2048({ onGameOver, onGameWon }: Game2048Props): Reac
   useEffect(() => {
     onGameWonRef.current = onGameWon;
   }, [onGameWon]);
+
+  useEffect(() => {
+    onResetReadyRef.current = onResetReady;
+  }, [onResetReady]);
 
   useEffect(() => {
     if (!canvasRef.current || !containerRef.current) return;
@@ -74,11 +90,15 @@ export default function Game2048({ onGameOver, onGameWon }: Game2048Props): Reac
     let GRID_SIZE = 0;
     let grid = new Uint16Array(16);
     let score = 0;
-    let best = 0;
+    let best = (() => {
+      try { return Number(localStorage.getItem("2048_best_overall")) || 0; } catch { return 0; }
+    })();
     let gameOver = false;
     let won = false;
     let keepPlaying = false;
     const tiles: Tile[] = [];
+    const scorePopups: ScorePopup[] = [];
+    let popupAnimFrame: number | null = null;
     let animating = false;
     let animStart = 0;
 
@@ -133,7 +153,60 @@ export default function Game2048({ onGameOver, onGameWon }: Game2048Props): Reac
       if (scoreEl) scoreEl.textContent = String(score);
       if (score > best) {
         best = score;
-        if (bestEl) bestEl.textContent = String(best);
+        try { localStorage.setItem("2048_best_overall", String(best)); } catch { /* noop */ }
+      }
+      if (bestEl) bestEl.textContent = String(best);
+    }
+
+    function announce(message: string) {
+      const el = announcementRef.current;
+      if (el) {
+        el.textContent = "";
+        // Force reflow so screen readers re-announce even if text is same
+        void el.offsetHeight;
+        el.textContent = message;
+      }
+    }
+
+    function renderPopups() {
+      const now = performance.now();
+      const POPUP_DURATION = 800;
+      const POPUP_TRAVEL = 40;
+
+      for (let i = scorePopups.length - 1; i >= 0; i--) {
+        const p = scorePopups[i];
+        const elapsed = now - p.startTime;
+        const t = Math.min(elapsed / POPUP_DURATION, 1);
+
+        p.opacity = 1 - t;
+        p.offsetY = POPUP_TRAVEL * t;
+
+        if (t >= 1) {
+          scorePopups.splice(i, 1);
+          continue;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = p.opacity;
+        ctx.font = "bold 18px 'Clear Sans', system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        // Dark shadow
+        ctx.fillStyle = "rgba(0,0,0,0.5)";
+        ctx.fillText("+" + p.value, p.x + 1, p.y - p.offsetY + 1);
+
+        // Gold text
+        ctx.fillStyle = "#edc22e";
+        ctx.fillText("+" + p.value, p.x, p.y - p.offsetY);
+        ctx.restore();
+      }
+
+      if (scorePopups.length > 0 && !animating) {
+        popupAnimFrame = requestAnimationFrame(() => {
+          render(1);
+          renderPopups();
+        });
       }
     }
 
@@ -153,12 +226,12 @@ export default function Game2048({ onGameOver, onGameWon }: Game2048Props): Reac
     }
 
     function render(t = 1) {
-      ctx.fillStyle = "#b45309";
+      ctx.fillStyle = "#92400e";
       ctx.beginPath();
       ctx.roundRect(0, 0, GRID_SIZE, GRID_SIZE, 16);
       ctx.fill();
 
-      ctx.fillStyle = "#ffffff26";
+      ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
       for (let r = 0; r < SIZE; r++) {
         for (let c = 0; c < SIZE; c++) {
           ctx.beginPath();
@@ -207,6 +280,9 @@ export default function Game2048({ onGameOver, onGameWon }: Game2048Props): Reac
         ctx.restore();
       }
 
+      // Render floating score popups on top of tiles
+      renderPopups();
+
       const winOverlay = container.querySelector<HTMLDivElement>(".overlay.win");
       const loseOverlay = container.querySelector<HTMLDivElement>(".overlay.lose");
       if (winOverlay) winOverlay.classList.toggle("show", won && !keepPlaying);
@@ -226,9 +302,14 @@ export default function Game2048({ onGameOver, onGameWon }: Game2048Props): Reac
         animating = false;
         addTile();
         updateScore();
+        announce("Score: " + score);
         if (!canMove()) {
           gameOver = true;
           onGameOverRef.current?.(score, SIZE);
+          announce("Game over");
+        }
+        if (won && !keepPlaying) {
+          announce("You reached 2048!");
         }
         render(1);
       }
@@ -280,6 +361,15 @@ export default function Game2048({ onGameOver, onGameWon }: Game2048Props): Reac
                 onGameWonRef.current?.(score, SIZE);
               }
               tiles.push({ value: grid[ni], r: nr, c: nc, fromR: r, fromC: c, scale: 1, merged: true });
+              // Add floating score popup at the merge destination
+              scorePopups.push({
+                value: grid[ni],
+                x: cellPos(nc) + CELL / 2,
+                y: cellPos(nr) + CELL / 2,
+                opacity: 1,
+                offsetY: 0,
+                startTime: performance.now(),
+              });
             } else {
               grid[ni] = grid[i];
               tiles.push({ value: grid[i], r: nr, c: nc, fromR: r, fromC: c, scale: 1, merged: false });
@@ -432,6 +522,9 @@ export default function Game2048({ onGameOver, onGameWon }: Game2048Props): Reac
     setSizeInternal(4);
     init();
 
+    // Expose reset function to parent via callback
+    onResetReadyRef.current?.(init);
+
     return () => {
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("keyup", onKeyUp);
@@ -440,6 +533,7 @@ export default function Game2048({ onGameOver, onGameWon }: Game2048Props): Reac
       canvas.removeEventListener("touchend", onTouchEnd);
       window.removeEventListener("resize", onResize);
       if (repeatTimeout) clearTimeout(repeatTimeout);
+      if (popupAnimFrame) cancelAnimationFrame(popupAnimFrame);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -479,7 +573,23 @@ export default function Game2048({ onGameOver, onGameWon }: Game2048Props): Reac
 
       {/* Game board */}
       <div ref={containerRef} className="game-container">
-        <canvas ref={canvasRef} className="game-canvas" />
+        <canvas ref={canvasRef} className="game-canvas" role="grid" aria-label="2048 game board" />
+        <div
+          ref={announcementRef}
+          aria-live="polite"
+          aria-atomic="true"
+          style={{
+            position: "absolute",
+            width: "1px",
+            height: "1px",
+            padding: 0,
+            margin: "-1px",
+            overflow: "hidden",
+            clip: "rect(0,0,0,0)",
+            whiteSpace: "nowrap",
+            border: 0,
+          }}
+        />
         <div className="overlay win">
           <h2>You Win!</h2>
           <div className="overlay-buttons">

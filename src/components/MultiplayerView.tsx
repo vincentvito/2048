@@ -381,7 +381,7 @@ export default function MultiplayerView() {
                   className="modal-input"
                   placeholder="12345678"
                   value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleVerifyOtp();
                   }}
@@ -402,7 +402,7 @@ export default function MultiplayerView() {
                     type="button"
                     className="modal-btn-primary"
                     onClick={handleVerifyOtp}
-                    disabled={verifying || otpCode.length < 6}
+                    disabled={verifying || otpCode.length !== 6}
                   >
                     {verifying ? "Verifying..." : "Verify"}
                   </button>

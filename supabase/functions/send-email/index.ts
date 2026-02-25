@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
             </table>
 
             <!-- "Your code" label under tiles -->
-            <p style="margin:0 0 28px;font-size:12px;color:#a16207;text-align:center;letter-spacing:0.5px;">YOUR 6-DIGIT CODE</p>
+            <p style="margin:0 0 28px;font-size:12px;color:#a16207;text-align:center;letter-spacing:0.5px;">YOUR SIGN-IN CODE</p>
 
             <!-- Expiry notice -->
             <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 20px;background:#fef3c7;border-radius:8px;" align="center">

@@ -239,11 +239,20 @@ export default function MultiplayerView() {
     const processElo = async () => {
       setEloProcessed(true);
       const localScore = localGameResult?.score || 0;
+      const opponentScore = opponentState?.score || 0;
 
       const outcome: 'win' | 'loss' | 'tie' = isTie ? 'tie' : localWon ? 'win' : 'loss';
       const oppElo = opponentElo ?? DEFAULT_ELO;
 
+      console.group('[MultiplayerView] Match resolved — processing ELO');
+      console.log('Outcome:', outcome);
+      console.log('Scores:', { local: localScore, opponent: opponentScore });
+      console.log('Forfeit:', forfeitWin ?? 'none');
+      console.log('ELO before:', { myElo, opponentElo: oppElo });
+
       const result = calculateElo(myElo, oppElo, outcome);
+      console.log('ELO after:', { newMyElo: result.newPlayerElo, delta: result.playerDelta });
+      console.groupEnd();
 
       setLocalEloDelta(result.playerDelta);
       setOpponentEloDelta(result.opponentDelta);
@@ -251,6 +260,7 @@ export default function MultiplayerView() {
 
       // Update stats in Supabase
       if (session?.user?.id) {
+        console.log('[MultiplayerView] Saving stats to Supabase for user:', session.user.id);
         try {
           await updateStatsAfterGame(session.user.id, {
             won: localWon,
@@ -258,12 +268,15 @@ export default function MultiplayerView() {
             score: localScore,
             newElo: result.newPlayerElo,
           });
+          console.log('[MultiplayerView] Stats saved successfully');
           // Refresh local stats
           const updated = await getOrCreatePlayerStats(session.user.id, myName);
           setPlayerStats(updated);
         } catch (err) {
           console.error('[MultiplayerView] Failed to update stats:', err);
         }
+      } else {
+        console.log('[MultiplayerView] No session — skipping Supabase stats update');
       }
     };
 

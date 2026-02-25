@@ -38,10 +38,13 @@ export default function Leaderboard({
   const fetchScores = useCallback(async () => {
     const supabase = createClient();
     if (!supabase) {
+      console.warn('[Leaderboard] Supabase not configured — skipping fetch');
       setLoading(false);
       return;
     }
 
+    console.group(`[Leaderboard] Fetching scores — tab: ${tab}, gridSize: ${gridSize}`);
+    console.log('refreshTrigger:', refreshTrigger);
     setLoading(true);
     setFetchError(null);
 
@@ -61,6 +64,7 @@ export default function Leaderboard({
       if (tab === "today") {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
+        console.log('Filtering to today since:', today.toISOString());
         query = query.gte("created_at", today.toISOString());
       }
 
@@ -72,8 +76,13 @@ export default function Leaderboard({
           error.message?.toLowerCase().includes("abort") ||
           error.message?.toLowerCase().includes("cancel") ||
           error.code === "20"; // DOMException ABORT_ERR
+        console.error('[Leaderboard] Fetch error:', error.code, error.message, isTimeout ? '(timeout)' : '');
         setFetchError(isTimeout ? "Request timed out" : "Could not load scores");
       } else if (data) {
+        console.log(`[Leaderboard] Got ${data.length} scores`);
+        if (data.length > 0) {
+          console.table(data.map(s => ({ rank: data.indexOf(s) + 1, username: s.username, score: s.score })));
+        }
         setScores(data);
         // Expose scores to parent for rank preview.
         onScoresLoaded?.(data.map((s) => s.score));
@@ -82,10 +91,12 @@ export default function Leaderboard({
       // Network failures, CORS errors, and AbortError all land here.
       const isAbort =
         err instanceof DOMException && err.name === "AbortError";
+      console.error('[Leaderboard] Fetch threw:', isAbort ? 'AbortError (timeout)' : err);
       setFetchError(isAbort ? "Request timed out" : "Could not load scores");
     } finally {
       clearTimeout(timeoutId);
       setLoading(false);
+      console.groupEnd();
     }
   }, [tab, refreshTrigger, onScoresLoaded, gridSize]);
 

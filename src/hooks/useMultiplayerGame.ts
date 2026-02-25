@@ -72,6 +72,7 @@ export function useMultiplayerGame(roomId: string | null, myId: string, myName?:
         timeLeftRef.current = next;
 
         if (next <= 0) {
+          console.log('[MultiplayerGame] Timer reached 0 — broadcasting time_up');
           clearTimers();
           channelRef.current?.send({
             type: 'broadcast',
@@ -109,6 +110,7 @@ export function useMultiplayerGame(roomId: string | null, myId: string, myName?:
   // Start timer when opponent connects (both players present)
   useEffect(() => {
     if (opponentConnected && !gameStarted && forfeitWin === null) {
+      console.log('[MultiplayerGame] Both players connected — starting 5-minute timer');
       setGameStarted(true);
       gameStartedRef.current = true;
       startTimer();
@@ -118,8 +120,10 @@ export function useMultiplayerGame(roomId: string | null, myId: string, myName?:
   // Forfeit logic: detect opponent disconnect after they were previously connected
   useEffect(() => {
     if (opponentEverConnected && !opponentConnected && gameStarted && forfeitWin === null) {
+      console.log(`[MultiplayerGame] Opponent disconnected — starting ${DISCONNECT_GRACE_PERIOD / 1000}s forfeit grace period`);
       disconnectTimeoutRef.current = setTimeout(() => {
         if (!opponentConnectedRef.current && forfeitWinRef.current === null) {
+          console.log('[MultiplayerGame] Grace period expired — declaring forfeit win for local player');
           setForfeitWin('local');
           forfeitWinRef.current = 'local';
           clearTimers();
@@ -134,6 +138,7 @@ export function useMultiplayerGame(roomId: string | null, myId: string, myName?:
     }
 
     if (opponentConnected) {
+      console.log('[MultiplayerGame] Opponent reconnected — clearing forfeit grace period');
       clearDisconnectTimeout();
     }
   }, [opponentConnected, opponentEverConnected, gameStarted, forfeitWin, clearTimers, clearDisconnectTimeout, myId]);

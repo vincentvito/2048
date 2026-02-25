@@ -3213,6 +3213,85 @@ body.mobile-no-scroll {
   background: #b45309;
 }
 
+.mobile-menu-signin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.mobile-menu-signin-label {
+  font-size: 13px;
+  color: #92400e;
+  margin: 0;
+}
+
+.mobile-menu-signin-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 2px solid #fde68a;
+  border-radius: 10px;
+  font-size: 15px;
+  background: #fffbeb;
+  color: #1c1917;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.mobile-menu-signin-input:focus {
+  border-color: #d97706;
+}
+
+.mobile-menu-otp-input {
+  letter-spacing: 0.3em;
+  font-size: 20px;
+  text-align: center;
+}
+
+.mobile-menu-signin-error {
+  font-size: 12px;
+  color: #dc2626;
+  margin: 0;
+}
+
+.mobile-menu-signin-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.mobile-menu-signin-back {
+  flex: 0 0 auto;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #fde68a;
+  border: none;
+  color: #92400e;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mobile-menu-signin-submit {
+  flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  background: #d97706;
+  border: none;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mobile-menu-signin-submit:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.mobile-menu-signin-submit:active:not(:disabled) {
+  background: #b45309;
+}
+
 .mobile-menu-divider {
   height: 1px;
   background: #fde68a;

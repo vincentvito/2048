@@ -624,7 +624,12 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
 
     document.addEventListener("keydown", onKeyDown);
     document.addEventListener("keyup", onKeyUp);
-    document.addEventListener("touchmove", preventScrollOnBoard, { passive: false });
+    // Only the active (non-read-only) board needs the document-level scroll
+    // prevention. The opponent board in multiplayer is read-only — registering
+    // this on it would add an extra no-op handler that could leak (Fix 4).
+    if (!initialReadOnlyRef.current) {
+      document.addEventListener("touchmove", preventScrollOnBoard, { passive: false });
+    }
     container.addEventListener("touchstart", onTouchStart, { passive: false });
     container.addEventListener("touchend", onTouchEnd, { passive: false });
     container.addEventListener("touchcancel", onTouchCancel);
@@ -678,7 +683,9 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
     return () => {
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("keyup", onKeyUp);
-      document.removeEventListener("touchmove", preventScrollOnBoard);
+      if (!initialReadOnlyRef.current) {
+        document.removeEventListener("touchmove", preventScrollOnBoard, { passive: false } as EventListenerOptions);
+      }
       container.removeEventListener("touchstart", onTouchStart);
       container.removeEventListener("touchend", onTouchEnd);
       container.removeEventListener("touchcancel", onTouchCancel);

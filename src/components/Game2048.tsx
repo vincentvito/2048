@@ -612,9 +612,13 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
 
     document.addEventListener("keydown", onKeyDown);
     document.addEventListener("keyup", onKeyUp);
-    canvas.addEventListener("touchstart", onTouchStart, { passive: false });
-    canvas.addEventListener("touchmove", onTouchMove, { passive: false });
-    canvas.addEventListener("touchend", onTouchEnd, { passive: false });
+    // Attach touch listeners to the container div, not the canvas.
+    // After a page scroll the browser can stop routing touch events to canvas
+    // (a bitmap element) reliably. The container div is a proper DOM target
+    // that always wins gesture hit-testing, even after a scroll.
+    container.addEventListener("touchstart", onTouchStart, { passive: false });
+    container.addEventListener("touchmove", onTouchMove, { passive: false });
+    container.addEventListener("touchend", onTouchEnd, { passive: false });
 
     // Resize board on orientation change / window resize
     function onResize() {
@@ -665,9 +669,9 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
     return () => {
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("keyup", onKeyUp);
-      canvas.removeEventListener("touchstart", onTouchStart);
-      canvas.removeEventListener("touchmove", onTouchMove);
-      canvas.removeEventListener("touchend", onTouchEnd);
+      container.removeEventListener("touchstart", onTouchStart);
+      container.removeEventListener("touchmove", onTouchMove);
+      container.removeEventListener("touchend", onTouchEnd);
       window.removeEventListener("resize", onResize);
       if (repeatTimeout) clearTimeout(repeatTimeout);
       if (popupAnimFrame) cancelAnimationFrame(popupAnimFrame);

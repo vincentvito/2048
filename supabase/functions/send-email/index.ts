@@ -1,6 +1,5 @@
 const resendApiKey = Deno.env.get('RESEND_API_KEY') as string
 const hookSecret = Deno.env.get('SEND_EMAIL_HOOK_SECRET') as string
-const supabaseUrl = (Deno.env.get('SUPABASE_URL') as string).replace(/\/$/, '')
 
 async function verifyWebhook(payload: string, headers: Record<string, string>): Promise<Record<string, unknown>> {
   const msgId = headers['webhook-id']
@@ -40,8 +39,6 @@ Deno.serve(async (req) => {
       user: { email: string }
       email_data: {
         token: string
-        token_hash: string
-        redirect_to: string
         email_action_type: string
       }
     }
@@ -53,11 +50,6 @@ Deno.serve(async (req) => {
     const digitCells = digits.map(d =>
       `<td style="width:44px;height:52px;background:#fef3c7;border-radius:10px;text-align:center;vertical-align:middle;font-family:'Trebuchet MS',Helvetica,sans-serif;font-size:28px;font-weight:bold;color:#78350f;border:2px solid #fde68a;">${d}</td>`
     ).join('')
-
-    // Build the magic link URL using the token_hash.
-    // Supabase verify endpoint accepts token_hash for one-click sign-in.
-    const redirectTo = email_data.redirect_to || ''
-    const magicLink = `${supabaseUrl}/auth/v1/verify?token=${encodeURIComponent(email_data.token_hash)}&type=email&redirect_to=${encodeURIComponent(redirectTo)}`
 
     const html = `<!DOCTYPE html>
 <html>
@@ -85,7 +77,7 @@ Deno.serve(async (req) => {
           <td style="padding:36px 32px 32px;">
 
             <p style="margin:0 0 6px;font-size:18px;font-weight:bold;color:#78350f;text-align:center;">Your sign-in code</p>
-            <p style="margin:0 0 28px;font-size:14px;color:#a16207;text-align:center;">Type the code below, or click the button to sign in instantly.</p>
+            <p style="margin:0 0 28px;font-size:14px;color:#a16207;text-align:center;">Enter this code in the app to sign in.</p>
 
             <!-- OTP tiles -->
             <table role="presentation" cellpadding="0" cellspacing="6" style="margin:0 auto 8px;" align="center">
@@ -95,35 +87,11 @@ Deno.serve(async (req) => {
             <!-- "Your code" label under tiles -->
             <p style="margin:0 0 28px;font-size:12px;color:#a16207;text-align:center;letter-spacing:0.5px;">YOUR 6-DIGIT CODE</p>
 
-            <!-- Divider with OR -->
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
-              <tr>
-                <td style="border-bottom:1px solid #fde68a;width:45%;vertical-align:middle;">&nbsp;</td>
-                <td style="width:10%;text-align:center;vertical-align:middle;padding:0 10px;">
-                  <span style="font-size:12px;color:#b45309;font-weight:bold;white-space:nowrap;">OR</span>
-                </td>
-                <td style="border-bottom:1px solid #fde68a;width:45%;vertical-align:middle;">&nbsp;</td>
-              </tr>
-            </table>
-
-            <!-- Magic link button -->
-            <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 28px;" align="center">
-              <tr>
-                <td style="border-radius:10px;background:#d97706;">
-                  <a href="${magicLink}"
-                     target="_blank"
-                     style="display:inline-block;padding:14px 40px;font-family:'Trebuchet MS',Helvetica,sans-serif;font-size:16px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:10px;background:#d97706;letter-spacing:0.3px;">
-                    Sign In to 2048
-                  </a>
-                </td>
-              </tr>
-            </table>
-
             <!-- Expiry notice -->
             <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 20px;background:#fef3c7;border-radius:8px;" align="center">
               <tr>
                 <td style="padding:10px 20px;text-align:center;">
-                  <span style="font-size:13px;color:#92400e;font-weight:bold;">Both the code and link expire in 10 minutes</span>
+                  <span style="font-size:13px;color:#92400e;font-weight:bold;">This code expires in 10 minutes</span>
                 </td>
               </tr>
             </table>

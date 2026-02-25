@@ -4,6 +4,11 @@ import React, { useState, useEffect, useCallback } from "react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase-client";
 import { getPersonalBest } from "@/lib/guest-scores";
 
+interface LeaderboardApiResponse {
+  scores?: Score[];
+  error?: string;
+}
+
 /** How long (ms) to wait for the Supabase query before giving up. */
 const FETCH_TIMEOUT_MS = 8000;
 
@@ -36,63 +41,45 @@ export default function Leaderboard({
   const [configured] = useState(() => isSupabaseConfigured());
 
   const fetchScores = useCallback(async () => {
-    const supabase = createClient();
-    if (!supabase) {
-      console.warn('[Leaderboard] Supabase not configured — skipping fetch');
-      setLoading(false);
-      return;
-    }
-
-    console.group(`[Leaderboard] Fetching scores — tab: ${tab}, gridSize: ${gridSize}`);
+    console.group(`[Leaderboard] Fetching via SSR API — tab: ${tab}, gridSize: ${gridSize}`);
     console.log('refreshTrigger:', refreshTrigger);
     setLoading(true);
     setFetchError(null);
 
-    // Build an AbortController so we can cancel the fetch on timeout.
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
     try {
-      let query = supabase
-        .from("scores")
-        .select("id, username, score, grid_size, created_at")
-        .eq("grid_size", gridSize)
-        .order("score", { ascending: false })
-        .limit(20)
-        .abortSignal(controller.signal);
+      const res = await fetch(
+        `/api/leaderboard?gridSize=${gridSize}&tab=${tab}`,
+        { signal: controller.signal }
+      );
 
-      if (tab === "today") {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        console.log('Filtering to today since:', today.toISOString());
-        query = query.gte("created_at", today.toISOString());
+      if (!res.ok) {
+        console.error('[Leaderboard] API returned', res.status, res.statusText);
+        setFetchError('Could not load scores');
+        return;
       }
 
-      const { data, error } = await query;
+      const json: LeaderboardApiResponse = await res.json();
 
-      if (error) {
-        // AbortError means we timed out; surface a friendlier message.
-        const isTimeout =
-          error.message?.toLowerCase().includes("abort") ||
-          error.message?.toLowerCase().includes("cancel") ||
-          error.code === "20"; // DOMException ABORT_ERR
-        console.error('[Leaderboard] Fetch error:', error.code, error.message, isTimeout ? '(timeout)' : '');
-        setFetchError(isTimeout ? "Request timed out" : "Could not load scores");
-      } else if (data) {
-        console.log(`[Leaderboard] Got ${data.length} scores`);
-        if (data.length > 0) {
-          console.table(data.map(s => ({ rank: data.indexOf(s) + 1, username: s.username, score: s.score })));
-        }
-        setScores(data);
-        // Expose scores to parent for rank preview.
-        onScoresLoaded?.(data.map((s) => s.score));
+      if (json.error) {
+        console.error('[Leaderboard] API error:', json.error);
+        setFetchError('Could not load scores');
+        return;
       }
+
+      const data = json.scores ?? [];
+      console.log(`[Leaderboard] Got ${data.length} scores`);
+      if (data.length > 0) {
+        console.table(data.map((s, i) => ({ rank: i + 1, username: s.username, score: s.score })));
+      }
+      setScores(data);
+      onScoresLoaded?.(data.map((s) => s.score));
     } catch (err: unknown) {
-      // Network failures, CORS errors, and AbortError all land here.
-      const isAbort =
-        err instanceof DOMException && err.name === "AbortError";
+      const isAbort = err instanceof DOMException && err.name === 'AbortError';
       console.error('[Leaderboard] Fetch threw:', isAbort ? 'AbortError (timeout)' : err);
-      setFetchError(isAbort ? "Request timed out" : "Could not load scores");
+      setFetchError(isAbort ? 'Request timed out' : 'Could not load scores');
     } finally {
       clearTimeout(timeoutId);
       setLoading(false);

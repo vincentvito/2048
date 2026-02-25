@@ -6,6 +6,7 @@ import MultiplayerView from "@/components/MultiplayerView";
 import GameOverModal from "@/components/GameOverModal";
 import Leaderboard from "@/components/Leaderboard";
 import HowToPlay from "@/components/HowToPlay";
+import MobileMenu from "@/components/MobileMenu";
 import UsernamePrompt from "@/components/UsernamePrompt";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase-client";
 import { Session } from "@supabase/supabase-js";
@@ -41,6 +42,7 @@ export default function Home(): React.ReactElement {
   const [showConfetti, setShowConfetti] = useState(false);
   const [showSwipeHint, setShowSwipeHint] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
+  const [showSignInModal, setShowSignInModal] = useState(false);
 
   // Auth state
   useEffect(() => {
@@ -74,6 +76,15 @@ export default function Home(): React.ReactElement {
       const timer = setTimeout(() => setShowSwipeHint(false), 3500);
       return () => clearTimeout(timer);
     }
+  }, []);
+
+  // Disable body scroll on mobile so the page never scrolls —
+  // secondary content lives in the mobile menu drawer instead.
+  useEffect(() => {
+    const isTouchDevice = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+    if (!isTouchDevice) return;
+    document.body.classList.add("mobile-no-scroll");
+    return () => document.body.classList.remove("mobile-no-scroll");
   }, []);
 
   const confettiPieces = useMemo(() => generateConfettiPieces(35), [showConfetti]);
@@ -120,7 +131,6 @@ export default function Home(): React.ReactElement {
   const handleGridSizeChange = useCallback((newSize: number) => {
     setActiveGridSize(newSize);
     setGameMode('single');
-    // Reach into the Game2048 component's internal DOM-attached function
     const gameContainer = document.querySelector(".game-container") as HTMLElement | null;
     if (gameContainer) {
       const toggleSize = (gameContainer as unknown as Record<string, (s: number) => void>)._toggleSize;
@@ -153,15 +163,15 @@ export default function Home(): React.ReactElement {
         </div>
       )}
 
-      {/* Title only */}
+      {/* Title */}
       <div className="title-section">
         <h1 className="game-title">2048</h1>
         <p className="game-intro">Join the tiles, get to <strong>2048!</strong></p>
       </div>
 
-      {/* User bar */}
+      {/* User bar — desktop only */}
       {session && (
-        <div className="user-bar">
+        <div className="user-bar desktop-only">
           <span className="user-bar-name">
             {(session.user.user_metadata?.username as string) || session.user.email?.split("@")[0] || "Player"}
           </span>
@@ -199,11 +209,9 @@ export default function Home(): React.ReactElement {
 
       {gameMode === 'single' ? (
         <>
-          {/* Hero: The game board */}
           <div style={{ position: "relative", touchAction: "none", display: "flex", justifyContent: "center" }}>
             <Game2048 onGameOver={handleGameOver} onGameWon={handleGameWon} onResetReady={handleResetReady} />
 
-            {/* First-visit swipe tutorial overlay (mobile only) */}
             {showSwipeHint && (
               <div className="swipe-hint-overlay" onClick={() => setShowSwipeHint(false)}>
                 <div className="swipe-hint-content">
@@ -226,12 +234,8 @@ export default function Home(): React.ReactElement {
             )}
           </div>
 
-          {/* Controls below the board: new game */}
           <div className="below-board-controls">
-            <button
-              className="header-new-game-btn"
-              onClick={() => gameResetRef.current?.()}
-            >
+            <button className="header-new-game-btn" onClick={() => gameResetRef.current?.()}>
               New Game
             </button>
           </div>
@@ -243,15 +247,11 @@ export default function Home(): React.ReactElement {
       <p className="game-hint desktop-hint">
         Use your <strong>arrow keys</strong> to move the tiles.
       </p>
-      <p className="game-hint mobile-hint">
-        <strong>Swipe</strong> to move the tiles.
-      </p>
 
-      {/* Supporting content below the fold — hidden in multiplayer */}
+      {/* Desktop bottom section */}
       {gameMode === 'single' && (
-        <div className="bottom-section">
+        <div className="bottom-section desktop-only">
           <HowToPlay />
-
           <div className="leaderboard-section">
             <h2 className="section-title">Leaderboard</h2>
             <Leaderboard
@@ -264,10 +264,18 @@ export default function Home(): React.ReactElement {
         </div>
       )}
 
-      {/* Username prompt (shown after OTP login if no username set) */}
+      {/* Mobile menu — hamburger + drawer with leaderboard, auth, how to play */}
+      <MobileMenu
+        session={session}
+        currentScore={currentScore}
+        activeGridSize={activeGridSize}
+        refreshTrigger={refreshTrigger}
+        onSignOut={handleSignOut}
+        onSignIn={() => setShowSignInModal(true)}
+      />
+
       <UsernamePrompt />
 
-      {/* Game over / win modal */}
       {gameResult && (
         <GameOverModal
           open={gameResult.open}

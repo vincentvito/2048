@@ -46,13 +46,25 @@ interface ScorePopup {
   startTime: number;
 }
 
+export interface GameState {
+  grid: number[];
+  score: number;
+  gameOver: boolean;
+  won: boolean;
+}
+
 interface Game2048Props {
   onGameOver?: (score: number, gridSize: number) => void;
   onGameWon?: (score: number, gridSize: number) => void;
   onResetReady?: (resetFn: () => void) => void;
+  readOnlyState?: GameState | null;
+  onStateChange?: (state: GameState) => void;
+  disableInputs?: boolean;
+  onDevEndGameReady?: (fn: () => void) => void;
+  hideScore?: boolean;
 }
 
-export default function Game2048({ onGameOver, onGameWon, onResetReady }: Game2048Props): React.ReactElement {
+export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnlyState, onStateChange, disableInputs, onDevEndGameReady, hideScore }: Game2048Props): React.ReactElement {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const scoreElRef = useRef<HTMLElement>(null);
@@ -61,6 +73,10 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady }: Game20
   const onGameOverRef = useRef(onGameOver);
   const onGameWonRef = useRef(onGameWon);
   const onResetReadyRef = useRef(onResetReady);
+  const onStateChangeRef = useRef(onStateChange);
+  const disableInputsRef = useRef(disableInputs);
+  const onDevEndGameReadyRef = useRef(onDevEndGameReady);
+  const initialReadOnlyRef = useRef(!!readOnlyState);
   const [displaySize, setDisplaySize] = useState(4);
 
   useEffect(() => {
@@ -74,6 +90,26 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady }: Game20
   useEffect(() => {
     onResetReadyRef.current = onResetReady;
   }, [onResetReady]);
+
+  useEffect(() => {
+    onStateChangeRef.current = onStateChange;
+  }, [onStateChange]);
+
+  useEffect(() => {
+    disableInputsRef.current = disableInputs;
+  }, [disableInputs]);
+
+  useEffect(() => {
+    onDevEndGameReadyRef.current = onDevEndGameReady;
+  }, [onDevEndGameReady]);
+
+  // Hook to handle readOnlyState changes
+  useEffect(() => {
+    if (readOnlyState && containerRef.current) {
+      const updateFn = (containerRef.current as any)._updateState;
+      if (updateFn) updateFn(readOnlyState);
+    }
+  }, [readOnlyState]);
 
   useEffect(() => {
     if (!canvasRef.current || !containerRef.current) return;
@@ -312,6 +348,7 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady }: Game20
           announce("You reached 2048!");
         }
         render(1);
+        onStateChangeRef.current?.({ grid: Array.from(grid), score, gameOver, won });
       }
     }
 
@@ -417,9 +454,35 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady }: Game20
       if (SIZE === 8) { addTile(); addTile(); }
       updateScore();
       render();
+      onStateChangeRef.current?.({ grid: Array.from(grid), score, gameOver, won });
     }
 
     // React buttons can't access the useEffect closure, so we attach game functions to the container DOM node
+    (container as unknown as Record<string, (state: GameState) => void>)._updateState = (state: GameState) => {
+      score = state.score;
+      gameOver = state.gameOver;
+      won = state.won;
+      for (let i = 0; i < state.grid.length; i++) {
+        grid[i] = state.grid[i];
+      }
+      tiles.length = 0;
+      for (let i = 0; i < grid.length; i++) {
+        if (grid[i] !== 0) {
+          tiles.push({
+            value: grid[i],
+            r: (i / SIZE) | 0,
+            c: i % SIZE,
+            fromR: (i / SIZE) | 0,
+            fromC: i % SIZE,
+            scale: 1,
+            merged: false,
+          });
+        }
+      }
+      updateScore();
+      render(1);
+    };
+
     (container as unknown as Record<string, () => void>)._init = init;
     (container as unknown as Record<string, () => void>)._keepPlaying = () => {
       keepPlaying = true;
@@ -438,7 +501,7 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady }: Game20
     let repeating = false;
 
     function processInput() {
-      if (!repeating || keys.size === 0) return;
+      if (disableInputsRef.current || !repeating || keys.size === 0) return;
       const now = performance.now();
       if (now - lastMove < MOVE_DELAY) {
         requestAnimationFrame(processInput);
@@ -454,6 +517,7 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady }: Game20
     }
 
     function onKeyDown(e: KeyboardEvent) {
+      if (disableInputsRef.current) return;
       if (DIR_MAP[e.key] !== undefined) {
         e.preventDefault();
         if (!keys.has(e.key)) {
@@ -483,6 +547,7 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady }: Game20
     let touchStartY = 0;
 
     function onTouchStart(e: TouchEvent) {
+      if (disableInputsRef.current) return;
       e.preventDefault();
       touchStartX = e.touches[0].clientX;
       touchStartY = e.touches[0].clientY;
@@ -493,6 +558,7 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady }: Game20
     }
 
     function onTouchEnd(e: TouchEvent) {
+      if (disableInputsRef.current) return;
       e.preventDefault();
       const dx = e.changedTouches[0].clientX - touchStartX;
       const dy = e.changedTouches[0].clientY - touchStartY;
@@ -520,7 +586,40 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady }: Game20
     window.addEventListener("resize", onResize);
 
     setSizeInternal(4);
-    init();
+    if (!initialReadOnlyRef.current) {
+      init();
+    } else {
+      // Read-only mode: just render the empty grid, no random tiles
+      render(1);
+    }
+
+    // Dev-only: fill board with random tiles and end the game
+    function devEndGame() {
+      const values = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024];
+      tiles.length = 0;
+      const total = SIZE * SIZE;
+      score = Math.floor(Math.random() * 8000) + 2000;
+      gameOver = true;
+      won = false;
+      keepPlaying = false;
+      for (let i = 0; i < total; i++) {
+        grid[i] = values[Math.floor(Math.random() * values.length)];
+        tiles.push({
+          value: grid[i],
+          r: (i / SIZE) | 0,
+          c: i % SIZE,
+          fromR: (i / SIZE) | 0,
+          fromC: i % SIZE,
+          scale: 1,
+          merged: false,
+        });
+      }
+      updateScore();
+      render(1);
+      onGameOverRef.current?.(score, SIZE);
+      onStateChangeRef.current?.({ grid: Array.from(grid), score, gameOver, won });
+    }
+    onDevEndGameReadyRef.current?.(devEndGame);
 
     // Expose reset function to parent via callback
     onResetReadyRef.current?.(init);
@@ -560,16 +659,18 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady }: Game20
   return (
     <div className="board-section">
       {/* Scores */}
-      <div className="score-row">
-        <div className="score-box">
-          <span>Score</span>
-          <strong ref={scoreElRef}>0</strong>
+      {!hideScore && (
+        <div className="score-row">
+          <div className="score-box">
+            <span>Score</span>
+            <strong ref={scoreElRef}>0</strong>
+          </div>
+          <div className="score-box">
+            <span>Best</span>
+            <strong ref={bestElRef}>0</strong>
+          </div>
         </div>
-        <div className="score-box">
-          <span>Best</span>
-          <strong ref={bestElRef}>0</strong>
-        </div>
-      </div>
+      )}
 
       {/* Game board */}
       <div ref={containerRef} className="game-container">

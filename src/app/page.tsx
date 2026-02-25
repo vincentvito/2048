@@ -2,9 +2,13 @@
 
 import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import Game2048 from "@/components/Game2048";
+import MultiplayerView from "@/components/MultiplayerView";
 import GameOverModal from "@/components/GameOverModal";
 import Leaderboard from "@/components/Leaderboard";
 import HowToPlay from "@/components/HowToPlay";
+import UsernamePrompt from "@/components/UsernamePrompt";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase-client";
+import { Session } from "@supabase/supabase-js";
 
 // Generate confetti pieces with random properties (memoized outside component)
 function generateConfettiPieces(count: number) {
@@ -33,8 +37,32 @@ export default function Home(): React.ReactElement {
   const [leaderboardScores, setLeaderboardScores] = useState<number[]>([]);
   const [currentScore, setCurrentScore] = useState<number>(0);
   const [activeGridSize, setActiveGridSize] = useState<number>(4);
+  const [gameMode, setGameMode] = useState<'single' | 'multi'>('single');
   const [showConfetti, setShowConfetti] = useState(false);
   const [showSwipeHint, setShowSwipeHint] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+
+  // Auth state
+  useEffect(() => {
+    const supabase = createClient();
+    if (!supabase) return;
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleSignOut = useCallback(async () => {
+    const supabase = createClient();
+    if (!supabase) return;
+    await supabase.auth.signOut();
+  }, []);
 
   // Show swipe hint on first mobile visit
   useEffect(() => {
@@ -91,6 +119,7 @@ export default function Home(): React.ReactElement {
 
   const handleGridSizeChange = useCallback((newSize: number) => {
     setActiveGridSize(newSize);
+    setGameMode('single');
     // Reach into the Game2048 component's internal DOM-attached function
     const gameContainer = document.querySelector(".game-container") as HTMLElement | null;
     if (gameContainer) {
@@ -130,56 +159,86 @@ export default function Home(): React.ReactElement {
         <p className="game-intro">Join the tiles, get to <strong>2048!</strong></p>
       </div>
 
-      {/* Hero: The game board */}
-      <div style={{ position: "relative" }}>
-        <Game2048 onGameOver={handleGameOver} onGameWon={handleGameWon} onResetReady={handleResetReady} />
-
-        {/* First-visit swipe tutorial overlay (mobile only) */}
-        {showSwipeHint && (
-          <div className="swipe-hint-overlay" onClick={() => setShowSwipeHint(false)}>
-            <div className="swipe-hint-content">
-              <div className="swipe-hint-hand">
-                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 1a4 4 0 0 0-4 4v6.5" />
-                  <path d="M8 11.5V18a4 4 0 0 0 4 4h1a5 5 0 0 0 5-5v-5" />
-                  <path d="M12 1a4 4 0 0 1 4 4v8" />
-                </svg>
-              </div>
-              <div className="swipe-hint-arrows">
-                <span className="swipe-arrow swipe-arrow-left">&larr;</span>
-                <span className="swipe-arrow swipe-arrow-right">&rarr;</span>
-                <span className="swipe-arrow swipe-arrow-up">&uarr;</span>
-                <span className="swipe-arrow swipe-arrow-down">&darr;</span>
-              </div>
-              <p className="swipe-hint-text">Swipe to move tiles</p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Controls below the board: grid toggle + new game */}
-      <div className="below-board-controls">
-        <div className="grid-size-control">
-          <button
-            className={`grid-size-option${activeGridSize === 4 ? " grid-size-active" : ""}`}
-            onClick={() => handleGridSizeChange(4)}
-          >
-            4&times;4
-          </button>
-          <button
-            className={`grid-size-option${activeGridSize === 8 ? " grid-size-active" : ""}`}
-            onClick={() => handleGridSizeChange(8)}
-          >
-            8&times;8
+      {/* User bar */}
+      {session && (
+        <div className="user-bar">
+          <span className="user-bar-name">
+            {(session.user.user_metadata?.username as string) || session.user.email?.split("@")[0] || "Player"}
+          </span>
+          <button className="user-bar-signout" onClick={handleSignOut}>
+            Sign Out
           </button>
         </div>
-        <button
-          className="header-new-game-btn"
-          onClick={() => gameResetRef.current?.()}
-        >
-          New Game
-        </button>
+      )}
+
+      {/* Game Mode / Grid Controls */}
+      <div className="below-board-controls" style={{ marginBottom: "20px" }}>
+        <div className="grid-size-control" style={{ display: 'flex', gap: '8px' }}>
+          <button
+            className={`grid-size-option${gameMode === 'single' && activeGridSize === 4 ? " grid-size-active" : ""}`}
+            onClick={() => handleGridSizeChange(4)}
+          >
+            4&times;4 Single
+          </button>
+          {isSupabaseConfigured() && (
+            <button
+              className={`grid-size-option${gameMode === 'multi' ? " grid-size-active" : ""}`}
+              onClick={() => { setActiveGridSize(4); setGameMode('multi'); }}
+            >
+              4&times;4 Multi
+            </button>
+          )}
+          <button
+            className={`grid-size-option${gameMode === 'single' && activeGridSize === 8 ? " grid-size-active" : ""}`}
+            onClick={() => handleGridSizeChange(8)}
+          >
+            8&times;8 Single
+          </button>
+        </div>
       </div>
+
+      {gameMode === 'single' ? (
+        <>
+          {/* Hero: The game board */}
+          <div style={{ position: "relative", touchAction: "none", display: "flex", justifyContent: "center" }}>
+            <Game2048 onGameOver={handleGameOver} onGameWon={handleGameWon} onResetReady={handleResetReady} />
+
+            {/* First-visit swipe tutorial overlay (mobile only) */}
+            {showSwipeHint && (
+              <div className="swipe-hint-overlay" onClick={() => setShowSwipeHint(false)}>
+                <div className="swipe-hint-content">
+                  <div className="swipe-hint-hand">
+                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 1a4 4 0 0 0-4 4v6.5" />
+                      <path d="M8 11.5V18a4 4 0 0 0 4 4h1a5 5 0 0 0 5-5v-5" />
+                      <path d="M12 1a4 4 0 0 1 4 4v8" />
+                    </svg>
+                  </div>
+                  <div className="swipe-hint-arrows">
+                    <span className="swipe-arrow swipe-arrow-left">&larr;</span>
+                    <span className="swipe-arrow swipe-arrow-right">&rarr;</span>
+                    <span className="swipe-arrow swipe-arrow-up">&uarr;</span>
+                    <span className="swipe-arrow swipe-arrow-down">&darr;</span>
+                  </div>
+                  <p className="swipe-hint-text">Swipe to move tiles</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Controls below the board: new game */}
+          <div className="below-board-controls">
+            <button
+              className="header-new-game-btn"
+              onClick={() => gameResetRef.current?.()}
+            >
+              New Game
+            </button>
+          </div>
+        </>
+      ) : (
+        <MultiplayerView />
+      )}
 
       <p className="game-hint desktop-hint">
         Use your <strong>arrow keys</strong> to move the tiles.
@@ -188,20 +247,25 @@ export default function Home(): React.ReactElement {
         <strong>Swipe</strong> to move the tiles.
       </p>
 
-      {/* Supporting content below the fold */}
-      <div className="bottom-section">
-        <HowToPlay />
+      {/* Supporting content below the fold — hidden in multiplayer */}
+      {gameMode === 'single' && (
+        <div className="bottom-section">
+          <HowToPlay />
 
-        <div className="leaderboard-section">
-          <h2 className="section-title">Leaderboard</h2>
-          <Leaderboard
-            refreshTrigger={refreshTrigger}
-            onScoresLoaded={handleScoresLoaded}
-            currentScore={currentScore}
-            gridSize={activeGridSize}
-          />
+          <div className="leaderboard-section">
+            <h2 className="section-title">Leaderboard</h2>
+            <Leaderboard
+              refreshTrigger={refreshTrigger}
+              onScoresLoaded={handleScoresLoaded}
+              currentScore={currentScore}
+              gridSize={activeGridSize}
+            />
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Username prompt (shown after OTP login if no username set) */}
+      <UsernamePrompt />
 
       {/* Game over / win modal */}
       {gameResult && (

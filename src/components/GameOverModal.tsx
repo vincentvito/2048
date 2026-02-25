@@ -36,6 +36,9 @@ export default function GameOverModal({
   const [email, setEmail] = useState("");
   const [emailSent, setEmailSent] = useState(false);
   const [sending, setSending] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [otpError, setOtpError] = useState("");
   const [personalBest, setPersonalBest] = useState(0);
   const [isNewBest, setIsNewBest] = useState(false);
   const [leaderboardRank, setLeaderboardRank] = useState<number | null>(null);
@@ -105,6 +108,9 @@ export default function GameOverModal({
       setEmail("");
       setEmailSent(false);
       setSending(false);
+      setOtpCode("");
+      setVerifying(false);
+      setOtpError("");
 
       // Track personal best
       const best = getPersonalBest(gridSize);
@@ -137,47 +143,51 @@ export default function GameOverModal({
     }
   }, [open, score, gridSize, leaderboardScores]);
 
-  async function handleSendMagicLink() {
+  async function handleSendOtp() {
     if (!email.trim() || sending) return;
 
     const supabase = createClient();
     if (!supabase) return;
 
-    // Cache the score before auth redirect so it survives navigation
     savePendingScore(score, gridSize);
-
+    setOtpError("");
     setSending(true);
     try {
-      await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: window.location.origin + "/auth/callback",
-        },
-      });
-      setEmailSent(true);
+      const { error } = await supabase.auth.signInWithOtp({ email });
+      if (error) {
+        setOtpError(error.message);
+      } else {
+        setEmailSent(true);
+      }
+    } catch {
+      setOtpError("Failed to send code");
     } finally {
       setSending(false);
     }
   }
 
-  /**
-   * Sign in with Google OAuth.
-   * NOTE: Google OAuth must be configured in the Supabase dashboard
-   * (Project Settings > Auth > Providers > Google) for this to work.
-   */
-  async function handleGoogleSignIn() {
+  async function handleVerifyOtp() {
+    if (!otpCode.trim() || verifying) return;
+
     const supabase = createClient();
     if (!supabase) return;
 
-    // Cache the score before auth redirect so it survives navigation
-    savePendingScore(score, gridSize);
-
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: window.location.origin + "/auth/callback",
-      },
-    });
+    setOtpError("");
+    setVerifying(true);
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email,
+        token: otpCode,
+        type: "email",
+      });
+      if (error) {
+        setOtpError(error.message);
+      }
+    } catch {
+      setOtpError("Verification failed");
+    } finally {
+      setVerifying(false);
+    }
   }
 
   if (!open) return null;
@@ -271,24 +281,6 @@ export default function GameOverModal({
         {configured && !showEmail && !emailSent && (
           <>
             <div className="modal-divider">or</div>
-
-            {/* Google OAuth sign-in button */}
-            <button
-              type="button"
-              className="modal-btn-google"
-              onClick={handleGoogleSignIn}
-            >
-              <svg className="modal-btn-google-icon" width="18" height="18" viewBox="0 0 48 48">
-                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-                <path fill="#FBBC05" d="M10.53 28.59a14.5 14.5 0 0 1 0-9.18l-7.98-6.19a24.0 24.0 0 0 0 0 21.56l7.98-6.19z"/>
-                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-              </svg>
-              Continue with Google
-            </button>
-
-            <div className="modal-divider">or</div>
-
             <button
               type="button"
               className="modal-btn-leaderboard"
@@ -312,10 +304,11 @@ export default function GameOverModal({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") handleSendMagicLink();
+                if (e.key === "Enter") handleSendOtp();
               }}
               autoFocus
             />
+            {otpError && <p className="modal-error">{otpError}</p>}
             <div className="modal-actions">
               <button
                 type="button"
@@ -327,10 +320,10 @@ export default function GameOverModal({
               <button
                 type="button"
                 className="modal-btn-primary"
-                onClick={handleSendMagicLink}
+                onClick={handleSendOtp}
                 disabled={sending || !email.trim()}
               >
-                {sending ? "Sending..." : "Send Magic Link"}
+                {sending ? "Sending..." : "Send Code"}
               </button>
             </div>
           </div>
@@ -339,8 +332,39 @@ export default function GameOverModal({
         {emailSent && (
           <div className="modal-email-section">
             <p className="modal-success">
-              Check your email for a magic link!
+              Enter the 6-digit code sent to {email}
             </p>
+            <input
+              type="text"
+              className="modal-input"
+              placeholder="12345678"
+              value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 8))}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleVerifyOtp();
+              }}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              autoFocus
+            />
+            {otpError && <p className="modal-error">{otpError}</p>}
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="modal-btn-secondary"
+                onClick={() => { setEmailSent(false); setOtpCode(""); setOtpError(""); }}
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                className="modal-btn-primary"
+                onClick={handleVerifyOtp}
+                disabled={verifying || otpCode.length < 6}
+              >
+                {verifying ? "Verifying..." : "Verify"}
+              </button>
+            </div>
           </div>
         )}
       </div>

@@ -583,21 +583,20 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
 
     let touchStartX = 0;
     let touchStartY = 0;
+    // Flag: true while a touch that started inside this board is active.
+    // Used by the document-level scroll-prevention handler below.
+    let touchingBoard = false;
 
     function onTouchStart(e: TouchEvent) {
       if (disableInputsRef.current) return;
-      e.preventDefault();
+      touchingBoard = true;
       touchStartX = e.touches[0].clientX;
       touchStartY = e.touches[0].clientY;
     }
 
-    function onTouchMove(e: TouchEvent) {
-      e.preventDefault();
-    }
-
     function onTouchEnd(e: TouchEvent) {
+      touchingBoard = false;
       if (disableInputsRef.current) return;
-      e.preventDefault();
       const dx = e.changedTouches[0].clientX - touchStartX;
       const dy = e.changedTouches[0].clientY - touchStartY;
       const absDx = Math.abs(dx);
@@ -610,15 +609,25 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
       }
     }
 
+    function onTouchCancel() {
+      touchingBoard = false;
+    }
+
+    // Document-level touchmove with passive:false — this is the critical fix
+    // for iOS Safari. After a page scroll iOS ignores preventDefault() on child
+    // element handlers because it has already established a scroll context at
+    // window level. A document-level passive:false listener fires before iOS
+    // makes that decision, so preventDefault() is always honoured here.
+    function preventScrollOnBoard(e: TouchEvent) {
+      if (touchingBoard) e.preventDefault();
+    }
+
     document.addEventListener("keydown", onKeyDown);
     document.addEventListener("keyup", onKeyUp);
-    // Attach touch listeners to the container div, not the canvas.
-    // After a page scroll the browser can stop routing touch events to canvas
-    // (a bitmap element) reliably. The container div is a proper DOM target
-    // that always wins gesture hit-testing, even after a scroll.
+    document.addEventListener("touchmove", preventScrollOnBoard, { passive: false });
     container.addEventListener("touchstart", onTouchStart, { passive: false });
-    container.addEventListener("touchmove", onTouchMove, { passive: false });
     container.addEventListener("touchend", onTouchEnd, { passive: false });
+    container.addEventListener("touchcancel", onTouchCancel);
 
     // Resize board on orientation change / window resize
     function onResize() {
@@ -669,9 +678,10 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
     return () => {
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("keyup", onKeyUp);
+      document.removeEventListener("touchmove", preventScrollOnBoard);
       container.removeEventListener("touchstart", onTouchStart);
-      container.removeEventListener("touchmove", onTouchMove);
       container.removeEventListener("touchend", onTouchEnd);
+      container.removeEventListener("touchcancel", onTouchCancel);
       window.removeEventListener("resize", onResize);
       if (repeatTimeout) clearTimeout(repeatTimeout);
       if (popupAnimFrame) cancelAnimationFrame(popupAnimFrame);

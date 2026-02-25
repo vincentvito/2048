@@ -20,6 +20,9 @@ body {
   font-family: "Nunito", "Clear Sans", "Helvetica Neue", Arial, sans-serif;
   color: #451a03;
   -webkit-font-smoothing: antialiased;
+  /* Prevent iOS rubber-band overscroll from stealing touch sequences
+     that belong to the game board. */
+  overscroll-behavior: none;
 }
 
 /* ========== Container ========== */

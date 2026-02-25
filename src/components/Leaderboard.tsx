@@ -4,6 +4,9 @@ import React, { useState, useEffect, useCallback } from "react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase-client";
 import { getPersonalBest } from "@/lib/guest-scores";
 
+/** How long (ms) to wait for the Supabase query before giving up. */
+const FETCH_TIMEOUT_MS = 8000;
+
 interface Score {
   id: string;
   username: string;
@@ -28,11 +31,9 @@ export default function Leaderboard({
   const [tab, setTab] = useState<"today" | "alltime">("today");
   const [scores, setScores] = useState<Score[]>([]);
   const [loading, setLoading] = useState(true);
-  const [configured, setConfigured] = useState(false);
-
-  useEffect(() => {
-    setConfigured(isSupabaseConfigured());
-  }, []);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  // Initialise synchronously so there is no flash of the wrong UI branch.
+  const [configured] = useState(() => isSupabaseConfigured());
 
   const fetchScores = useCallback(async () => {
     const supabase = createClient();
@@ -42,28 +43,50 @@ export default function Leaderboard({
     }
 
     setLoading(true);
+    setFetchError(null);
 
-    let query = supabase
-      .from("scores")
-      .select("id, username, score, grid_size, created_at")
-      .eq("grid_size", gridSize)
-      .order("score", { ascending: false })
-      .limit(20);
+    // Build an AbortController so we can cancel the fetch on timeout.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
-    if (tab === "today") {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      query = query.gte("created_at", today.toISOString());
+    try {
+      let query = supabase
+        .from("scores")
+        .select("id, username, score, grid_size, created_at")
+        .eq("grid_size", gridSize)
+        .order("score", { ascending: false })
+        .limit(20)
+        .abortSignal(controller.signal);
+
+      if (tab === "today") {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        query = query.gte("created_at", today.toISOString());
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        // AbortError means we timed out; surface a friendlier message.
+        const isTimeout =
+          error.message?.toLowerCase().includes("abort") ||
+          error.message?.toLowerCase().includes("cancel") ||
+          error.code === "20"; // DOMException ABORT_ERR
+        setFetchError(isTimeout ? "Request timed out" : "Could not load scores");
+      } else if (data) {
+        setScores(data);
+        // Expose scores to parent for rank preview.
+        onScoresLoaded?.(data.map((s) => s.score));
+      }
+    } catch (err: unknown) {
+      // Network failures, CORS errors, and AbortError all land here.
+      const isAbort =
+        err instanceof DOMException && err.name === "AbortError";
+      setFetchError(isAbort ? "Request timed out" : "Could not load scores");
+    } finally {
+      clearTimeout(timeoutId);
+      setLoading(false);
     }
-
-    const { data, error } = await query;
-
-    if (!error && data) {
-      setScores(data);
-      // Expose scores to parent for rank preview
-      onScoresLoaded?.(data.map((s) => s.score));
-    }
-    setLoading(false);
   }, [tab, refreshTrigger, onScoresLoaded, gridSize]);
 
   useEffect(() => {
@@ -126,6 +149,13 @@ export default function Leaderboard({
 
       {loading ? (
         <div className="lb-empty">Loading...</div>
+      ) : fetchError ? (
+        <div className="lb-error">
+          <p className="lb-error-message">{fetchError}</p>
+          <button className="lb-retry-btn" onClick={fetchScores}>
+            Retry
+          </button>
+        </div>
       ) : scores.length === 0 && !ghostRank ? (
         <div className="lb-empty-state">
           <div className="lb-empty-icon">

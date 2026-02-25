@@ -206,20 +206,32 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
 
     function renderPopups() {
       const now = performance.now();
-      const POPUP_DURATION = 800;
-      const POPUP_TRAVEL = 40;
+      // Total popup lifetime: 800ms. Stays fully opaque for the first 600ms,
+      // then fades out over the final 200ms. Y travel uses ease-out so the
+      // popup launches fast and decelerates to a stop — feels snappy, not floaty.
+      const POPUP_TOTAL = 800;
+      const POPUP_FADE_START = 600; // ms before fade begins
+      const POPUP_TRAVEL = 44;     // total pixels to float upward
 
       for (let i = scorePopups.length - 1; i >= 0; i--) {
         const p = scorePopups[i];
         const elapsed = now - p.startTime;
-        const t = Math.min(elapsed / POPUP_DURATION, 1);
 
-        p.opacity = 1 - t;
-        p.offsetY = POPUP_TRAVEL * t;
-
-        if (t >= 1) {
+        if (elapsed >= POPUP_TOTAL) {
           scorePopups.splice(i, 1);
           continue;
+        }
+
+        // Travel fraction with ease-out (decelerates): fast rise then slows
+        const tTravel = elapsed / POPUP_TOTAL;
+        const eased = 1 - Math.pow(1 - tTravel, 2); // quadratic ease-out
+        p.offsetY = POPUP_TRAVEL * eased;
+
+        // Opacity: fully visible until POPUP_FADE_START, then quick linear fade
+        if (elapsed < POPUP_FADE_START) {
+          p.opacity = 1;
+        } else {
+          p.opacity = 1 - (elapsed - POPUP_FADE_START) / (POPUP_TOTAL - POPUP_FADE_START);
         }
 
         ctx.save();
@@ -228,7 +240,7 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
 
-        // Dark shadow
+        // Dark shadow for legibility
         ctx.fillStyle = "rgba(0,0,0,0.5)";
         ctx.fillText("+" + p.value, p.x + 1, p.y - p.offsetY + 1);
 
@@ -238,12 +250,19 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
         ctx.restore();
       }
 
+      // Drive the popup animation with its own rAF loop only when the tile-move
+      // animation is not running (animate() handles rendering during moves).
       if (scorePopups.length > 0 && !animating) {
-        popupAnimFrame = requestAnimationFrame(() => {
-          render(1);
-          renderPopups();
-        });
+        popupAnimFrame = requestAnimationFrame(popupLoop);
+      } else {
+        popupAnimFrame = null;
       }
+    }
+
+    function popupLoop() {
+      // Redraw the static board, then paint popups on top — one draw per frame.
+      renderBoard();
+      renderPopups();
     }
 
     function canMove() {
@@ -261,7 +280,10 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
       return false;
     }
 
-    function render(t = 1) {
+    // renderBoard draws the grid background and all tiles at animation position t.
+    // It does NOT draw popups — callers are responsible for calling renderPopups()
+    // afterwards so popups are painted exactly once per frame.
+    function renderBoard(t = 1) {
       ctx.fillStyle = "#92400e";
       ctx.beginPath();
       ctx.roundRect(0, 0, GRID_SIZE, GRID_SIZE, 16);
@@ -316,13 +338,17 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
         ctx.restore();
       }
 
-      // Render floating score popups on top of tiles
-      renderPopups();
-
       const winOverlay = container.querySelector<HTMLDivElement>(".overlay.win");
       const loseOverlay = container.querySelector<HTMLDivElement>(".overlay.lose");
       if (winOverlay) winOverlay.classList.toggle("show", won && !keepPlaying);
       if (loseOverlay) loseOverlay.classList.toggle("show", gameOver);
+    }
+
+    // render is the full composite: board + popups in one call.
+    // Used by non-animation paths (init, resize, readOnly updates, etc.).
+    function render(t = 1) {
+      renderBoard(t);
+      renderPopups();
     }
 
     function animate(now: number) {
@@ -330,7 +356,10 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
       const ease = moveT < 0.5 ? 2 * moveT * moveT : 1 - Math.pow(-2 * moveT + 2, 2) / 2;
       const pulseT = (now - animStart) / PULSE_DURATION;
 
-      render(ease);
+      // Draw board and popups exactly once per frame — renderPopups must not
+      // schedule its own rAF while animating (the animating flag prevents that).
+      renderBoard(ease);
+      renderPopups();
 
       if (moveT < 1 || pulseT < 1) {
         requestAnimationFrame(animate);
@@ -347,7 +376,10 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
         if (won && !keepPlaying) {
           announce("You reached 2048!");
         }
-        render(1);
+        // Final static draw — if popups are still live, renderPopups will
+        // schedule popupLoop to keep them animated.
+        renderBoard(1);
+        renderPopups();
         onStateChangeRef.current?.({ grid: Array.from(grid), score, gameOver, won });
       }
     }
@@ -436,6 +468,12 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
       if (moved) {
         animating = true;
         animStart = performance.now();
+        // Cancel any standalone popup rAF loop — the animate() loop takes over
+        // rendering (including popups) for the duration of the tile animation.
+        if (popupAnimFrame !== null) {
+          cancelAnimationFrame(popupAnimFrame);
+          popupAnimFrame = null;
+        }
         requestAnimationFrame(animate);
       }
 

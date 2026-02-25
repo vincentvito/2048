@@ -1,0 +1,51 @@
+# Supabase local development configuration.
+# See https://supabase.com/docs/reference/cli/config for reference.
+
+[project]
+# The project ID is stored in .temp/project-ref (linked via `supabase link`).
+
+# ─── Auth ──────────────────────────────────────────────────────────────────────
+
+[auth]
+# Enable email OTP sign-in (passwordless).
+enable_signup = true
+
+[auth.email]
+# Allow users to sign up via email OTP.
+enable_signup = true
+# Double-confirm email changes (recommended).
+double_confirm_changes = true
+# Require email verification on signup.
+enable_confirmations = true
+# OTP expiry in seconds (10 minutes).
+otp_expiry = 600
+
+# ─── Email templates ───────────────────────────────────────────────────────────
+# These paths are used by `supabase start` (local) to override the default
+# Supabase auth email templates. For production (Supabase cloud) the email
+# is sent by the custom send-email Edge Function (Auth Hook) instead.
+
+[auth.email.template.confirmation]
+subject = "2048 — Confirm your email"
+content_path = "./templates/confirmation.html"
+
+[auth.email.template.magic_link]
+subject = "2048 — Your Sign-In Code"
+content_path = "./templates/otp.html"
+
+[auth.email.template.invite]
+subject = "2048 — You've been invited"
+content_path = "./templates/invite.html"
+
+[auth.email.template.recovery]
+subject = "2048 — Reset your password"
+content_path = "./templates/recovery.html"
+
+# ─── Functions ─────────────────────────────────────────────────────────────────
+
+[functions.send-email]
+# The send-email Edge Function is registered as a Supabase Auth Hook
+# (Send Email hook) in the Supabase dashboard under Authentication > Hooks.
+# It intercepts all auth emails and sends them via Resend with the custom
+# OTP tile design + magic link button.
+verify_jwt = false

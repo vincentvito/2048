@@ -41,18 +41,27 @@ export default function MobileMenu({
   async function handleSendOtp() {
     if (!email.trim() || sending) return;
     const supabase = createClient();
-    if (!supabase) return;
+    if (!supabase) { setOtpError("Auth not configured"); return; }
     setOtpError("");
     setSending(true);
     try {
-      const { error } = await supabase.auth.signInWithOtp({ email });
-      if (error) {
-        setOtpError(error.message);
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Request timed out — check your internet connection")), 12000)
+      );
+      const result = await Promise.race([
+        supabase.auth.signInWithOtp({ email }),
+        timeout,
+      ]) as Awaited<ReturnType<typeof supabase.auth.signInWithOtp>>;
+      console.log("[MobileMenu] signInWithOtp result:", result);
+      if (result.error) {
+        console.error("[MobileMenu] signInWithOtp error:", result.error);
+        setOtpError(result.error.message);
       } else {
         setSignInStep("otp");
       }
-    } catch {
-      setOtpError("Failed to send code");
+    } catch (e) {
+      console.error("[MobileMenu] signInWithOtp threw:", e);
+      setOtpError(e instanceof Error ? e.message : "Failed to send code");
     } finally {
       setSending(false);
     }

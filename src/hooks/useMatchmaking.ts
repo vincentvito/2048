@@ -14,13 +14,11 @@ export function useMatchmaking() {
 
   const startMatchmaking = () => {
     if (!supabase) return;
-    console.log('[Matchmaking] Starting matchmaking search for myId:', myId);
     setState('searching');
     setRoomId(null);
   };
 
   const cancelMatchmaking = () => {
-    console.log('[Matchmaking] Canceling matchmaking search');
     setState('idle');
     setRoomId(null);
     if (channelRef.current) {
@@ -46,7 +44,6 @@ export function useMatchmaking() {
     function completeMatch(newRoomId: string) {
       if (matchFound) return;
       matchFound = true;
-      console.log('[Matchmaking] Match confirmed:', newRoomId);
       setRoomId(newRoomId);
       setState('matched');
       // Delay unsubscribe so the broadcast reaches the other player
@@ -62,7 +59,6 @@ export function useMatchmaking() {
 
         const presenceState = channel.presenceState();
         const users = Object.keys(presenceState);
-        console.log('[Matchmaking] Presence sync received. Users in lobby:', users);
 
         if (users.length < 2) return;
 
@@ -76,7 +72,6 @@ export function useMatchmaking() {
           const player1 = sortedUsers[pairStart];
           const player2 = sortedUsers[pairStart + 1];
           const newRoomId = `game_4x4_${player1}_${player2}`;
-          console.log('[Matchmaking] Found match via presence!', { myId, opponent: player1 === myId ? player2 : player1, newRoomId });
 
           // Broadcast match to the channel so the other player gets it
           // even if they miss the presence sync
@@ -94,15 +89,12 @@ export function useMatchmaking() {
         // we receive it here even if we missed the presence sync
         const newRoomId = msg.payload.roomId as string;
         if (newRoomId && newRoomId.includes(myId)) {
-          console.log('[Matchmaking] Found match via broadcast!', newRoomId);
           completeMatch(newRoomId);
         }
       })
       .subscribe(async (status) => {
-        console.log('[Matchmaking] Channel subscription status:', status);
         if (status === 'SUBSCRIBED') {
           await channel.track({ online_at: new Date().toISOString() });
-          console.log('[Matchmaking] Successfully tracked presence in lobby');
         }
       });
 

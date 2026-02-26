@@ -43,8 +43,6 @@ export default function Leaderboard({
   const [configured] = useState(() => isSupabaseConfigured());
 
   const fetchScores = useCallback(async () => {
-    console.group(`[Leaderboard] Fetching via SSR API — tab: ${tab}, gridSize: ${gridSize}`);
-    console.log('refreshTrigger:', refreshTrigger);
     setLoading(true);
     setFetchError(null);
 
@@ -72,10 +70,6 @@ export default function Leaderboard({
       }
 
       const data = json.scores ?? [];
-      console.log(`[Leaderboard] Got ${data.length} scores`);
-      if (data.length > 0) {
-        console.table(data.map((s, i) => ({ rank: i + 1, username: s.username, score: s.score })));
-      }
       setScores(data);
       onScoresLoaded?.(data.map((s) => s.score));
     } catch (err: unknown) {
@@ -85,7 +79,6 @@ export default function Leaderboard({
     } finally {
       clearTimeout(timeoutId);
       setLoading(false);
-      console.groupEnd();
     }
   }, [tab, refreshTrigger, onScoresLoaded, gridSize]);
 

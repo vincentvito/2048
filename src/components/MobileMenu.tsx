@@ -5,6 +5,8 @@ import { Session } from "@supabase/supabase-js";
 import Leaderboard from "./Leaderboard";
 import HowToPlay from "./HowToPlay";
 import EmailSignIn from "./EmailSignIn";
+import ThemeSwitcher from "./ThemeSwitcher";
+import { ThemeName } from "@/lib/themes";
 
 interface MobileMenuProps {
   session: Session | null;
@@ -13,6 +15,8 @@ interface MobileMenuProps {
   refreshTrigger: number;
   onSignOut: () => void;
   onSignIn: () => void;
+  theme: ThemeName;
+  onThemeChange: (theme: ThemeName) => void;
 }
 
 export default function MobileMenu({
@@ -21,6 +25,8 @@ export default function MobileMenu({
   activeGridSize,
   refreshTrigger,
   onSignOut,
+  theme,
+  onThemeChange,
 }: MobileMenuProps): React.ReactElement {
   const [open, setOpen] = useState(false);
   const [showSignIn, setShowSignIn] = useState(false);
@@ -106,6 +112,14 @@ export default function MobileMenu({
                 onSuccess={() => setShowSignIn(false)}
               />
             )}
+          </div>
+
+          <div className="mobile-menu-divider" />
+
+          {/* Theme */}
+          <div className="mobile-menu-section">
+            <h3 className="mobile-menu-section-title">Theme</h3>
+            <ThemeSwitcher current={theme} onChange={onThemeChange} />
           </div>
 
           <div className="mobile-menu-divider" />

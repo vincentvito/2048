@@ -4,12 +4,12 @@ import React, { useState, useCallback, useRef, useEffect, useMemo } from "react"
 import Game2048 from "@/components/Game2048";
 import MultiplayerView from "@/components/MultiplayerView";
 import GameOverModal from "@/components/GameOverModal";
-import Leaderboard from "@/components/Leaderboard";
-import HowToPlay from "@/components/HowToPlay";
+import DesktopSidebar from "@/components/DesktopSidebar";
 import MobileMenu from "@/components/MobileMenu";
 import UsernamePrompt from "@/components/UsernamePrompt";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase-client";
 import { getPendingScore, clearPendingScore } from "@/lib/guest-scores";
+import { ThemeName } from "@/lib/themes";
 import { Session } from "@supabase/supabase-js";
 
 // Generate confetti pieces with random properties (memoized outside component)
@@ -46,6 +46,21 @@ export default function Home(): React.ReactElement {
   const [showSwipeHint, setShowSwipeHint] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [showSignInModal, setShowSignInModal] = useState(false);
+  const [theme, setTheme] = useState<ThemeName>("classic");
+
+  // Read persisted theme on mount, then apply/persist on every change
+  useEffect(() => {
+    const saved = localStorage.getItem("2048_theme") as ThemeName | null;
+    if (saved && saved !== theme) {
+      setTheme(saved);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("2048_theme", theme);
+  }, [theme]);
 
   // Auth state — also submits pending score when user signs in
   useEffect(() => {
@@ -207,162 +222,149 @@ export default function Home(): React.ReactElement {
   }, [gameMode]);
 
   return (
-    <div className="container">
-      {/* Confetti overlay */}
-      {showConfetti && (
-        <div className="confetti-container">
-          {confettiPieces.map((piece) => (
-            <div
-              key={piece.id}
-              className="confetti-piece"
-              style={{
-                left: `${piece.left}%`,
-                width: `${piece.size}px`,
-                height: `${piece.size * 1.5}px`,
-                backgroundColor: piece.color,
-                transform: `rotate(${piece.rotation}deg)`,
-                animationDelay: `${piece.delay}s`,
-                animationDuration: `${piece.duration}s`,
-                // @ts-expect-error CSS custom property for drift
-                "--confetti-drift": `${piece.drift}px`,
-              }}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Title */}
-      <div className="title-section">
-        <h1 className="game-title">2048</h1>
-        <p className="game-intro">Join the tiles, get to <strong>2048!</strong></p>
-      </div>
-
-      {/* User bar — desktop only */}
-      {session && (
-        <div className="user-bar desktop-only">
-          <span className="user-bar-name">
-            {(session.user.user_metadata?.username as string) || session.user.email?.split("@")[0] || "Player"}
-          </span>
-          <button className="user-bar-signout" onClick={handleSignOut}>
-            Sign Out
-          </button>
-        </div>
-      )}
-
-      {/* Game Mode / Grid Controls */}
-      <div className="below-board-controls" style={{ marginBottom: "20px" }}>
-        <div className="grid-size-control" style={{ display: 'flex', gap: '8px' }}>
-          <button
-            className={`grid-size-option${gameMode === 'single' && activeGridSize === 4 ? " grid-size-active" : ""}`}
-            onClick={() => handleGridSizeChange(4)}
-          >
-            4&times;4 Single
-          </button>
-          {isSupabaseConfigured() && (
-            <button
-              className={`grid-size-option${gameMode === 'multi' ? " grid-size-active" : ""}`}
-              onClick={() => { setActiveGridSize(4); setGameMode('multi'); }}
-            >
-              4&times;4 Multi
-            </button>
-          )}
-          <button
-            className={`grid-size-option${gameMode === 'single' && activeGridSize === 8 ? " grid-size-active" : ""}`}
-            onClick={() => handleGridSizeChange(8)}
-          >
-            8&times;8 Single
-          </button>
-        </div>
-      </div>
-
-      {gameMode === 'single' ? (
-        <>
-          <div style={{ position: "relative", touchAction: "none", display: "flex", justifyContent: "center" }}>
-            <Game2048 onGameOver={handleGameOver} onGameWon={handleGameWon} onResetReady={handleResetReady} initialSize={activeGridSize} onDevEndGameReady={isDev ? (fn) => { devEndGameRef.current = fn; } : undefined} />
-
-            {showSwipeHint && (
-              <div className="swipe-hint-overlay" onClick={() => setShowSwipeHint(false)}>
-                <div className="swipe-hint-content">
-                  <div className="swipe-hint-hand">
-                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 1a4 4 0 0 0-4 4v6.5" />
-                      <path d="M8 11.5V18a4 4 0 0 0 4 4h1a5 5 0 0 0 5-5v-5" />
-                      <path d="M12 1a4 4 0 0 1 4 4v8" />
-                    </svg>
-                  </div>
-                  <div className="swipe-hint-arrows">
-                    <span className="swipe-arrow swipe-arrow-left">&larr;</span>
-                    <span className="swipe-arrow swipe-arrow-right">&rarr;</span>
-                    <span className="swipe-arrow swipe-arrow-up">&uarr;</span>
-                    <span className="swipe-arrow swipe-arrow-down">&darr;</span>
-                  </div>
-                  <p className="swipe-hint-text">Swipe to move tiles</p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="below-board-controls">
-            <button className="header-new-game-btn" onClick={() => gameResetRef.current?.()}>
-              New Game
-            </button>
-            {isDev && (
-              <button className="header-new-game-btn" style={{ background: '#dc2626' }} onClick={() => devEndGameRef.current?.()}>
-                DEV: End Game
-              </button>
-            )}
-          </div>
-        </>
-      ) : (
-        <MultiplayerView />
-      )}
-
-      <p className="game-hint desktop-hint">
-        Use your <strong>arrow keys</strong> to move the tiles.
-      </p>
-
-      {/* Desktop bottom section */}
-      {gameMode === 'single' && (
-        <div className="bottom-section desktop-only">
-          <HowToPlay />
-          <div className="leaderboard-section">
-            <h2 className="section-title">Leaderboard</h2>
-            <Leaderboard
-              refreshTrigger={refreshTrigger}
-              onScoresLoaded={handleScoresLoaded}
-              currentScore={currentScore}
-              gridSize={activeGridSize}
-              isSignedIn={!!session}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Mobile menu — hamburger + drawer with leaderboard, auth, how to play */}
-      <MobileMenu
+    <div className="page-layout">
+      {/* Desktop sidebar — hidden on mobile */}
+      <DesktopSidebar
         session={session}
         currentScore={currentScore}
         activeGridSize={activeGridSize}
         refreshTrigger={refreshTrigger}
         onSignOut={handleSignOut}
-        onSignIn={() => setShowSignInModal(true)}
+        theme={theme}
+        onThemeChange={setTheme}
+        onScoresLoaded={handleScoresLoaded}
       />
 
-      <UsernamePrompt />
+      <div className={`container${gameMode === 'single' && activeGridSize === 8 ? ' container-wide' : ''}`}>
+        {/* Confetti overlay */}
+        {showConfetti && (
+          <div className="confetti-container">
+            {confettiPieces.map((piece) => (
+              <div
+                key={piece.id}
+                className="confetti-piece"
+                style={{
+                  left: `${piece.left}%`,
+                  width: `${piece.size}px`,
+                  height: `${piece.size * 1.5}px`,
+                  backgroundColor: piece.color,
+                  transform: `rotate(${piece.rotation}deg)`,
+                  animationDelay: `${piece.delay}s`,
+                  animationDuration: `${piece.duration}s`,
+                  // @ts-expect-error CSS custom property for drift
+                  "--confetti-drift": `${piece.drift}px`,
+                }}
+              />
+            ))}
+          </div>
+        )}
 
-      {gameResult && (
-        <GameOverModal
-          open={gameResult.open}
-          won={gameResult.won}
-          score={gameResult.score}
-          gridSize={gameResult.gridSize}
-          onClose={handleClose}
-          onPlayAgain={handlePlayAgain}
-          onKeepPlaying={gameResult.won ? handleKeepPlaying : undefined}
-          leaderboardScores={leaderboardScores}
-          isSignedIn={!!session}
+        {/* Title */}
+        <div className="title-section">
+          <h1 className="game-title">2048</h1>
+          <p className="game-intro">Join the tiles, get to <strong>2048!</strong></p>
+        </div>
+
+        {/* Game Mode / Grid Controls */}
+        <div className="below-board-controls" style={{ marginBottom: "20px" }}>
+          <div className="grid-size-control" style={{ display: 'flex', gap: '8px' }}>
+            <button
+              className={`grid-size-option${gameMode === 'single' && activeGridSize === 4 ? " grid-size-active" : ""}`}
+              onClick={() => handleGridSizeChange(4)}
+            >
+              4&times;4 Single
+            </button>
+            {isSupabaseConfigured() && (
+              <button
+                className={`grid-size-option${gameMode === 'multi' ? " grid-size-active" : ""}`}
+                onClick={() => { setActiveGridSize(4); setGameMode('multi'); }}
+              >
+                4&times;4 Multi
+              </button>
+            )}
+            <button
+              className={`grid-size-option${gameMode === 'single' && activeGridSize === 8 ? " grid-size-active" : ""}`}
+              onClick={() => handleGridSizeChange(8)}
+            >
+              8&times;8 Single
+            </button>
+          </div>
+        </div>
+
+        {gameMode === 'single' ? (
+          <>
+            <div style={{ position: "relative", touchAction: "none", display: "flex", justifyContent: "center" }}>
+              <Game2048 onGameOver={handleGameOver} onGameWon={handleGameWon} onResetReady={handleResetReady} initialSize={activeGridSize} themeName={theme} onDevEndGameReady={isDev ? (fn) => { devEndGameRef.current = fn; } : undefined} />
+
+              {showSwipeHint && (
+                <div className="swipe-hint-overlay" onClick={() => setShowSwipeHint(false)}>
+                  <div className="swipe-hint-content">
+                    <div className="swipe-hint-hand">
+                      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 1a4 4 0 0 0-4 4v6.5" />
+                        <path d="M8 11.5V18a4 4 0 0 0 4 4h1a5 5 0 0 0 5-5v-5" />
+                        <path d="M12 1a4 4 0 0 1 4 4v8" />
+                      </svg>
+                    </div>
+                    <div className="swipe-hint-arrows">
+                      <span className="swipe-arrow swipe-arrow-left">&larr;</span>
+                      <span className="swipe-arrow swipe-arrow-right">&rarr;</span>
+                      <span className="swipe-arrow swipe-arrow-up">&uarr;</span>
+                      <span className="swipe-arrow swipe-arrow-down">&darr;</span>
+                    </div>
+                    <p className="swipe-hint-text">Swipe to move tiles</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="below-board-controls">
+              <button className="header-new-game-btn" onClick={() => gameResetRef.current?.()}>
+                New Game
+              </button>
+              {isDev && (
+                <button className="header-new-game-btn" style={{ background: '#dc2626' }} onClick={() => devEndGameRef.current?.()}>
+                  DEV: End Game
+                </button>
+              )}
+            </div>
+          </>
+        ) : (
+          <MultiplayerView />
+        )}
+
+        <p className="game-hint desktop-hint">
+          Use your <strong>arrow keys</strong> to move the tiles.
+        </p>
+
+        {/* Mobile menu — hamburger + drawer with leaderboard, auth, how to play */}
+        <MobileMenu
+          session={session}
+          currentScore={currentScore}
+          activeGridSize={activeGridSize}
+          refreshTrigger={refreshTrigger}
+          onSignOut={handleSignOut}
+          onSignIn={() => setShowSignInModal(true)}
+          theme={theme}
+          onThemeChange={setTheme}
         />
-      )}
+
+        <UsernamePrompt />
+
+        {gameResult && (
+          <GameOverModal
+            open={gameResult.open}
+            won={gameResult.won}
+            score={gameResult.score}
+            gridSize={gameResult.gridSize}
+            onClose={handleClose}
+            onPlayAgain={handlePlayAgain}
+            onKeepPlaying={gameResult.won ? handleKeepPlaying : undefined}
+            leaderboardScores={leaderboardScores}
+            isSignedIn={!!session}
+          />
+        )}
+      </div>
     </div>
   );
 }

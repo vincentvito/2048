@@ -72,7 +72,6 @@ export function useMultiplayerGame(roomId: string | null, myId: string, myName?:
         timeLeftRef.current = next;
 
         if (next <= 0) {
-          console.log('[MultiplayerGame] Timer reached 0 — broadcasting time_up');
           clearTimers();
           channelRef.current?.send({
             type: 'broadcast',
@@ -110,7 +109,6 @@ export function useMultiplayerGame(roomId: string | null, myId: string, myName?:
   // Start timer when opponent connects (both players present)
   useEffect(() => {
     if (opponentConnected && !gameStarted && forfeitWin === null) {
-      console.log('[MultiplayerGame] Both players connected — starting 5-minute timer');
       setGameStarted(true);
       gameStartedRef.current = true;
       startTimer();
@@ -120,10 +118,8 @@ export function useMultiplayerGame(roomId: string | null, myId: string, myName?:
   // Forfeit logic: detect opponent disconnect after they were previously connected
   useEffect(() => {
     if (opponentEverConnected && !opponentConnected && gameStarted && forfeitWin === null) {
-      console.log(`[MultiplayerGame] Opponent disconnected — starting ${DISCONNECT_GRACE_PERIOD / 1000}s forfeit grace period`);
       disconnectTimeoutRef.current = setTimeout(() => {
         if (!opponentConnectedRef.current && forfeitWinRef.current === null) {
-          console.log('[MultiplayerGame] Grace period expired — declaring forfeit win for local player');
           setForfeitWin('local');
           forfeitWinRef.current = 'local';
           clearTimers();
@@ -138,7 +134,6 @@ export function useMultiplayerGame(roomId: string | null, myId: string, myName?:
     }
 
     if (opponentConnected) {
-      console.log('[MultiplayerGame] Opponent reconnected — clearing forfeit grace period');
       clearDisconnectTimeout();
     }
   }, [opponentConnected, opponentEverConnected, gameStarted, forfeitWin, clearTimers, clearDisconnectTimeout, myId]);
@@ -146,7 +141,6 @@ export function useMultiplayerGame(roomId: string | null, myId: string, myName?:
   useEffect(() => {
     if (!roomId || !supabase) return;
 
-    console.log('[MultiplayerGame] Joining game room:', roomId);
     const channel = supabase.channel(`game:${roomId}`, {
       config: {
         presence: { key: myId },
@@ -159,7 +153,6 @@ export function useMultiplayerGame(roomId: string | null, myId: string, myName?:
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState();
         const users = Object.keys(state);
-        console.log('[MultiplayerGame] Room presence sync:', users);
         const wasConnected = opponentConnectedRef.current;
         const nowConnected = users.length > 1;
         opponentConnectedRef.current = nowConnected;
@@ -181,7 +174,6 @@ export function useMultiplayerGame(roomId: string | null, myId: string, myName?:
 
         // Resend latest state when opponent (re)connects so they aren't stale
         if (!wasConnected && nowConnected && latestStateRef.current) {
-          console.log('[MultiplayerGame] Opponent (re)connected, resending latest state');
           channel.send({
             type: 'broadcast',
             event: 'game_state',
@@ -196,7 +188,6 @@ export function useMultiplayerGame(roomId: string | null, myId: string, myName?:
       })
       .on('broadcast', { event: 'rematch_request' }, (payload) => {
         if (payload.payload.userId !== myId) {
-          console.log('[MultiplayerGame] Opponent wants rematch');
           setOpponentWantsRematch(true);
         }
       })
@@ -219,14 +210,12 @@ export function useMultiplayerGame(roomId: string | null, myId: string, myName?:
       })
       .on('broadcast', { event: 'forfeit' }, (payload) => {
         if (payload.payload.userId !== myId) {
-          console.log('[MultiplayerGame] Received forfeit from opponent');
           setForfeitWin('opponent');
           forfeitWinRef.current = 'opponent';
           clearTimers();
         }
       })
       .subscribe(async (status) => {
-        console.log('[MultiplayerGame] Room subscription status:', status);
         if (status === 'SUBSCRIBED') {
           await channel.track({
             online_at: new Date().toISOString(),
@@ -250,9 +239,6 @@ export function useMultiplayerGame(roomId: string | null, myId: string, myName?:
   const sendGameState = useCallback((state: GameState) => {
     latestStateRef.current = state;
     if (channelRef.current) {
-      if (state.gameOver || state.won) {
-        console.log('[MultiplayerGame] Broadcasting game over/win state:', state);
-      }
       channelRef.current.send({
         type: 'broadcast',
         event: 'game_state',

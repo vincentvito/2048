@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useEffect, useCallback, useState } from "react";
+import { ThemeColors, themes } from "@/lib/themes";
 
 const GAP = 12;
 const ANIM_DURATION = 50;
@@ -9,23 +10,6 @@ const MOVE_DELAY = 60;
 const REPEAT_DELAY = 200;
 const MIN_SWIPE_DISTANCE = 30;
 const DIR_MAP: Record<string, number> = { ArrowLeft: 0, ArrowRight: 1, ArrowUp: 2, ArrowDown: 3 };
-
-const COLORS: Record<number, [string, string]> = {
-  0: ["rgba(255,255,255,0.15)", "#78350f"],
-  2: ["#fef3c7", "#78350f"],
-  4: ["#fde68a", "#78350f"],
-  8: ["#fdba74", "#78350f"],
-  16: ["#fb923c", "#fff"],
-  32: ["#f97316", "#fff"],
-  64: ["#ea580c", "#fff"],
-  128: ["#fcd34d", "#78350f"],
-  256: ["#fbbf24", "#78350f"],
-  512: ["#f59e0b", "#fff"],
-  1024: ["#d97706", "#fff"],
-  2048: ["#b45309", "#fff"],
-  4096: ["#7c2d12", "#fff"],
-  8192: ["#1c1917", "#fcd34d"],
-};
 
 interface Tile {
   value: number;
@@ -63,9 +47,10 @@ interface Game2048Props {
   onDevEndGameReady?: (fn: () => void) => void;
   hideScore?: boolean;
   initialSize?: number;
+  themeName?: string;
 }
 
-export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnlyState, onStateChange, disableInputs, onDevEndGameReady, hideScore, initialSize = 4 }: Game2048Props): React.ReactElement {
+export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnlyState, onStateChange, disableInputs, onDevEndGameReady, hideScore, initialSize = 4, themeName = "classic" }: Game2048Props): React.ReactElement {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const scoreElRef = useRef<HTMLElement>(null);
@@ -79,6 +64,7 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
   const onDevEndGameReadyRef = useRef(onDevEndGameReady);
   const initialReadOnlyRef = useRef(!!readOnlyState);
   const [displaySize, setDisplaySize] = useState(4);
+  const themeRef = useRef<ThemeColors>(themes[(themeName as keyof typeof themes)] || themes.classic);
 
   useEffect(() => {
     onGameOverRef.current = onGameOver;
@@ -103,6 +89,16 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
   useEffect(() => {
     onDevEndGameReadyRef.current = onDevEndGameReady;
   }, [onDevEndGameReady]);
+
+  // Update theme ref and re-render canvas when theme changes
+  useEffect(() => {
+    themeRef.current = themes[(themeName as keyof typeof themes)] || themes.classic;
+    const container = containerRef.current;
+    if (container) {
+      const renderFn = (container as unknown as Record<string, () => void>)._rerender;
+      renderFn?.();
+    }
+  }, [themeName]);
 
   // Hook to handle readOnlyState changes
   useEffect(() => {
@@ -149,10 +145,11 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
 
     function setSizeInternal(newSize: number) {
       SIZE = newSize;
-      // Board always fills the container width
-      const containerWidth = container.parentElement?.clientWidth ?? Math.min(window.innerWidth - 32, 500);
-      const maxCell = Math.floor((containerWidth - (newSize + 1) * GAP) / newSize);
-      const idealCell = newSize === 4 ? 120 : 56;
+      // Use available viewport width (minus padding) capped at a max container width
+      const maxContainerWidth = newSize === 4 ? 480 : 640;
+      const availableWidth = Math.min(window.innerWidth - 32, maxContainerWidth);
+      const maxCell = Math.floor((availableWidth - (newSize + 1) * GAP) / newSize);
+      const idealCell = newSize === 4 ? 100 : 64;
       CELL = Math.min(idealCell, maxCell);
       GRID_SIZE = SIZE * CELL + (SIZE + 1) * GAP;
       canvas.width = GRID_SIZE * dpr;
@@ -245,8 +242,8 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
         ctx.fillStyle = "rgba(0,0,0,0.5)";
         ctx.fillText("+" + p.value, p.x + 1, p.y - p.offsetY + 1);
 
-        // Gold text
-        ctx.fillStyle = "#edc22e";
+        // Themed popup text
+        ctx.fillStyle = themeRef.current.popupColor;
         ctx.fillText("+" + p.value, p.x, p.y - p.offsetY);
         ctx.restore();
       }
@@ -285,12 +282,13 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
     // It does NOT draw popups — callers are responsible for calling renderPopups()
     // afterwards so popups are painted exactly once per frame.
     function renderBoard(t = 1) {
-      ctx.fillStyle = "#92400e";
+      const theme = themeRef.current;
+      ctx.fillStyle = theme.bgGrid;
       ctx.beginPath();
       ctx.roundRect(0, 0, GRID_SIZE, GRID_SIZE, 16);
       ctx.fill();
 
-      ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
+      ctx.fillStyle = theme.bgCell;
       for (let r = 0; r < SIZE; r++) {
         for (let c = 0; c < SIZE; c++) {
           ctx.beginPath();
@@ -315,7 +313,7 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
           scale = 1 + 0.15 * Math.sin(Math.PI * pulseT);
         }
 
-        const colors = COLORS[tile.value] || ["#78350f", "#fff"];
+        const colors = theme.tiles[tile.value] || [theme.bgButton, "#fff"];
         const cx = x + CELL / 2;
         const cy = y + CELL / 2;
 
@@ -328,7 +326,7 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
           const power = Math.log2(tile.value); // 128=7, 256=8, ..., 2048=11
           const glowAlpha = Math.min(1, 0.15 + 0.17 * (power - 7)); // 0.15 → 1.0
           const blur = 8 + 6 * (power - 7); // 8px → 32px
-          ctx.shadowColor = `rgba(243, 215, 116, ${glowAlpha})`;
+          ctx.shadowColor = `${theme.tileGlow}${glowAlpha})`;
           ctx.shadowBlur = blur;
           ctx.shadowOffsetX = 0;
           ctx.shadowOffsetY = 0;
@@ -537,6 +535,7 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
       render(1);
     };
 
+    (container as unknown as Record<string, () => void>)._rerender = () => render(1);
     (container as unknown as Record<string, () => void>)._init = init;
     (container as unknown as Record<string, () => void>)._keepPlaying = () => {
       keepPlaying = true;

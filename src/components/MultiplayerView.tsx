@@ -9,6 +9,7 @@ import { Session } from '@supabase/supabase-js';
 import { useMatchmaking } from '../hooks/useMatchmaking';
 import { useMultiplayerGame } from '../hooks/useMultiplayerGame';
 import { calculateElo, getEloRank, DEFAULT_ELO } from '@/lib/elo';
+import { themes, ThemeName } from '@/lib/themes';
 import { getOrCreatePlayerStats, updateStatsAfterGame, PlayerStats } from '@/lib/player-stats';
 
 /** Format seconds into MM:SS display */
@@ -20,6 +21,23 @@ function formatTime(seconds: number): string {
 
 export default function MultiplayerView() {
   const { state: matchmakingState, roomId, startMatchmaking, cancelMatchmaking, myId } = useMatchmaking();
+
+  // Track current theme for canvas boards
+  const [themeName, setThemeName] = useState<ThemeName>(() => {
+    if (typeof document !== 'undefined') {
+      return (document.documentElement.getAttribute('data-theme') as ThemeName) || 'classic';
+    }
+    return 'classic';
+  });
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      const t = document.documentElement.getAttribute('data-theme') as ThemeName;
+      if (t) setThemeName(t);
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => observer.disconnect();
+  }, []);
 
   // Auth State
   const [session, setSession] = useState<Session | null>(null);
@@ -162,18 +180,15 @@ export default function MultiplayerView() {
     if (forfeitWin === 'local') return true;
     if (forfeitWin === 'opponent') return false;
     if (someoneWon2048) return !!localGameResult?.won;
-    // One player ran out of moves → the other wins
-    if (localDone && !opponentDone) return false;
-    if (opponentDone && !localDone) return true;
-    // Both done or timer expired → higher score wins
-    if (timerExpired || (localDone && opponentDone)) {
+    // Any player ran out of moves, both done, or timer expired → higher score wins
+    if (localDone || opponentDone || timerExpired) {
       return (localGameResult?.score || 0) > (opponentState?.score || 0);
     }
     return false;
   })();
 
   const isTie = !hasForfeit && !someoneWon2048 &&
-    (timerExpired || (localDone && opponentDone)) &&
+    (localDone || opponentDone || timerExpired) &&
     (localGameResult?.score || 0) === (opponentState?.score || 0);
 
   // Disable local inputs when done
@@ -198,15 +213,7 @@ export default function MultiplayerView() {
       const outcome: 'win' | 'loss' | 'tie' = isTie ? 'tie' : localWon ? 'win' : 'loss';
       const oppElo = opponentElo ?? DEFAULT_ELO;
 
-      console.group('[MultiplayerView] Match resolved — processing ELO');
-      console.log('Outcome:', outcome);
-      console.log('Scores:', { local: localScore, opponent: opponentScore });
-      console.log('Forfeit:', forfeitWin ?? 'none');
-      console.log('ELO before:', { myElo, opponentElo: oppElo });
-
       const result = calculateElo(myElo, oppElo, outcome);
-      console.log('ELO after:', { newMyElo: result.newPlayerElo, delta: result.playerDelta });
-      console.groupEnd();
 
       setLocalEloDelta(result.playerDelta);
       setOpponentEloDelta(result.opponentDelta);
@@ -214,7 +221,6 @@ export default function MultiplayerView() {
 
       // Update stats in Supabase
       if (session?.user?.id) {
-        console.log('[MultiplayerView] Saving stats to Supabase for user:', session.user.id);
         try {
           await updateStatsAfterGame(session.user.id, {
             won: localWon,
@@ -222,15 +228,12 @@ export default function MultiplayerView() {
             score: localScore,
             newElo: result.newPlayerElo,
           });
-          console.log('[MultiplayerView] Stats saved successfully');
           // Refresh local stats
           const updated = await getOrCreatePlayerStats(session.user.id, myName);
           setPlayerStats(updated);
         } catch (err) {
           console.error('[MultiplayerView] Failed to update stats:', err);
         }
-      } else {
-        console.log('[MultiplayerView] No session — skipping Supabase stats update');
       }
     };
 
@@ -241,6 +244,8 @@ export default function MultiplayerView() {
   useEffect(() => {
     if (isMatchResolved && localWon && !confettiFiredRef.current) {
       confettiFiredRef.current = true;
+      const currentTheme = (document.documentElement.getAttribute('data-theme') || 'classic') as ThemeName;
+      const confettiColors = themes[currentTheme]?.confettiColors ?? themes.classic.confettiColors;
       const end = Date.now() + 2000;
       const frame = () => {
         confetti({
@@ -248,14 +253,14 @@ export default function MultiplayerView() {
           angle: 60,
           spread: 55,
           origin: { x: 0, y: 0.6 },
-          colors: ['#f59e0b', '#d97706', '#fbbf24', '#78350f', '#fde68a'],
+          colors: confettiColors,
         });
         confetti({
           particleCount: 3,
           angle: 120,
           spread: 55,
           origin: { x: 1, y: 0.6 },
-          colors: ['#f59e0b', '#d97706', '#fbbf24', '#78350f', '#fde68a'],
+          colors: confettiColors,
         });
         if (Date.now() < end) requestAnimationFrame(frame);
       };
@@ -328,7 +333,7 @@ export default function MultiplayerView() {
 
         {statsLoading && (
           <div className="mp-stats-card" style={{ marginTop: 20 }}>
-            <p style={{ margin: 0, color: '#92400e', fontSize: '13px', textAlign: 'center' }}>Loading stats...</p>
+            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '13px', textAlign: 'center' }}>Loading stats...</p>
           </div>
         )}
 
@@ -496,6 +501,7 @@ export default function MultiplayerView() {
             disableInputs={disableLocalInputs}
             onDevEndGameReady={isDev ? handleDevEndGameReady : undefined}
             hideScore
+            themeName={themeName}
           />
           {isDev && !localDone && (
             <button className="dev-end-game-btn" onClick={() => devEndGameRef.current?.()}>
@@ -512,7 +518,7 @@ export default function MultiplayerView() {
                 {opponentEverConnected ? 'Opponent disconnected...' : 'Connecting...'}
               </div>
             )}
-            <Game2048 readOnlyState={opponentState || emptyOpponentState} disableInputs={true} hideScore />
+            <Game2048 readOnlyState={opponentState || emptyOpponentState} disableInputs={true} hideScore themeName={themeName} />
           </div>
         </div>
       </div>

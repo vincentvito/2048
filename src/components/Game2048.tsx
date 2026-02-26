@@ -62,9 +62,10 @@ interface Game2048Props {
   disableInputs?: boolean;
   onDevEndGameReady?: (fn: () => void) => void;
   hideScore?: boolean;
+  initialSize?: number;
 }
 
-export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnlyState, onStateChange, disableInputs, onDevEndGameReady, hideScore }: Game2048Props): React.ReactElement {
+export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnlyState, onStateChange, disableInputs, onDevEndGameReady, hideScore, initialSize = 4 }: Game2048Props): React.ReactElement {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const scoreElRef = useRef<HTMLElement>(null);
@@ -151,7 +152,7 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
       // Board always fills the container width
       const containerWidth = container.parentElement?.clientWidth ?? Math.min(window.innerWidth - 32, 500);
       const maxCell = Math.floor((containerWidth - (newSize + 1) * GAP) / newSize);
-      const idealCell = newSize === 4 ? 106 : 56;
+      const idealCell = newSize === 4 ? 120 : 56;
       CELL = Math.min(idealCell, maxCell);
       GRID_SIZE = SIZE * CELL + (SIZE + 1) * GAP;
       canvas.width = GRID_SIZE * dpr;
@@ -322,16 +323,31 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
         ctx.translate(cx, cy);
         ctx.scale(scale, scale);
 
+        // Progressive glow for tiles 128+ (inspired by original 2048 box-shadow)
+        if (tile.value >= 128) {
+          const power = Math.log2(tile.value); // 128=7, 256=8, ..., 2048=11
+          const glowAlpha = Math.min(1, 0.15 + 0.17 * (power - 7)); // 0.15 → 1.0
+          const blur = 8 + 6 * (power - 7); // 8px → 32px
+          ctx.shadowColor = `rgba(243, 215, 116, ${glowAlpha})`;
+          ctx.shadowBlur = blur;
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = 0;
+        }
+
         ctx.fillStyle = colors[0];
         ctx.beginPath();
         ctx.roundRect(-CELL / 2, -CELL / 2, CELL, CELL, 12);
         ctx.fill();
 
+        // Reset shadow so it doesn't affect text
+        ctx.shadowColor = "transparent";
+        ctx.shadowBlur = 0;
+
         ctx.fillStyle = colors[1];
-        const fontSize =
-          SIZE === 8
-            ? tile.value >= 1000 ? 16 : tile.value >= 100 ? 20 : 24
-            : tile.value >= 1000 ? 28 : tile.value >= 100 ? 36 : 44;
+        const digits = String(tile.value).length;
+        const fontSize = Math.max(10, Math.floor(
+          CELL * (digits <= 1 ? 0.42 : digits === 2 ? 0.36 : digits === 3 ? 0.28 : digits === 4 ? 0.22 : 0.18)
+        ));
         ctx.font = `bold ${fontSize}px system-ui`;
         ctx.fillText(String(tile.value), 0, 2);
 
@@ -641,7 +657,7 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
     }
     window.addEventListener("resize", onResize);
 
-    setSizeInternal(4);
+    setSizeInternal(initialSize);
     if (!initialReadOnlyRef.current) {
       init();
     } else {
@@ -675,6 +691,30 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
       onGameOverRef.current?.(score, SIZE);
       onStateChangeRef.current?.({ grid: Array.from(grid), score, gameOver, won });
     }
+
+    // Dev-only: preview all tile values to check font sizing
+    function devPreviewTiles() {
+      const allValues = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048];
+      tiles.length = 0;
+      const total = SIZE * SIZE;
+      gameOver = false;
+      won = false;
+      keepPlaying = false;
+      for (let i = 0; i < total; i++) {
+        grid[i] = allValues[i % allValues.length];
+        tiles.push({
+          value: grid[i],
+          r: (i / SIZE) | 0,
+          c: i % SIZE,
+          fromR: (i / SIZE) | 0,
+          fromC: i % SIZE,
+          scale: 1,
+          merged: false,
+        });
+      }
+      render(1);
+    }
+    if (typeof window !== 'undefined') (window as any).__devPreviewTiles = devPreviewTiles;
     onDevEndGameReadyRef.current?.(devEndGame);
 
     // Expose reset function to parent via callback

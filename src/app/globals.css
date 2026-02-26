@@ -27,7 +27,7 @@ body {
 
 /* ========== Container ========== */
 .container {
-  max-width: 500px;
+  max-width: 560px;
   width: 100%;
   margin: 0 auto;
   padding: 0;
@@ -1020,6 +1020,46 @@ body {
 .modal-input:focus {
   border-color: #d97706;
   box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.15);
+}
+
+/* ---- OTP Digit Boxes ---- */
+.otp-boxes {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin: 8px 0;
+}
+
+.otp-box {
+  width: 44px;
+  height: 52px;
+  border: 2px solid rgba(217, 119, 6, 0.3);
+  border-radius: 10px;
+  background: #fffbeb;
+  color: #451a03;
+  font-size: 22px;
+  font-weight: 700;
+  font-family: inherit;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.15s;
+  caret-color: #d97706;
+}
+
+.otp-box::placeholder {
+  color: #92400e;
+  opacity: 0.2;
+}
+
+.otp-box:focus {
+  border-color: #d97706;
+  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.15);
+  background: #fff;
+}
+
+.otp-box-filled {
+  border-color: #d97706;
+  background: #fef3c7;
 }
 
 /* Primary action row for Play Again / Keep Playing */

@@ -9,6 +9,7 @@ import HowToPlay from "@/components/HowToPlay";
 import MobileMenu from "@/components/MobileMenu";
 import UsernamePrompt from "@/components/UsernamePrompt";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase-client";
+import { getPendingScore, clearPendingScore } from "@/lib/guest-scores";
 import { Session } from "@supabase/supabase-js";
 
 // Generate confetti pieces with random properties (memoized outside component)
@@ -35,6 +36,8 @@ export default function Home(): React.ReactElement {
     gridSize: number;
   } | null>(null);
   const gameResetRef = useRef<(() => void) | null>(null);
+  const devEndGameRef = useRef<(() => void) | null>(null);
+  const isDev = process.env.NODE_ENV === 'development';
   const [leaderboardScores, setLeaderboardScores] = useState<number[]>([]);
   const [currentScore, setCurrentScore] = useState<number>(0);
   const [activeGridSize, setActiveGridSize] = useState<number>(4);
@@ -44,17 +47,45 @@ export default function Home(): React.ReactElement {
   const [session, setSession] = useState<Session | null>(null);
   const [showSignInModal, setShowSignInModal] = useState(false);
 
-  // Auth state
+  // Auth state — also submits pending score when user signs in
   useEffect(() => {
     const supabase = createClient();
     if (!supabase) return;
 
+    async function submitPendingScore(s: Session) {
+      const pending = getPendingScore();
+      if (!pending || !supabase) return;
+      const username = (s.user.user_metadata?.username as string)
+        || s.user.email?.split("@")[0]
+        || "Player";
+      try {
+        const { error } = await supabase.from("scores").insert({
+          user_id: s.user.id,
+          username,
+          score: pending.score,
+          grid_size: pending.gridSize,
+        });
+        if (!error) {
+          clearPendingScore();
+          setRefreshTrigger((n) => n + 1);
+        } else {
+          console.error("[page] Failed to submit pending score:", error.message);
+        }
+      } catch (err) {
+        console.error("[page] Error submitting pending score:", err);
+      }
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
+      if (session) submitPendingScore(session);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      if (_event === "SIGNED_IN" && session) {
+        submitPendingScore(session);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -93,16 +124,42 @@ export default function Home(): React.ReactElement {
     gameResetRef.current = resetFn;
   }, []);
 
+  // Save score to Supabase for signed-in users
+  const saveScoreToSupabase = useCallback(async (score: number, gridSize: number) => {
+    const supabase = createClient();
+    if (!supabase || !session) return;
+    const username = (session.user.user_metadata?.username as string)
+      || session.user.email?.split("@")[0]
+      || "Player";
+    try {
+      const { error } = await supabase.from("scores").insert({
+        user_id: session.user.id,
+        username,
+        score,
+        grid_size: gridSize,
+      });
+      if (error) {
+        console.error("[page] Failed to save score:", error.message);
+      } else {
+        setRefreshTrigger((n) => n + 1);
+      }
+    } catch (err) {
+      console.error("[page] Error saving score:", err);
+    }
+  }, [session]);
+
   const handleGameOver = useCallback((score: number, gridSize: number) => {
     setCurrentScore(score);
     setGameResult({ open: true, won: false, score, gridSize });
-  }, []);
+    saveScoreToSupabase(score, gridSize);
+  }, [saveScoreToSupabase]);
 
   const handleGameWon = useCallback((score: number, gridSize: number) => {
     setCurrentScore(score);
     setGameResult({ open: true, won: true, score, gridSize });
     setShowConfetti(true);
-  }, []);
+    saveScoreToSupabase(score, gridSize);
+  }, [saveScoreToSupabase]);
 
   // Auto-hide confetti after animation completes
   useEffect(() => {
@@ -129,14 +186,25 @@ export default function Home(): React.ReactElement {
   }, []);
 
   const handleGridSizeChange = useCallback((newSize: number) => {
+    const wasSingle = gameMode === 'single';
     setActiveGridSize(newSize);
     setGameMode('single');
-    const gameContainer = document.querySelector(".game-container") as HTMLElement | null;
-    if (gameContainer) {
-      const toggleSize = (gameContainer as unknown as Record<string, (s: number) => void>)._toggleSize;
-      toggleSize?.(newSize);
+
+    if (wasSingle) {
+      // Already in single-player mode — only toggle size if it actually changed
+      const gameContainer = document.querySelector(".game-container") as HTMLElement | null;
+      if (gameContainer) {
+        const getSize = (gameContainer as unknown as Record<string, () => number>)._getSize;
+        const currentSize = getSize?.() ?? 4;
+        if (currentSize !== newSize) {
+          const toggleSize = (gameContainer as unknown as Record<string, (s: number) => void>)._toggleSize;
+          toggleSize?.(newSize);
+        }
+      }
     }
-  }, []);
+    // When switching from multi → single, Game2048 will mount fresh
+    // and use the initialSize prop (set via activeGridSize)
+  }, [gameMode]);
 
   return (
     <div className="container">
@@ -210,7 +278,7 @@ export default function Home(): React.ReactElement {
       {gameMode === 'single' ? (
         <>
           <div style={{ position: "relative", touchAction: "none", display: "flex", justifyContent: "center" }}>
-            <Game2048 onGameOver={handleGameOver} onGameWon={handleGameWon} onResetReady={handleResetReady} />
+            <Game2048 onGameOver={handleGameOver} onGameWon={handleGameWon} onResetReady={handleResetReady} initialSize={activeGridSize} onDevEndGameReady={isDev ? (fn) => { devEndGameRef.current = fn; } : undefined} />
 
             {showSwipeHint && (
               <div className="swipe-hint-overlay" onClick={() => setShowSwipeHint(false)}>
@@ -238,6 +306,11 @@ export default function Home(): React.ReactElement {
             <button className="header-new-game-btn" onClick={() => gameResetRef.current?.()}>
               New Game
             </button>
+            {isDev && (
+              <button className="header-new-game-btn" style={{ background: '#dc2626' }} onClick={() => devEndGameRef.current?.()}>
+                DEV: End Game
+              </button>
+            )}
           </div>
         </>
       ) : (
@@ -259,6 +332,7 @@ export default function Home(): React.ReactElement {
               onScoresLoaded={handleScoresLoaded}
               currentScore={currentScore}
               gridSize={activeGridSize}
+              isSignedIn={!!session}
             />
           </div>
         </div>
@@ -286,6 +360,7 @@ export default function Home(): React.ReactElement {
           onPlayAgain={handlePlayAgain}
           onKeepPlaying={gameResult.won ? handleKeepPlaying : undefined}
           leaderboardScores={leaderboardScores}
+          isSignedIn={!!session}
         />
       )}
     </div>

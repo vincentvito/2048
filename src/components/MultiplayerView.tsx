@@ -3,6 +3,7 @@
 import React, { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import confetti from 'canvas-confetti';
 import Game2048, { GameState } from './Game2048';
+import EmailSignIn from './EmailSignIn';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase-client';
 import { Session } from '@supabase/supabase-js';
 import { useMatchmaking } from '../hooks/useMatchmaking';
@@ -23,13 +24,7 @@ export default function MultiplayerView() {
   // Auth State
   const [session, setSession] = useState<Session | null>(null);
   const [sessionLoaded, setSessionLoaded] = useState(false);
-  const [showEmail, setShowEmail] = useState(false);
-  const [email, setEmail] = useState("");
-  const [emailSent, setEmailSent] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [otpCode, setOtpCode] = useState("");
-  const [verifying, setVerifying] = useState(false);
-  const [otpError, setOtpError] = useState("");
+  const [showSignIn, setShowSignIn] = useState(false);
 
   // Player stats for lobby display
   const [playerStats, setPlayerStats] = useState<PlayerStats | null>(null);
@@ -100,52 +95,6 @@ export default function MultiplayerView() {
   const confettiFiredRef = useRef(false);
   const isDev = process.env.NODE_ENV === 'development';
 
-  async function handleSendOtp() {
-    if (!email.trim() || sending) return;
-
-    const supabase = createClient();
-    if (!supabase) return;
-
-    setOtpError("");
-    setSending(true);
-    try {
-      const { error } = await supabase.auth.signInWithOtp({ email });
-      if (error) {
-        setOtpError(error.message);
-      } else {
-        setEmailSent(true);
-      }
-    } catch {
-      setOtpError("Failed to send code");
-    } finally {
-      setSending(false);
-    }
-  }
-
-  async function handleVerifyOtp() {
-    if (!otpCode.trim() || verifying) return;
-
-    const supabase = createClient();
-    if (!supabase) return;
-
-    setOtpError("");
-    setVerifying(true);
-    try {
-      const { error } = await supabase.auth.verifyOtp({
-        email,
-        token: otpCode,
-        type: "email",
-      });
-      if (error) {
-        setOtpError(error.message);
-      }
-    } catch {
-      setOtpError("Verification failed");
-    } finally {
-      setVerifying(false);
-    }
-  }
-
   // Final fallback state for opponent
   const emptyOpponentState: GameState = { grid: Array(16).fill(0), score: 0, gameOver: false, won: false };
 
@@ -206,12 +155,17 @@ export default function MultiplayerView() {
   const timerExpired = timeLeft === 0 && gameStarted;
   const hasForfeit = !!forfeitWin;
 
-  const isMatchResolved = someoneWon2048 || (localDone && opponentDone) || timerExpired || hasForfeit;
+  // Match resolves as soon as ANY player finishes (runs out of moves / wins / timer / forfeit)
+  const isMatchResolved = someoneWon2048 || localDone || opponentDone || timerExpired || hasForfeit;
 
   const localWon = (() => {
     if (forfeitWin === 'local') return true;
     if (forfeitWin === 'opponent') return false;
     if (someoneWon2048) return !!localGameResult?.won;
+    // One player ran out of moves → the other wins
+    if (localDone && !opponentDone) return false;
+    if (opponentDone && !localDone) return true;
+    // Both done or timer expired → higher score wins
     if (timerExpired || (localDone && opponentDone)) {
       return (localGameResult?.score || 0) > (opponentState?.score || 0);
     }
@@ -340,87 +294,24 @@ export default function MultiplayerView() {
           <p>You need an account to be matched with online players.</p>
 
           <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
-            {!showEmail && !emailSent ? (
+            {!showSignIn ? (
               <button
                 type="button"
                 className="modal-btn-leaderboard"
                 style={{ width: '100%', maxWidth: '300px' }}
-                onClick={() => setShowEmail(true)}
+                onClick={() => setShowSignIn(true)}
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="modal-btn-icon">
                   <path d="M4 12V10M8 12V8M12 12V6M2 4L8 2L14 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 Sign in with email
               </button>
-            ) : showEmail && !emailSent ? (
-              <div className="modal-email-section" style={{ width: '100%', maxWidth: '300px' }}>
-                <input
-                  type="email"
-                  className="modal-input"
-                  placeholder="your@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleSendOtp();
-                  }}
-                  autoFocus
-                />
-                {otpError && <p className="modal-error">{otpError}</p>}
-                <div className="modal-actions">
-                  <button
-                    type="button"
-                    className="modal-btn-secondary"
-                    onClick={() => { setShowEmail(false); setOtpError(""); }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    className="modal-btn-primary"
-                    onClick={handleSendOtp}
-                    disabled={sending || !email.trim()}
-                  >
-                    {sending ? "Sending..." : "Send Code"}
-                  </button>
-                </div>
-              </div>
             ) : (
-              <div className="modal-email-section" style={{ width: '100%', maxWidth: '300px' }}>
-                <p className="modal-success">
-                  Enter the 6-digit code sent to {email}
-                </p>
-                <input
-                  type="text"
-                  className="modal-input"
-                  placeholder="12345678"
-                  value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleVerifyOtp();
-                  }}
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  autoFocus
-                />
-                {otpError && <p className="modal-error">{otpError}</p>}
-                <div className="modal-actions">
-                  <button
-                    type="button"
-                    className="modal-btn-secondary"
-                    onClick={() => { setEmailSent(false); setOtpCode(""); setOtpError(""); }}
-                  >
-                    Back
-                  </button>
-                  <button
-                    type="button"
-                    className="modal-btn-primary"
-                    onClick={handleVerifyOtp}
-                    disabled={verifying || otpCode.length < 6}
-                  >
-                    {verifying ? "Verifying..." : "Verify"}
-                  </button>
-                </div>
-              </div>
+              <EmailSignIn
+                variant="inline"
+                maxWidth="300px"
+                onCancel={() => setShowSignIn(false)}
+              />
             )}
           </div>
         </div>

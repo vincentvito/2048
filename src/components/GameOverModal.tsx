@@ -1,15 +1,15 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase-client";
+import { isSupabaseConfigured } from "@/lib/supabase-client";
 import {
   getPersonalBest,
   savePersonalBest,
   incrementGamesPlayed,
   recordScore,
-  getGamesPlayed,
   savePendingScore,
 } from "@/lib/guest-scores";
+import EmailSignIn from "./EmailSignIn";
 
 interface GameOverModalProps {
   open: boolean;
@@ -20,6 +20,7 @@ interface GameOverModalProps {
   onPlayAgain: () => void;
   onKeepPlaying?: () => void;
   leaderboardScores?: number[];
+  isSignedIn?: boolean;
 }
 
 export default function GameOverModal({
@@ -31,14 +32,9 @@ export default function GameOverModal({
   onPlayAgain,
   onKeepPlaying,
   leaderboardScores,
+  isSignedIn,
 }: GameOverModalProps): React.ReactElement | null {
   const [showEmail, setShowEmail] = useState(false);
-  const [email, setEmail] = useState("");
-  const [emailSent, setEmailSent] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [otpCode, setOtpCode] = useState("");
-  const [verifying, setVerifying] = useState(false);
-  const [otpError, setOtpError] = useState("");
   const [personalBest, setPersonalBest] = useState(0);
   const [isNewBest, setIsNewBest] = useState(false);
   const [leaderboardRank, setLeaderboardRank] = useState<number | null>(null);
@@ -64,13 +60,11 @@ export default function GameOverModal({
         const lastEl = focusableElements[focusableElements.length - 1];
 
         if (e.shiftKey) {
-          // Shift+Tab: if on first element, wrap to last
           if (document.activeElement === firstEl) {
             e.preventDefault();
             lastEl.focus();
           }
         } else {
-          // Tab: if on last element, wrap to first
           if (document.activeElement === lastEl) {
             e.preventDefault();
             firstEl.focus();
@@ -84,7 +78,6 @@ export default function GameOverModal({
   useEffect(() => {
     if (!open) return;
 
-    // Focus the first interactive element (Play Again button) when modal opens
     const timer = setTimeout(() => {
       if (modalRef.current) {
         const firstBtn = modalRef.current.querySelector<HTMLElement>(
@@ -105,12 +98,6 @@ export default function GameOverModal({
   useEffect(() => {
     if (open) {
       setShowEmail(false);
-      setEmail("");
-      setEmailSent(false);
-      setSending(false);
-      setOtpCode("");
-      setVerifying(false);
-      setOtpError("");
 
       // Track personal best
       const best = getPersonalBest(gridSize);
@@ -126,14 +113,12 @@ export default function GameOverModal({
       // Calculate leaderboard rank preview
       if (leaderboardScores && leaderboardScores.length > 0) {
         const rank = leaderboardScores.filter((s) => s > score).length + 1;
-        // Only show rank if within top 20
         if (rank <= 20) {
           setLeaderboardRank(rank);
         } else {
           setLeaderboardRank(null);
         }
       } else {
-        // No leaderboard data: if configured, user would be #1
         if (isSupabaseConfigured()) {
           setLeaderboardRank(1);
         } else {
@@ -142,53 +127,6 @@ export default function GameOverModal({
       }
     }
   }, [open, score, gridSize, leaderboardScores]);
-
-  async function handleSendOtp() {
-    if (!email.trim() || sending) return;
-
-    const supabase = createClient();
-    if (!supabase) return;
-
-    savePendingScore(score, gridSize);
-    setOtpError("");
-    setSending(true);
-    try {
-      const { error } = await supabase.auth.signInWithOtp({ email });
-      if (error) {
-        setOtpError(error.message);
-      } else {
-        setEmailSent(true);
-      }
-    } catch {
-      setOtpError("Failed to send code");
-    } finally {
-      setSending(false);
-    }
-  }
-
-  async function handleVerifyOtp() {
-    if (!otpCode.trim() || verifying) return;
-
-    const supabase = createClient();
-    if (!supabase) return;
-
-    setOtpError("");
-    setVerifying(true);
-    try {
-      const { error } = await supabase.auth.verifyOtp({
-        email,
-        token: otpCode,
-        type: "email",
-      });
-      if (error) {
-        setOtpError(error.message);
-      }
-    } catch {
-      setOtpError("Verification failed");
-    } finally {
-      setVerifying(false);
-    }
-  }
 
   if (!open) return null;
 
@@ -277,8 +215,8 @@ export default function GameOverModal({
           )}
         </div>
 
-        {/* SECONDARY: Sign-in for leaderboard (only if Supabase is configured) */}
-        {configured && !showEmail && !emailSent && (
+        {/* SECONDARY: Sign-in for leaderboard (only if Supabase is configured and not already signed in) */}
+        {configured && !isSignedIn && !showEmail && (
           <>
             <div className="modal-divider">or</div>
             <button
@@ -294,78 +232,12 @@ export default function GameOverModal({
           </>
         )}
 
-        {showEmail && !emailSent && (
-          <div className="modal-email-section">
-            <div className="modal-divider">sign in with email</div>
-            <input
-              type="email"
-              className="modal-input"
-              placeholder="your@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleSendOtp();
-              }}
-              autoFocus
-            />
-            {otpError && <p className="modal-error">{otpError}</p>}
-            <div className="modal-actions">
-              <button
-                type="button"
-                className="modal-btn-secondary"
-                onClick={() => setShowEmail(false)}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="modal-btn-primary"
-                onClick={handleSendOtp}
-                disabled={sending || !email.trim()}
-              >
-                {sending ? "Sending..." : "Send Code"}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {emailSent && (
-          <div className="modal-email-section">
-            <p className="modal-success">
-              Enter the 6-digit code sent to {email}
-            </p>
-            <input
-              type="text"
-              className="modal-input"
-              placeholder="12345678"
-              value={otpCode}
-              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 8))}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleVerifyOtp();
-              }}
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              autoFocus
-            />
-            {otpError && <p className="modal-error">{otpError}</p>}
-            <div className="modal-actions">
-              <button
-                type="button"
-                className="modal-btn-secondary"
-                onClick={() => { setEmailSent(false); setOtpCode(""); setOtpError(""); }}
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                className="modal-btn-primary"
-                onClick={handleVerifyOtp}
-                disabled={verifying || otpCode.length < 6}
-              >
-                {verifying ? "Verifying..." : "Verify"}
-              </button>
-            </div>
-          </div>
+        {configured && !isSignedIn && showEmail && (
+          <EmailSignIn
+            variant="modal"
+            onBeforeSend={() => savePendingScore(score, gridSize)}
+            onCancel={() => setShowEmail(false)}
+          />
         )}
       </div>
     </div>

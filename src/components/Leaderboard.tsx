@@ -25,6 +25,7 @@ interface LeaderboardProps {
   onScoresLoaded?: (scores: number[]) => void;
   currentScore?: number;
   gridSize?: number;
+  isSignedIn?: boolean;
 }
 
 export default function Leaderboard({
@@ -32,6 +33,7 @@ export default function Leaderboard({
   onScoresLoaded,
   currentScore,
   gridSize = 4,
+  isSignedIn,
 }: LeaderboardProps): React.ReactElement {
   const [tab, setTab] = useState<"today" | "alltime">("today");
   const [scores, setScores] = useState<Score[]>([]);
@@ -107,12 +109,13 @@ export default function Leaderboard({
     };
   }, [fetchScores]);
 
-  // Determine the guest's display score (current score or personal best for this grid size)
-  const guestScore = currentScore ?? getPersonalBest(gridSize);
+  // Only show ghost for an unsaved score from the current session
+  const guestScore = currentScore && currentScore > 0 ? currentScore : 0;
 
-  // Calculate where the ghost entry would appear
+  // Calculate where the ghost entry would appear (only for unsigned guests with an active score)
   function getGhostRank(): number | null {
-    if (!guestScore || guestScore <= 0) return null;
+    if (isSignedIn) return null;
+    if (!guestScore) return null;
     const rank = scores.filter((s) => s.score > guestScore).length + 1;
     if (rank > 20) return null;
     return rank;

@@ -204,10 +204,13 @@ export default function EmailSignIn({
         return;
       }
 
-      // Server set the session cookie, now refresh client-side auth state
+      // Server verified OTP, now set session on client (don't block on this)
       const supabase = createClient();
       if (supabase && data.session) {
-        await supabase.auth.setSession(data.session);
+        const { access_token, refresh_token } = data.session;
+        if (access_token && refresh_token) {
+          supabase.auth.setSession({ access_token, refresh_token }).catch(() => {});
+        }
       }
 
       setStep("email");

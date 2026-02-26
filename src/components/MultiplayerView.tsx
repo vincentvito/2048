@@ -20,7 +20,7 @@ function formatTime(seconds: number): string {
 }
 
 export default function MultiplayerView() {
-  const { state: matchmakingState, roomId, startMatchmaking, cancelMatchmaking, myId } = useMatchmaking();
+  const { state: matchmakingState, roomId, opponentInfo, startMatchmaking, cancelMatchmaking, myId } = useMatchmaking();
 
   // Track current theme for canvas boards
   const [themeName, setThemeName] = useState<ThemeName>(() => {
@@ -104,7 +104,7 @@ export default function MultiplayerView() {
     sendGameState, requestRematch, resetRematchState, declareForfeit,
     localWantsRematch, opponentWantsRematch, rematchReady,
     timeLeft, gameStarted, forfeitWin,
-  } = useMultiplayerGame(roomId, myId, myName, myElo);
+  } = useMultiplayerGame(roomId, myId, session?.user?.id || null, myName, myElo);
 
   const [localGameResult, setLocalGameResult] = useState<{ won: boolean; score: number; gameOver: boolean } | null>(null);
   const [showResultModal, setShowResultModal] = useState(false);
@@ -163,7 +163,9 @@ export default function MultiplayerView() {
     setOpponentEloDelta(null);
     setLocalEloAfter(null);
     setEloProcessed(false);
-    startMatchmaking();
+    if (session?.user?.id) {
+      startMatchmaking(session.user.id, myName, myElo);
+    }
   };
 
   // Derive match resolution state (must be before early returns so hooks are stable)
@@ -329,7 +331,7 @@ export default function MultiplayerView() {
       <div className="mp-lobby">
         <h2 className="mp-lobby-title">Multiplayer</h2>
         <p className="mp-lobby-subtitle">Play against an online opponent in real-time!</p>
-        <button className="mp-find-btn" onClick={startMatchmaking}>Find Match</button>
+        <button className="mp-find-btn" onClick={() => session?.user?.id && startMatchmaking(session.user.id, myName, myElo)}>Find Match</button>
 
         {statsLoading && (
           <div className="mp-stats-card" style={{ marginTop: 20 }}>

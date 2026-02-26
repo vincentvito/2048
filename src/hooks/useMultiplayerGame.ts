@@ -1,13 +1,29 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { createClient } from '../lib/supabase-client';
-import { RealtimeChannel } from '@supabase/supabase-js';
 import type { GameState } from '../components/Game2048';
 
 const GAME_DURATION = 5 * 60; // 300 seconds
-const TIMER_SYNC_INTERVAL = 10_000; // sync timer every 10 seconds
-const DISCONNECT_GRACE_PERIOD = 10_000; // 10 seconds before forfeit
+const POLL_INTERVAL = 500; // Poll every 500ms for responsive gameplay
+const DISCONNECT_THRESHOLD = 10000; // 10 seconds without update = disconnected
 
-export function useMultiplayerGame(roomId: string | null, myId: string, myName?: string, myElo?: number) {
+interface OpponentData {
+  username: string;
+  elo: number;
+  grid: number[];
+  score: number;
+  game_over: boolean;
+  won: boolean;
+  wants_rematch: boolean;
+  forfeited: boolean;
+  updated_at: string;
+}
+
+export function useMultiplayerGame(
+  roomId: string | null,
+  myId: string,
+  userId: string | null,
+  myName?: string,
+  myElo?: number
+) {
   const [opponentState, setOpponentState] = useState<GameState | null>(null);
   const [opponentConnected, setOpponentConnected] = useState(false);
   const [opponentEverConnected, setOpponentEverConnected] = useState(false);
@@ -15,274 +31,247 @@ export function useMultiplayerGame(roomId: string | null, myId: string, myName?:
   const [opponentElo, setOpponentElo] = useState<number | null>(null);
   const [localWantsRematch, setLocalWantsRematch] = useState(false);
   const [opponentWantsRematch, setOpponentWantsRematch] = useState(false);
-
-  // Timer & forfeit state
-  const [timeLeft, setTimeLeft] = useState(GAME_DURATION);
-  const [gameStarted, setGameStarted] = useState(false);
   const [forfeitWin, setForfeitWin] = useState<'local' | 'opponent' | null>(null);
 
-  const channelRef = useRef<RealtimeChannel | null>(null);
-  const latestStateRef = useRef<GameState | null>(null);
-  const opponentConnectedRef = useRef(false);
+  // Timer state
+  const [timeLeft, setTimeLeft] = useState(GAME_DURATION);
+  const [gameStarted, setGameStarted] = useState(false);
 
-  // Timer refs
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const timerSyncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const timeLeftRef = useRef(GAME_DURATION);
+  const latestStateRef = useRef<GameState | null>(null);
   const gameStartedRef = useRef(false);
+  const initializedRef = useRef(false);
 
-  // Forfeit refs
-  const disconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const forfeitWinRef = useRef<'local' | 'opponent' | null>(null);
+  const clearPolling = useCallback(() => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+  }, []);
 
-  const supabase = createClient();
-
-  // Keep refs in sync with state
-  useEffect(() => { timeLeftRef.current = timeLeft; }, [timeLeft]);
-  useEffect(() => { gameStartedRef.current = gameStarted; }, [gameStarted]);
-  useEffect(() => { forfeitWinRef.current = forfeitWin; }, [forfeitWin]);
-
-  // Helper: clear all timer intervals
-  const clearTimers = useCallback(() => {
+  const clearTimer = useCallback(() => {
     if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current);
       timerIntervalRef.current = null;
     }
-    if (timerSyncIntervalRef.current) {
-      clearInterval(timerSyncIntervalRef.current);
-      timerSyncIntervalRef.current = null;
-    }
   }, []);
 
-  // Helper: clear disconnect grace timeout
-  const clearDisconnectTimeout = useCallback(() => {
-    if (disconnectTimeoutRef.current) {
-      clearTimeout(disconnectTimeoutRef.current);
-      disconnectTimeoutRef.current = null;
-    }
-  }, []);
+  // Initialize game state when joining room
+  useEffect(() => {
+    if (!roomId || !userId || !myName || initializedRef.current) return;
 
-  // Start the countdown timer
-  const startTimer = useCallback(() => {
-    if (timerIntervalRef.current) return;
+    initializedRef.current = true;
+
+    fetch('/api/game-state', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        roomId,
+        userId,
+        username: myName,
+        elo: myElo || 1200,
+      }),
+    }).catch(e => console.error('[useMultiplayerGame] Init error:', e));
+  }, [roomId, userId, myName, myElo]);
+
+  // Poll for opponent state
+  useEffect(() => {
+    if (!roomId || !userId) return;
+
+    const pollOpponent = async () => {
+      try {
+        const res = await fetch(`/api/game-state?roomId=${encodeURIComponent(roomId)}&userId=${encodeURIComponent(userId)}`);
+        const data = await res.json();
+
+        if (data.opponent) {
+          const opp: OpponentData = data.opponent;
+
+          setOpponentName(opp.username);
+          setOpponentElo(opp.elo);
+          setOpponentWantsRematch(opp.wants_rematch);
+
+          // Check if opponent is still active (updated within threshold)
+          const lastUpdate = new Date(opp.updated_at).getTime();
+          const isConnected = Date.now() - lastUpdate < DISCONNECT_THRESHOLD;
+          setOpponentConnected(isConnected);
+          if (isConnected) setOpponentEverConnected(true);
+
+          // Check forfeit
+          if (opp.forfeited && !forfeitWin) {
+            setForfeitWin('local');
+          }
+
+          setOpponentState({
+            grid: opp.grid || Array(16).fill(0),
+            score: opp.score,
+            gameOver: opp.game_over,
+            won: opp.won,
+          });
+
+          // Start timer when opponent connects
+          if (isConnected && !gameStartedRef.current) {
+            gameStartedRef.current = true;
+            setGameStarted(true);
+          }
+        }
+      } catch (e) {
+        console.error('[useMultiplayerGame] Poll error:', e);
+      }
+    };
+
+    // Initial poll
+    pollOpponent();
+
+    // Start polling
+    pollIntervalRef.current = setInterval(pollOpponent, POLL_INTERVAL);
+
+    return () => clearPolling();
+  }, [roomId, userId, clearPolling, forfeitWin]);
+
+  // Timer countdown
+  useEffect(() => {
+    if (!gameStarted || timerIntervalRef.current) return;
 
     timerIntervalRef.current = setInterval(() => {
-      setTimeLeft((prev) => {
-        const next = prev - 1;
-        timeLeftRef.current = next;
-
-        if (next <= 0) {
-          clearTimers();
-          channelRef.current?.send({
-            type: 'broadcast',
-            event: 'time_up',
-            payload: { userId: myId },
-          });
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          clearTimer();
           return 0;
         }
-        return next;
+        return prev - 1;
       });
     }, 1000);
 
-    // Periodically sync timer with opponent
-    timerSyncIntervalRef.current = setInterval(() => {
-      channelRef.current?.send({
-        type: 'broadcast',
-        event: 'timer_sync',
-        payload: { userId: myId, timeLeft: timeLeftRef.current },
-      });
-    }, TIMER_SYNC_INTERVAL);
-  }, [clearTimers, myId]);
+    return () => clearTimer();
+  }, [gameStarted, clearTimer]);
 
-  // Reset timer (used during rematch)
-  const resetTimer = useCallback(() => {
-    clearTimers();
-    clearDisconnectTimeout();
-    setTimeLeft(GAME_DURATION);
-    timeLeftRef.current = GAME_DURATION;
-    setGameStarted(false);
-    gameStartedRef.current = false;
-    setForfeitWin(null);
-    forfeitWinRef.current = null;
-  }, [clearTimers, clearDisconnectTimeout]);
+  // Send game state to server
+  const sendGameState = useCallback(async (state: GameState) => {
+    if (!roomId || !userId) return;
 
-  // Start timer when opponent connects (both players present)
-  useEffect(() => {
-    if (opponentConnected && !gameStarted && forfeitWin === null) {
-      setGameStarted(true);
-      gameStartedRef.current = true;
-      startTimer();
-    }
-  }, [opponentConnected, gameStarted, forfeitWin, startTimer]);
-
-  // Forfeit logic: detect opponent disconnect after they were previously connected
-  useEffect(() => {
-    if (opponentEverConnected && !opponentConnected && gameStarted && forfeitWin === null) {
-      disconnectTimeoutRef.current = setTimeout(() => {
-        if (!opponentConnectedRef.current && forfeitWinRef.current === null) {
-          setForfeitWin('local');
-          forfeitWinRef.current = 'local';
-          clearTimers();
-
-          channelRef.current?.send({
-            type: 'broadcast',
-            event: 'forfeit',
-            payload: { userId: myId, forfeitedBy: 'opponent' },
-          });
-        }
-      }, DISCONNECT_GRACE_PERIOD);
-    }
-
-    if (opponentConnected) {
-      clearDisconnectTimeout();
-    }
-  }, [opponentConnected, opponentEverConnected, gameStarted, forfeitWin, clearTimers, clearDisconnectTimeout, myId]);
-
-  useEffect(() => {
-    if (!roomId || !supabase) return;
-
-    const channel = supabase.channel(`game:${roomId}`, {
-      config: {
-        presence: { key: myId },
-        broadcast: { ack: false }
-      }
-    });
-    channelRef.current = channel;
-
-    channel
-      .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState();
-        const users = Object.keys(state);
-        const wasConnected = opponentConnectedRef.current;
-        const nowConnected = users.length > 1;
-        opponentConnectedRef.current = nowConnected;
-        setOpponentConnected(nowConnected);
-        if (nowConnected) setOpponentEverConnected(true);
-
-        // Extract opponent name and ELO from presence metadata
-        for (const userId of users) {
-          if (userId !== myId) {
-            const presences = state[userId] as Array<{ name?: string; elo?: number }>;
-            if (presences?.[0]?.name) {
-              setOpponentName(presences[0].name);
-            }
-            if (presences?.[0]?.elo !== undefined) {
-              setOpponentElo(presences[0].elo);
-            }
-          }
-        }
-
-        // Resend latest state when opponent (re)connects so they aren't stale
-        if (!wasConnected && nowConnected && latestStateRef.current) {
-          channel.send({
-            type: 'broadcast',
-            event: 'game_state',
-            payload: { userId: myId, state: latestStateRef.current },
-          });
-        }
-      })
-      .on('broadcast', { event: 'game_state' }, (payload) => {
-        if (payload.payload.userId !== myId) {
-          setOpponentState(payload.payload.state);
-        }
-      })
-      .on('broadcast', { event: 'rematch_request' }, (payload) => {
-        if (payload.payload.userId !== myId) {
-          setOpponentWantsRematch(true);
-        }
-      })
-      .on('broadcast', { event: 'timer_sync' }, (payload) => {
-        if (payload.payload.userId !== myId) {
-          const theirTime = payload.payload.timeLeft as number;
-          if (Math.abs(timeLeftRef.current - theirTime) > 2) {
-            const syncedTime = Math.min(timeLeftRef.current, theirTime);
-            setTimeLeft(syncedTime);
-            timeLeftRef.current = syncedTime;
-          }
-        }
-      })
-      .on('broadcast', { event: 'time_up' }, (payload) => {
-        if (payload.payload.userId !== myId) {
-          clearTimers();
-          setTimeLeft(0);
-          timeLeftRef.current = 0;
-        }
-      })
-      .on('broadcast', { event: 'forfeit' }, (payload) => {
-        if (payload.payload.userId !== myId) {
-          setForfeitWin('opponent');
-          forfeitWinRef.current = 'opponent';
-          clearTimers();
-        }
-      })
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          await channel.track({
-            online_at: new Date().toISOString(),
-            name: myName || 'Player',
-            elo: myElo ?? 1200,
-          });
-        }
-      });
-
-    return () => {
-      channel.unsubscribe();
-      channelRef.current = null;
-      opponentConnectedRef.current = false;
-      setOpponentConnected(false);
-      setOpponentState(null);
-      clearTimers();
-      clearDisconnectTimeout();
-    };
-  }, [roomId, supabase, myId, myName, myElo, clearTimers, clearDisconnectTimeout]);
-
-  const sendGameState = useCallback((state: GameState) => {
     latestStateRef.current = state;
-    if (channelRef.current) {
-      channelRef.current.send({
-        type: 'broadcast',
-        event: 'game_state',
-        payload: { userId: myId, state },
+
+    try {
+      await fetch('/api/game-state', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomId,
+          userId,
+          grid: state.grid,
+          score: state.score,
+          gameOver: state.gameOver,
+          won: state.won,
+        }),
       });
+    } catch (e) {
+      console.error('[useMultiplayerGame] Send state error:', e);
     }
-  }, [myId]);
+  }, [roomId, userId]);
 
-  // Voluntarily forfeit — call before leaving a live game
-  const declareForfeit = useCallback(() => {
-    clearTimers();
-    clearDisconnectTimeout();
-    channelRef.current?.send({
-      type: 'broadcast',
-      event: 'forfeit',
-      payload: { userId: myId, forfeitedBy: 'self' },
-    });
-  }, [myId, clearTimers, clearDisconnectTimeout]);
+  // Request rematch
+  const requestRematch = useCallback(async () => {
+    if (!roomId || !userId) return;
 
-  const requestRematch = useCallback(() => {
     setLocalWantsRematch(true);
-    if (channelRef.current) {
-      channelRef.current.send({
-        type: 'broadcast',
-        event: 'rematch_request',
-        payload: { userId: myId },
-      });
-    }
-  }, [myId]);
 
-  const resetRematchState = useCallback(() => {
+    try {
+      await fetch('/api/game-state', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomId,
+          userId,
+          wantsRematch: true,
+        }),
+      });
+    } catch (e) {
+      console.error('[useMultiplayerGame] Rematch error:', e);
+    }
+  }, [roomId, userId]);
+
+  // Reset rematch state (when rematch starts)
+  const resetRematchState = useCallback(async () => {
+    if (!roomId || !userId) return;
+
     setLocalWantsRematch(false);
     setOpponentWantsRematch(false);
     setOpponentState(null);
     latestStateRef.current = null;
-    resetTimer();
-  }, [resetTimer]);
+    setTimeLeft(GAME_DURATION);
+    setGameStarted(false);
+    gameStartedRef.current = false;
+    setForfeitWin(null);
+
+    try {
+      await fetch('/api/game-state', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomId,
+          userId,
+          grid: [],
+          score: 0,
+          gameOver: false,
+          won: false,
+          wantsRematch: false,
+          forfeited: false,
+        }),
+      });
+    } catch (e) {
+      console.error('[useMultiplayerGame] Reset error:', e);
+    }
+  }, [roomId, userId]);
+
+  // Declare forfeit
+  const declareForfeit = useCallback(async () => {
+    if (!roomId || !userId) return;
+
+    clearTimer();
+    clearPolling();
+
+    try {
+      await fetch('/api/game-state', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomId,
+          userId,
+          forfeited: true,
+        }),
+      });
+    } catch (e) {
+      console.error('[useMultiplayerGame] Forfeit error:', e);
+    }
+  }, [roomId, userId, clearTimer, clearPolling]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      clearPolling();
+      clearTimer();
+      initializedRef.current = false;
+    };
+  }, [clearPolling, clearTimer]);
 
   const rematchReady = localWantsRematch && opponentWantsRematch;
 
   return {
-    opponentState, opponentConnected, opponentEverConnected, opponentName, opponentElo,
-    sendGameState, requestRematch, resetRematchState, declareForfeit,
-    localWantsRematch, opponentWantsRematch, rematchReady,
-    timeLeft, gameStarted, forfeitWin,
+    opponentState,
+    opponentConnected,
+    opponentEverConnected,
+    opponentName,
+    opponentElo,
+    sendGameState,
+    requestRematch,
+    resetRematchState,
+    declareForfeit,
+    localWantsRematch,
+    opponentWantsRematch,
+    rematchReady,
+    timeLeft,
+    gameStarted,
+    forfeitWin,
   };
 }

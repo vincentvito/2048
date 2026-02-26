@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase-server';
+import { createAdminClient } from '@/lib/supabase-admin';
 
 const QUEUE_TIMEOUT_MS = 120000; // 2 minutes
 
@@ -12,7 +12,10 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const supabase = await createClient();
+    const supabase = createAdminClient();
+    if (!supabase) {
+      return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
+    }
 
     // Get user's queue entry
     const { data: entry, error } = await supabase
@@ -78,7 +81,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'userId and username required' }, { status: 400 });
     }
 
-    const supabase = await createClient();
+    const supabase = createAdminClient();
+    if (!supabase) {
+      return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
+    }
 
     // Clean up any old entries for this user
     await supabase
@@ -174,7 +180,10 @@ export async function DELETE(req: NextRequest) {
   }
 
   try {
-    const supabase = await createClient();
+    const supabase = createAdminClient();
+    if (!supabase) {
+      return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
+    }
 
     await supabase
       .from('matchmaking_queue')

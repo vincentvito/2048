@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase-server';
+import { createAdminClient } from '@/lib/supabase-admin';
 
 // GET /api/game-state?roomId=xxx&userId=xxx - Get opponent's state
 export async function GET(req: NextRequest) {
@@ -11,7 +11,10 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const supabase = await createClient();
+    const supabase = createAdminClient();
+    if (!supabase) {
+      return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
+    }
 
     // Get opponent's game state
     const { data: opponent, error } = await supabase
@@ -47,7 +50,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'roomId, userId, username required' }, { status: 400 });
     }
 
-    const supabase = await createClient();
+    const supabase = createAdminClient();
+    if (!supabase) {
+      return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
+    }
 
     // Upsert game state
     const { data, error } = await supabase
@@ -92,7 +98,10 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'roomId and userId required' }, { status: 400 });
     }
 
-    const supabase = await createClient();
+    const supabase = createAdminClient();
+    if (!supabase) {
+      return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
+    }
 
     const updates: Record<string, unknown> = {};
     if (grid !== undefined) updates.grid = grid;
@@ -133,7 +142,10 @@ export async function DELETE(req: NextRequest) {
   }
 
   try {
-    const supabase = await createClient();
+    const supabase = createAdminClient();
+    if (!supabase) {
+      return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
+    }
 
     await supabase
       .from('game_state')

@@ -4,6 +4,16 @@ import { RealtimeChannel } from '@supabase/supabase-js';
 
 export type MatchmakingState = 'idle' | 'searching' | 'matched';
 
+// Debug logging helper - sends to server for Vercel logs
+function logMatchmaking(event: string, data: Record<string, unknown> = {}) {
+  console.log(`[Matchmaking] ${event}`, data);
+  fetch('/api/debug/matchmaking', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ event, ...data }),
+  }).catch(() => { /* ignore logging errors */ });
+}
+
 export function useMatchmaking() {
   const [state, setState] = useState<MatchmakingState>('idle');
   const [roomId, setRoomId] = useState<string | null>(null);
@@ -13,12 +23,17 @@ export function useMatchmaking() {
   const supabase = createClient();
 
   const startMatchmaking = () => {
-    if (!supabase) return;
+    if (!supabase) {
+      logMatchmaking('start_failed', { reason: 'no_supabase_client', myId });
+      return;
+    }
+    logMatchmaking('start', { myId });
     setState('searching');
     setRoomId(null);
   };
 
   const cancelMatchmaking = () => {
+    logMatchmaking('cancel', { myId });
     setState('idle');
     setRoomId(null);
     if (channelRef.current) {
@@ -28,7 +43,14 @@ export function useMatchmaking() {
   };
 
   useEffect(() => {
-    if (state !== 'searching' || !supabase) return;
+    if (state !== 'searching' || !supabase) {
+      if (state === 'searching' && !supabase) {
+        logMatchmaking('effect_no_supabase', { myId });
+      }
+      return;
+    }
+
+    logMatchmaking('creating_channel', { myId, channel: 'matchmaking:4x4' });
 
     const channel = supabase.channel('matchmaking:4x4', {
       config: {
@@ -44,6 +66,7 @@ export function useMatchmaking() {
     function completeMatch(newRoomId: string) {
       if (matchFound) return;
       matchFound = true;
+      logMatchmaking('match_complete', { myId, roomId: newRoomId });
       setRoomId(newRoomId);
       setState('matched');
       // Delay unsubscribe so the broadcast reaches the other player
@@ -59,6 +82,8 @@ export function useMatchmaking() {
 
         const presenceState = channel.presenceState();
         const users = Object.keys(presenceState);
+
+        logMatchmaking('presence_sync', { myId, userCount: users.length, users });
 
         if (users.length < 2) return;
 
@@ -92,9 +117,14 @@ export function useMatchmaking() {
           completeMatch(newRoomId);
         }
       })
-      .subscribe(async (status) => {
+      .subscribe(async (status, err) => {
+        logMatchmaking('channel_status', { myId, channelStatus: status, error: err?.message });
         if (status === 'SUBSCRIBED') {
+          logMatchmaking('tracking_presence', { myId });
           await channel.track({ online_at: new Date().toISOString() });
+          logMatchmaking('presence_tracked', { myId });
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          logMatchmaking('channel_failed', { myId, channelStatus: status, error: err?.message });
         }
       });
 

@@ -139,47 +139,41 @@ export default function EmailSignIn({
 
   async function handleSendOtp() {
     if (!email.trim() || sending) return;
-    const supabase = createClient();
-    if (!supabase) { setOtpError("Auth not configured"); return; }
 
     onBeforeSend?.();
     setOtpError("");
     setSending(true);
 
-    const maxRetries = 2;
-    const timeoutMs = 20000; // 20s per attempt
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        const timeout = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("timeout")), timeoutMs)
-        );
-        const result = await Promise.race([
-          supabase.auth.signInWithOtp({ email }),
-          timeout,
-        ]) as Awaited<ReturnType<typeof supabase.auth.signInWithOtp>>;
+      const res = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+        signal: controller.signal,
+      });
 
-        if (result.error) {
-          // Don't retry on auth errors, only network errors
-          setOtpError(result.error.message);
-          setSending(false);
-          return;
-        }
+      clearTimeout(timeoutId);
 
-        setStep("otp");
+      const data = await res.json();
+
+      if (!res.ok) {
+        setOtpError(data.error || "Failed to send code");
         setSending(false);
         return;
-      } catch (e) {
-        const isLastAttempt = attempt === maxRetries;
-        if (isLastAttempt) {
-          const msg = e instanceof Error ? e.message : "Failed to send code";
-          setOtpError(msg === "timeout" ? "Request timed out — check your internet connection" : msg);
-          setSending(false);
-          return;
-        }
-        // Wait 1s before retry
-        await new Promise((r) => setTimeout(r, 1000));
       }
+
+      setStep("otp");
+    } catch (e) {
+      if (e instanceof Error && e.name === "AbortError") {
+        setOtpError("Request timed out — check your internet connection");
+      } else {
+        setOtpError(e instanceof Error ? e.message : "Failed to send code");
+      }
+    } finally {
+      setSending(false);
     }
   }
 

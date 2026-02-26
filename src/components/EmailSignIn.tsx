@@ -145,23 +145,41 @@ export default function EmailSignIn({
     onBeforeSend?.();
     setOtpError("");
     setSending(true);
-    try {
-      const timeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Request timed out — check your internet connection")), 25000)
-      );
-      const result = await Promise.race([
-        supabase.auth.signInWithOtp({ email }),
-        timeout,
-      ]) as Awaited<ReturnType<typeof supabase.auth.signInWithOtp>>;
-      if (result.error) {
-        setOtpError(result.error.message);
-      } else {
+
+    const maxRetries = 2;
+    const timeoutMs = 20000; // 20s per attempt
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const timeout = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("timeout")), timeoutMs)
+        );
+        const result = await Promise.race([
+          supabase.auth.signInWithOtp({ email }),
+          timeout,
+        ]) as Awaited<ReturnType<typeof supabase.auth.signInWithOtp>>;
+
+        if (result.error) {
+          // Don't retry on auth errors, only network errors
+          setOtpError(result.error.message);
+          setSending(false);
+          return;
+        }
+
         setStep("otp");
+        setSending(false);
+        return;
+      } catch (e) {
+        const isLastAttempt = attempt === maxRetries;
+        if (isLastAttempt) {
+          const msg = e instanceof Error ? e.message : "Failed to send code";
+          setOtpError(msg === "timeout" ? "Request timed out — check your internet connection" : msg);
+          setSending(false);
+          return;
+        }
+        // Wait 1s before retry
+        await new Promise((r) => setTimeout(r, 1000));
       }
-    } catch (e) {
-      setOtpError(e instanceof Error ? e.message : "Failed to send code");
-    } finally {
-      setSending(false);
     }
   }
 

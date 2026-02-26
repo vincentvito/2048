@@ -107,9 +107,14 @@ export default function Home(): React.ReactElement {
   }, []);
 
   const handleSignOut = useCallback(async () => {
-    const supabase = createClient();
-    if (!supabase) return;
-    await supabase.auth.signOut();
+    try {
+      await fetch("/api/auth/sign-out", { method: "POST" });
+      // Clear client-side session state
+      setSession(null);
+    } catch {
+      // Ignore errors, session will be cleared on next page load
+      setSession(null);
+    }
   }, []);
 
   // Show swipe hint on first mobile visit

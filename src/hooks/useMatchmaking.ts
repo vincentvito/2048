@@ -43,10 +43,20 @@ export function useMatchmaking() {
   };
 
   useEffect(() => {
-    if (state !== 'searching' || !supabase) {
-      if (state === 'searching' && !supabase) {
-        logMatchmaking('effect_no_supabase', { myId });
-      }
+    // Always log when effect runs
+    logMatchmaking('effect_triggered', {
+      myId,
+      state,
+      hasSupabase: !!supabase,
+      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL?.slice(0, 30) || 'MISSING'
+    });
+
+    if (state !== 'searching') {
+      return;
+    }
+
+    if (!supabase) {
+      logMatchmaking('effect_no_supabase', { myId });
       return;
     }
 

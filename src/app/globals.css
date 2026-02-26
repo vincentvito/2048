@@ -1453,6 +1453,18 @@ body {
   background: var(--otp-filled-bg);
 }
 
+/* Smaller OTP boxes in sidebar */
+.sidebar-auth .otp-boxes {
+  gap: 6px;
+}
+
+.sidebar-auth .otp-box {
+  width: 38px;
+  height: 46px;
+  font-size: 22px;
+  border-radius: 8px;
+}
+
 /* Primary action row for Play Again / Keep Playing */
 .modal-primary-actions {
   display: flex;

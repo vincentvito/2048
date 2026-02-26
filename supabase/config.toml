@@ -29,19 +29,19 @@ otp_length = 6
 
 [auth.email.template.confirmation]
 subject = "2048 — Confirm your email"
-content_path = "./templates/confirmation.html"
+content_path = "./supabase/templates/confirmation.html"
 
 [auth.email.template.magic_link]
 subject = "2048 — Your Sign-In Code"
-content_path = "./templates/otp.html"
+content_path = "./supabase/templates/otp.html"
 
 [auth.email.template.invite]
 subject = "2048 — You've been invited"
-content_path = "./templates/invite.html"
+content_path = "./supabase/templates/invite.html"
 
 [auth.email.template.recovery]
 subject = "2048 — Reset your password"
-content_path = "./templates/recovery.html"
+content_path = "./supabase/templates/recovery.html"
 
 # ─── Functions ─────────────────────────────────────────────────────────────────
 

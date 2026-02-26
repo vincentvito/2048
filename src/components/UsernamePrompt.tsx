@@ -77,6 +77,14 @@ export default function UsernamePrompt(): React.ReactElement | null {
       if (updateError) {
         setError(updateError.message);
       } else {
+        // Sync username to profiles table
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          await supabase.from("profiles").upsert({
+            id: session.user.id,
+            username: trimmed,
+          }, { onConflict: "id" });
+        }
         setShow(false);
       }
     } catch {

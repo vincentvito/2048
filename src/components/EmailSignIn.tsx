@@ -179,27 +179,47 @@ export default function EmailSignIn({
 
   async function handleVerifyOtp() {
     if (otpCode.length < OTP_LENGTH || verifying) return;
-    const supabase = createClient();
-    if (!supabase) return;
 
     setOtpError("");
     setVerifying(true);
+
     try {
-      const { error } = await supabase.auth.verifyOtp({
-        email,
-        token: otpCode,
-        type: "email",
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+      const res = await fetch("/api/auth/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, token: otpCode }),
+        signal: controller.signal,
       });
-      if (error) {
-        setOtpError(error.message);
-      } else {
-        setStep("email");
-        setEmail("");
-        setOtpCode("");
-        onSuccess?.();
+
+      clearTimeout(timeoutId);
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setOtpError(data.error || "Verification failed");
+        setVerifying(false);
+        return;
       }
-    } catch {
-      setOtpError("Verification failed");
+
+      // Server set the session cookie, now refresh client-side auth state
+      const supabase = createClient();
+      if (supabase && data.session) {
+        await supabase.auth.setSession(data.session);
+      }
+
+      setStep("email");
+      setEmail("");
+      setOtpCode("");
+      onSuccess?.();
+    } catch (e) {
+      if (e instanceof Error && e.name === "AbortError") {
+        setOtpError("Request timed out — check your internet connection");
+      } else {
+        setOtpError("Verification failed");
+      }
     } finally {
       setVerifying(false);
     }

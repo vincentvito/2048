@@ -45,12 +45,6 @@ Deno.serve(async (req) => {
 
     const subject = '2048 — Your Sign-In Code'
 
-    // Build OTP digits as game tiles
-    const digits = email_data.token.split('')
-    const digitCells = digits.map(d =>
-      `<td style="width:44px;height:52px;background:#fef3c7;border-radius:10px;text-align:center;vertical-align:middle;font-family:'Trebuchet MS',Helvetica,sans-serif;font-size:28px;font-weight:bold;color:#78350f;border:2px solid #fde68a;">${d}</td>`
-    ).join('')
-
     const html = `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"></head>
@@ -76,27 +70,28 @@ Deno.serve(async (req) => {
         <tr>
           <td style="padding:36px 32px 32px;">
 
-            <p style="margin:0 0 6px;font-size:18px;font-weight:bold;color:#78350f;text-align:center;">Your sign-in code</p>
-            <p style="margin:0 0 28px;font-size:14px;color:#a16207;text-align:center;">Enter this code in the app to sign in.</p>
+            <p style="margin:0 0 6px;font-size:18px;font-weight:bold;color:#78350f;text-align:center;">Your verification code</p>
+            <p style="margin:0 0 28px;font-size:14px;color:#a16207;text-align:center;">Enter this code to sign in to your account</p>
 
-            <!-- OTP tiles -->
-            <table role="presentation" cellpadding="0" cellspacing="6" style="margin:0 auto 8px;" align="center">
-              <tr>${digitCells}</tr>
+            <!-- OTP code — plain text, easy to copy -->
+            <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 8px;" align="center">
+              <tr>
+                <td style="padding:12px 0;">
+                  <span style="font-family:'Trebuchet MS',Helvetica,sans-serif;font-size:48px;font-weight:bold;color:#78350f;letter-spacing:14px;line-height:1;">${email_data.token}</span>
+                </td>
+              </tr>
             </table>
-
-            <!-- "Your code" label under tiles -->
-            <p style="margin:0 0 28px;font-size:12px;color:#a16207;text-align:center;letter-spacing:0.5px;">YOUR SIGN-IN CODE</p>
 
             <!-- Expiry notice -->
             <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 20px;background:#fef3c7;border-radius:8px;" align="center">
               <tr>
                 <td style="padding:10px 20px;text-align:center;">
-                  <span style="font-size:13px;color:#92400e;font-weight:bold;">This code expires in 10 minutes</span>
+                  <span style="font-size:13px;color:#92400e;font-weight:bold;">Expires in 10 minutes</span>
                 </td>
               </tr>
             </table>
 
-            <p style="margin:0;font-size:12px;color:#b4a08a;text-align:center;">If you didn't request this, you can safely ignore this email.</p>
+            <p style="margin:0;font-size:12px;color:#b4a08a;text-align:center;">If you didn't request this code, you can safely ignore this email.</p>
           </td>
         </tr>
 

@@ -1022,38 +1022,39 @@ body {
   box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.15);
 }
 
-/* ---- OTP Digit Boxes ---- */
+/* ---- OTP Digit Boxes (tile-style) ---- */
 .otp-boxes {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   justify-content: center;
-  margin: 8px 0;
+  margin: 10px 0;
 }
 
 .otp-box {
-  width: 44px;
-  height: 52px;
-  border: 2px solid rgba(217, 119, 6, 0.3);
-  border-radius: 10px;
-  background: #fffbeb;
-  color: #451a03;
-  font-size: 22px;
-  font-weight: 700;
+  width: 50px;
+  height: 58px;
+  border: 2px solid #fde68a;
+  border-radius: 12px;
+  background: #fef9e7;
+  color: #78350f;
+  font-size: 28px;
+  font-weight: 800;
   font-family: inherit;
   text-align: center;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s, background 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
   caret-color: #d97706;
+  box-shadow: 0 2px 6px rgba(120, 53, 15, 0.07);
 }
 
 .otp-box::placeholder {
   color: #92400e;
-  opacity: 0.2;
+  opacity: 0.12;
 }
 
 .otp-box:focus {
   border-color: #d97706;
-  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.15);
+  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.18), 0 2px 6px rgba(120, 53, 15, 0.07);
   background: #fff;
 }
 

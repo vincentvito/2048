@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useRef, useCallback } from "react";
-import { createClient } from "@/lib/supabase-client";
 
 const OTP_LENGTH = 6;
 
@@ -204,19 +203,9 @@ export default function EmailSignIn({
         return;
       }
 
-      // Server verified OTP, now set session on client (don't block on this)
-      const supabase = createClient();
-      if (supabase && data.session) {
-        const { access_token, refresh_token } = data.session;
-        if (access_token && refresh_token) {
-          supabase.auth.setSession({ access_token, refresh_token }).catch(() => {});
-        }
-      }
-
-      setStep("email");
-      setEmail("");
-      setOtpCode("");
-      onSuccess?.();
+      // Server verified OTP. Reload page to sync session from cookies.
+      // This is more reliable than client-side setSession on mobile Safari.
+      window.location.reload();
     } catch (e) {
       if (e instanceof Error && e.name === "AbortError") {
         setOtpError("Request timed out — check your internet connection");

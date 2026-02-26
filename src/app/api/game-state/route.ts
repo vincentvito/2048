@@ -103,7 +103,9 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
     }
 
-    const updates: Record<string, unknown> = {};
+    const updates: Record<string, unknown> = {
+      updated_at: new Date().toISOString(), // Always update timestamp for connection detection
+    };
     if (grid !== undefined) updates.grid = grid;
     if (score !== undefined) updates.score = score;
     if (gameOver !== undefined) updates.game_over = gameOver;

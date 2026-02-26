@@ -2,8 +2,9 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import type { GameState } from '../components/Game2048';
 
 const GAME_DURATION = 5 * 60; // 300 seconds
-const POLL_INTERVAL = 500; // Poll every 500ms for responsive gameplay
-const DISCONNECT_THRESHOLD = 10000; // 10 seconds without update = disconnected
+const POLL_INTERVAL = 800; // Poll every 800ms for responsive gameplay
+const HEARTBEAT_INTERVAL = 3000; // Send heartbeat every 3 seconds
+const DISCONNECT_THRESHOLD = 12000; // 12 seconds without update = disconnected
 
 interface OpponentData {
   username: string;
@@ -39,6 +40,7 @@ export function useMultiplayerGame(
 
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const heartbeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const latestStateRef = useRef<GameState | null>(null);
   const gameStartedRef = useRef(false);
   const initializedRef = useRef(false);
@@ -47,6 +49,10 @@ export function useMultiplayerGame(
     if (pollIntervalRef.current) {
       clearInterval(pollIntervalRef.current);
       pollIntervalRef.current = null;
+    }
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+      heartbeatIntervalRef.current = null;
     }
   }, []);
 
@@ -125,6 +131,16 @@ export function useMultiplayerGame(
 
     // Start polling
     pollIntervalRef.current = setInterval(pollOpponent, POLL_INTERVAL);
+
+    // Start heartbeat to keep connection alive
+    const sendHeartbeat = () => {
+      fetch('/api/game-state', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId, userId }),
+      }).catch(() => { /* ignore heartbeat errors */ });
+    };
+    heartbeatIntervalRef.current = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL);
 
     return () => clearPolling();
   }, [roomId, userId, clearPolling, forfeitWin]);

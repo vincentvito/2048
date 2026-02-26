@@ -147,7 +147,7 @@ export default function EmailSignIn({
     setSending(true);
     try {
       const timeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Request timed out — check your internet connection")), 12000)
+        setTimeout(() => reject(new Error("Request timed out — check your internet connection")), 25000)
       );
       const result = await Promise.race([
         supabase.auth.signInWithOtp({ email }),

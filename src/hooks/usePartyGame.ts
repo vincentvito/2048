@@ -46,6 +46,24 @@ export function usePartyGame(
     }
   }, []);
 
+  // Reset all state when roomId changes (new match)
+  useEffect(() => {
+    // Reset state for new match
+    setOpponentState(null);
+    setOpponentConnected(false);
+    setOpponentEverConnected(false);
+    setOpponentName(null);
+    setOpponentElo(null);
+    setLocalWantsRematch(false);
+    setOpponentWantsRematch(false);
+    setForfeitWin(null);
+    setTimeLeft(GAME_DURATION);
+    setGameStarted(false);
+    initializedRef.current = false;
+    socketReadyRef.current = false;
+    pendingStateRef.current = null;
+  }, [roomId]);
+
   // Connect to game room
   useEffect(() => {
     if (!roomId || !userId || !myName || initializedRef.current) return;

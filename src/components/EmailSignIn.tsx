@@ -204,14 +204,28 @@ export default function EmailSignIn({
         return;
       }
 
-      // Set session on client side using returned session data
-      if (data.session) {
-        const supabase = createClient();
-        if (supabase) {
-          await supabase.auth.setSession({
+      // Server verified OTP and set session cookies in the response.
+      // Now we need to sync the client-side auth state.
+      const supabase = createClient();
+      if (supabase && data.session) {
+        try {
+          // Set the session with a timeout to prevent hanging
+          const setSessionPromise = supabase.auth.setSession({
             access_token: data.session.access_token,
             refresh_token: data.session.refresh_token,
           });
+
+          const timeoutPromise = new Promise<{ error: Error }>((_, reject) =>
+            setTimeout(() => reject(new Error("Session sync timeout")), 5000)
+          );
+
+          const result = await Promise.race([setSessionPromise, timeoutPromise]);
+          if (result?.error) {
+            console.error("[EmailSignIn] Failed to set session:", result.error.message);
+          }
+        } catch (err) {
+          // Log but don't block - session was verified on server
+          console.error("[EmailSignIn] Error syncing session (continuing anyway):", err);
         }
       }
 

@@ -4,8 +4,8 @@ import React, { useRef, useState, useCallback, useEffect, useMemo } from 'react'
 import confetti from 'canvas-confetti';
 import Game2048, { GameState } from './Game2048';
 import EmailSignIn from './EmailSignIn';
-import { createClient, isSupabaseConfigured } from '@/lib/supabase-client';
-import { Session } from '@supabase/supabase-js';
+import { isSupabaseConfigured } from '@/lib/supabase-client';
+import { useSession, BetterAuthUser } from '@/lib/auth-client';
 import { usePartyMatchmaking as useMatchmaking } from '../hooks/usePartyMatchmaking';
 import { usePartyGame as useMultiplayerGame } from '../hooks/usePartyGame';
 import { calculateElo, getEloRank, DEFAULT_ELO } from '@/lib/elo';
@@ -105,9 +105,10 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
     return () => observer.disconnect();
   }, []);
 
-  // Auth State
-  const [session, setSession] = useState<Session | null>(null);
-  const [sessionLoaded, setSessionLoaded] = useState(false);
+  // Auth State - using Better Auth
+  const { data: sessionData, isPending: sessionLoading } = useSession();
+  const user = (sessionData?.user as BetterAuthUser | undefined) ?? null;
+  const sessionLoaded = !sessionLoading;
   const [showSignIn, setShowSignIn] = useState(false);
 
   // Player stats for lobby display
@@ -120,48 +121,27 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
   const [localEloAfter, setLocalEloAfter] = useState<number | null>(null);
   const [eloProcessed, setEloProcessed] = useState(false);
 
-  useEffect(() => {
-    const supabase = createClient();
-    if (!supabase) {
-      setSessionLoaded(true);
-      return;
-    }
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setSessionLoaded(true);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // Read display name from user_metadata (set via UsernamePrompt)
+  // Read display name from user (set via UsernamePrompt)
   const myName = useMemo(() => {
-    const meta = session?.user?.user_metadata;
-    if (meta?.username) return meta.username as string;
-    if (!session?.user?.email) return 'You';
-    const local = session.user.email.split('@')[0];
+    if (user?.username) return user.username;
+    if (user?.name) return user.name;
+    if (!user?.email) return 'You';
+    const local = user.email.split('@')[0];
     return local.charAt(0).toUpperCase() + local.slice(1);
-  }, [session]);
+  }, [user]);
 
-  // Fetch player stats when session is available
+  // Fetch player stats when user is available
   useEffect(() => {
-    if (!session?.user?.id) {
+    if (!user?.id) {
       setPlayerStats(null);
       return;
     }
     setStatsLoading(true);
-    getOrCreatePlayerStats(session.user.id, myName)
+    getOrCreatePlayerStats(user.id, myName)
       .then((stats) => setPlayerStats(stats))
       .catch(() => setPlayerStats(null))
       .finally(() => setStatsLoading(false));
-  }, [session?.user?.id, myName]);
+  }, [user?.id, myName]);
 
   const myElo = playerStats?.elo ?? DEFAULT_ELO;
 
@@ -175,7 +155,7 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
     sendGameState, requestRematch, resetRematchState, declareForfeit,
     localWantsRematch, opponentWantsRematch, rematchReady,
     timeLeft, gameStarted, forfeitWin,
-  } = useMultiplayerGame(roomId, myId, session?.user?.id || null, myName, myElo);
+  } = useMultiplayerGame(roomId, myId, user?.id || null, myName, myElo);
 
   const [localGameResult, setLocalGameResult] = useState<{ won: boolean; score: number; gameOver: boolean } | null>(null);
   const [showResultModal, setShowResultModal] = useState(false);
@@ -234,8 +214,8 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
     setOpponentEloDelta(null);
     setLocalEloAfter(null);
     setEloProcessed(false);
-    if (session?.user?.id) {
-      startMatchmaking(session.user.id, myName, myElo);
+    if (user?.id) {
+      startMatchmaking(user.id, myName, myElo);
     }
   };
 
@@ -293,16 +273,16 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
       setLocalEloAfter(result.newPlayerElo);
 
       // Update stats in Supabase
-      if (session?.user?.id) {
+      if (user?.id) {
         try {
-          await updateStatsAfterGame(session.user.id, {
+          await updateStatsAfterGame(user.id, {
             won: localWon,
             tied: isTie,
             score: localScore,
             newElo: result.newPlayerElo,
           });
           // Refresh local stats
-          const updated = await getOrCreatePlayerStats(session.user.id, myName);
+          const updated = await getOrCreatePlayerStats(user.id, myName);
           setPlayerStats(updated);
         } catch (err) {
           console.error('[MultiplayerView] Failed to update stats:', err);
@@ -311,7 +291,7 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
     };
 
     processElo();
-  }, [isMatchResolved, eloProcessed, localGameResult, opponentState, localWon, isTie, myElo, opponentElo, session?.user?.id, myName]);
+  }, [isMatchResolved, eloProcessed, localGameResult, opponentState, localWon, isTie, myElo, opponentElo, user?.id, myName]);
 
   // Fire confetti when local player wins
   useEffect(() => {
@@ -365,7 +345,7 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
       );
     }
 
-    if (!session && isSupabaseConfigured()) {
+    if (!user && isSupabaseConfigured()) {
       return (
         <div className="matchmaking-container">
           <h2>Login to play Multiplayer</h2>
@@ -402,7 +382,7 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
       <div className="mp-lobby">
         <h2 className="mp-lobby-title">Multiplayer</h2>
         <p className="mp-lobby-subtitle">Play against an online opponent in real-time!</p>
-        <button className="mp-find-btn" onClick={() => session?.user?.id && startMatchmaking(session.user.id, myName, myElo)}>Find Match</button>
+        <button className="mp-find-btn" onClick={() => user?.id && startMatchmaking(user.id, myName, myElo)}>Find Match</button>
 
         {statsLoading && (
           <div className="mp-stats-card" style={{ marginTop: 20 }}>

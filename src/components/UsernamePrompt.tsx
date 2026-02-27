@@ -1,45 +1,30 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase-client";
+import { useSession, BetterAuthUser } from "@/lib/auth-client";
 
 /**
- * Global overlay that prompts for a username after OTP login
- * if the user hasn't set one yet (checked via user_metadata.username).
+ * Global overlay that prompts for a username after sign-in
+ * if the user hasn't set one yet.
  */
 export default function UsernamePrompt(): React.ReactElement | null {
+  const { data: sessionData, isPending, refetch } = useSession();
+  const user = (sessionData?.user as BetterAuthUser | undefined) ?? null;
+
   const [show, setShow] = useState(false);
   const [username, setUsername] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Show prompt if user is signed in but has no username
   useEffect(() => {
-    if (!isSupabaseConfigured()) return;
-
-    const supabase = createClient();
-    if (!supabase) return;
-
-    // Check on mount
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session && !session.user.user_metadata?.username) {
-        setShow(true);
-      }
-    });
-
-    // Listen for auth changes (e.g. user just verified OTP)
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session && !session.user.user_metadata?.username) {
-        setShow(true);
-      } else {
-        setShow(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+    if (!isPending && user && !user.username) {
+      setShow(true);
+    } else {
+      setShow(false);
+    }
+  }, [user, isPending]);
 
   // Auto-focus input when shown
   useEffect(() => {
@@ -65,28 +50,26 @@ export default function UsernamePrompt(): React.ReactElement | null {
       return;
     }
 
-    const supabase = createClient();
-    if (!supabase) return;
-
     setError("");
     setSaving(true);
+
     try {
-      const { error: updateError } = await supabase.auth.updateUser({
-        data: { username: trimmed },
+      const res = await fetch("/api/user/username", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: trimmed }),
       });
-      if (updateError) {
-        setError(updateError.message);
-      } else {
-        // Sync username to profiles table
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          await supabase.from("profiles").upsert({
-            id: session.user.id,
-            username: trimmed,
-          }, { onConflict: "id" });
-        }
-        setShow(false);
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Failed to save username");
+        return;
       }
+
+      // Refetch session to get updated user data
+      await refetch();
+      setShow(false);
     } catch {
       setError("Failed to save username");
     } finally {

@@ -1,15 +1,25 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Session } from "@supabase/supabase-js";
 import Leaderboard from "./Leaderboard";
 import HowToPlay from "./HowToPlay";
 import EmailSignIn from "./EmailSignIn";
 import ThemeSwitcher from "./ThemeSwitcher";
 import { ThemeName } from "@/lib/themes";
 
+interface BetterAuthUser {
+  id: string;
+  email: string;
+  username?: string | null;
+  name?: string | null;
+  image?: string | null;
+  emailVerified: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 interface MobileMenuProps {
-  session: Session | null;
+  user: BetterAuthUser | null;
   currentScore: number;
   activeGridSize: number;
   refreshTrigger: number;
@@ -20,7 +30,7 @@ interface MobileMenuProps {
 }
 
 export default function MobileMenu({
-  session,
+  user,
   currentScore,
   activeGridSize,
   refreshTrigger,
@@ -54,8 +64,8 @@ export default function MobileMenu({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, close]);
 
-  const displayName = session
-    ? ((session.user.user_metadata?.username as string) || session.user.email?.split("@")[0] || "Player")
+  const displayName = user
+    ? (user.username || user.name || user.email?.split("@")[0] || "Player")
     : null;
 
   return (
@@ -89,7 +99,7 @@ export default function MobileMenu({
         <div className="mobile-menu-body">
           {/* Auth section */}
           <div className="mobile-menu-auth">
-            {session ? (
+            {user ? (
               <>
                 <div className="mobile-menu-user">
                   <div className="mobile-menu-avatar">
@@ -131,7 +141,7 @@ export default function MobileMenu({
               refreshTrigger={refreshTrigger}
               currentScore={currentScore}
               gridSize={activeGridSize}
-              isSignedIn={!!session}
+              isSignedIn={!!user}
             />
           </div>
 

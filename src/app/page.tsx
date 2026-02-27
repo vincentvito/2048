@@ -10,7 +10,7 @@ import UsernamePrompt from "@/components/UsernamePrompt";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase-client";
 import { getPendingScore, clearPendingScore } from "@/lib/guest-scores";
 import { ThemeName } from "@/lib/themes";
-import { Session } from "@supabase/supabase-js";
+import { useSession, signOut, authClient, BetterAuthUser } from "@/lib/auth-client";
 import { LeaderboardEntry } from "@/components/Leaderboard";
 
 // Generate confetti pieces with random properties (memoized outside component)
@@ -46,9 +46,13 @@ export default function Home(): React.ReactElement {
   const [matchActive, setMatchActive] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showSwipeHint, setShowSwipeHint] = useState(false);
-  const [session, setSession] = useState<Session | null>(null);
   const [showSignInModal, setShowSignInModal] = useState(false);
   const [theme, setTheme] = useState<ThemeName>("classic");
+
+  // Better Auth session
+  const { data: sessionData, isPending: sessionLoading } = useSession();
+  const session = sessionData?.session ?? null;
+  const user = (sessionData?.user as BetterAuthUser | undefined) ?? null;
 
   // Read persisted theme on mount, then apply/persist on every change
   useEffect(() => {
@@ -64,20 +68,21 @@ export default function Home(): React.ReactElement {
     localStorage.setItem("2048_theme", theme);
   }, [theme]);
 
-  // Auth state — also submits pending score when user signs in
+  // Submit pending score when user signs in
   useEffect(() => {
-    const supabase = createClient();
-    if (!supabase) return;
+    if (!user || !isSupabaseConfigured()) return;
 
-    async function submitPendingScore(s: Session) {
+    async function submitPendingScore() {
       const pending = getPendingScore();
-      if (!pending || !supabase) return;
-      const username = (s.user.user_metadata?.username as string)
-        || s.user.email?.split("@")[0]
-        || "Player";
+      if (!pending) return;
+
+      const supabase = createClient();
+      if (!supabase || !user) return;
+
+      const username = user.username || user.email?.split("@")[0] || "Player";
       try {
         const { error } = await supabase.from("scores").insert({
-          user_id: s.user.id,
+          user_id: user.id,
           username,
           score: pending.score,
           grid_size: pending.gridSize,
@@ -93,29 +98,14 @@ export default function Home(): React.ReactElement {
       }
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) submitPendingScore(session);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (_event === "SIGNED_IN" && session) {
-        submitPendingScore(session);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+    submitPendingScore();
+  }, [user]);
 
   const handleSignOut = useCallback(async () => {
     try {
-      await fetch("/api/auth/sign-out", { method: "POST" });
-      // Clear client-side session state
-      setSession(null);
+      await signOut();
     } catch {
-      // Ignore errors, session will be cleared on next page load
-      setSession(null);
+      // Ignore errors
     }
   }, []);
 
@@ -149,13 +139,11 @@ export default function Home(): React.ReactElement {
   // Save score to Supabase for signed-in users
   const saveScoreToSupabase = useCallback(async (score: number, gridSize: number) => {
     const supabase = createClient();
-    if (!supabase || !session) return;
-    const username = (session.user.user_metadata?.username as string)
-      || session.user.email?.split("@")[0]
-      || "Player";
+    if (!supabase || !user) return;
+    const username = user.username || user.email?.split("@")[0] || "Player";
     try {
       const { error } = await supabase.from("scores").insert({
-        user_id: session.user.id,
+        user_id: user.id,
         username,
         score,
         grid_size: gridSize,
@@ -168,7 +156,7 @@ export default function Home(): React.ReactElement {
     } catch (err) {
       console.error("[page] Error saving score:", err);
     }
-  }, [session]);
+  }, [user]);
 
   const handleGameOver = useCallback((score: number, gridSize: number) => {
     setCurrentScore(score);
@@ -233,7 +221,7 @@ export default function Home(): React.ReactElement {
     <div className="page-layout">
       {/* Desktop sidebar — hidden on mobile */}
       <DesktopSidebar
-        session={session}
+        user={user}
         currentScore={currentScore}
         activeGridSize={activeGridSize}
         refreshTrigger={refreshTrigger}
@@ -280,21 +268,21 @@ export default function Home(): React.ReactElement {
           <div className="below-board-controls" style={{ marginBottom: "20px" }}>
             <div className="grid-size-control" style={{ display: 'flex', gap: '8px' }}>
               <button
-                className={`grid-size-option${activeGridSize === 4 ? " grid-size-active" : ""}`}
+                className={`grid-size-option${activeGridSize === 4 && gameMode === 'single' ? " grid-size-active" : ""}`}
                 onClick={() => handleGridSizeChange(4)}
               >
                 4&times;4 Single
               </button>
               {isSupabaseConfigured() && (
                 <button
-                  className="grid-size-option"
+                  className={`grid-size-option${gameMode === 'multi' ? " grid-size-active" : ""}`}
                   onClick={() => { setActiveGridSize(4); setGameMode('multi'); }}
                 >
                   4&times;4 Multi
                 </button>
               )}
               <button
-                className={`grid-size-option${activeGridSize === 8 ? " grid-size-active" : ""}`}
+                className={`grid-size-option${activeGridSize === 8 && gameMode === 'single' ? " grid-size-active" : ""}`}
                 onClick={() => handleGridSizeChange(8)}
               >
                 8&times;8 Single
@@ -351,7 +339,7 @@ export default function Home(): React.ReactElement {
 
         {/* Mobile menu — hamburger + drawer with leaderboard, auth, how to play */}
         <MobileMenu
-          session={session}
+          user={user}
           currentScore={currentScore}
           activeGridSize={activeGridSize}
           refreshTrigger={refreshTrigger}
@@ -373,7 +361,7 @@ export default function Home(): React.ReactElement {
             onPlayAgain={handlePlayAgain}
             onKeepPlaying={gameResult.won ? handleKeepPlaying : undefined}
             leaderboardScores={leaderboardScores}
-            isSignedIn={!!session}
+            isSignedIn={!!user}
           />
         )}
       </div>

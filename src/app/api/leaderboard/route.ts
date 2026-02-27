@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase-server';
+import { createAdminClient } from '@/lib/supabase-admin';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
@@ -8,12 +8,15 @@ export async function GET(req: NextRequest) {
 
   console.log(`[API /leaderboard] tab=${tab} gridSize=${gridSize}`);
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
+  if (!supabase) {
+    return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
+  }
 
-  // Join with profiles to get the latest username for each score
+  // Query scores directly (username is denormalized in scores table)
   let query = supabase
     .from('scores')
-    .select('id, username, score, grid_size, created_at, user_id, profiles(username)')
+    .select('id, username, score, grid_size, created_at, user_id')
     .eq('grid_size', gridSize)
     .order('score', { ascending: false })
     .limit(20);
@@ -32,10 +35,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Prefer profile username over the denormalized scores.username
   const scores = (data ?? []).map((row: any) => ({
     id: row.id,
-    username: row.profiles?.username || row.username,
+    username: row.username,
     score: row.score,
     grid_size: row.grid_size,
     created_at: row.created_at,

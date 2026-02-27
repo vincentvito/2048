@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useCallback } from "react";
-import { createClient } from "@/lib/supabase-client";
+import { authClient } from "@/lib/auth-client";
 
 const OTP_LENGTH = 6;
 
@@ -145,33 +145,20 @@ export default function EmailSignIn({
     setSending(true);
 
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
-
-      const res = await fetch("/api/auth/send-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-        signal: controller.signal,
+      const { error } = await authClient.emailOtp.sendVerificationOtp({
+        email,
+        type: "sign-in",
       });
 
-      clearTimeout(timeoutId);
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setOtpError(data.error || "Failed to send code");
+      if (error) {
+        setOtpError(error.message || "Failed to send code");
         setSending(false);
         return;
       }
 
       setStep("otp");
     } catch (e) {
-      if (e instanceof Error && e.name === "AbortError") {
-        setOtpError("Request timed out — check your internet connection");
-      } else {
-        setOtpError(e instanceof Error ? e.message : "Failed to send code");
-      }
+      setOtpError(e instanceof Error ? e.message : "Failed to send code");
     } finally {
       setSending(false);
     }
@@ -184,59 +171,21 @@ export default function EmailSignIn({
     setVerifying(true);
 
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
-
-      const res = await fetch("/api/auth/verify-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, token: otpCode }),
-        signal: controller.signal,
+      const { error } = await authClient.signIn.emailOtp({
+        email,
+        otp: otpCode,
       });
 
-      clearTimeout(timeoutId);
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setOtpError(data.error || "Verification failed");
+      if (error) {
+        setOtpError(error.message || "Verification failed");
         setVerifying(false);
         return;
       }
 
-      // Server verified OTP and set session cookies in the response.
-      // Now we need to sync the client-side auth state.
-      const supabase = createClient();
-      if (supabase && data.session) {
-        try {
-          // Set the session with a timeout to prevent hanging
-          const setSessionPromise = supabase.auth.setSession({
-            access_token: data.session.access_token,
-            refresh_token: data.session.refresh_token,
-          });
-
-          const timeoutPromise = new Promise<{ error: Error }>((_, reject) =>
-            setTimeout(() => reject(new Error("Session sync timeout")), 5000)
-          );
-
-          const result = await Promise.race([setSessionPromise, timeoutPromise]);
-          if (result?.error) {
-            console.error("[EmailSignIn] Failed to set session:", result.error.message);
-          }
-        } catch (err) {
-          // Log but don't block - session was verified on server
-          console.error("[EmailSignIn] Error syncing session (continuing anyway):", err);
-        }
-      }
-
-      // Call success callback to close modal and update UI
+      // Success! Better Auth handles session management automatically
       onSuccess?.();
     } catch (e) {
-      if (e instanceof Error && e.name === "AbortError") {
-        setOtpError("Request timed out — check your internet connection");
-      } else {
-        setOtpError("Verification failed");
-      }
+      setOtpError(e instanceof Error ? e.message : "Verification failed");
     } finally {
       setVerifying(false);
     }

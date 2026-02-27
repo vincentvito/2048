@@ -2829,6 +2829,13 @@ body {
   gap: 30px;
 }
 
+/* Mobile: add padding for comfortable scrolling in multiplayer */
+@media (max-width: 767px) {
+  .multiplayer-boards-container {
+    padding-bottom: 60px;
+  }
+}
+
 @media (min-width: 768px) {
   .multiplayer-boards-container {
     width: 200%;
@@ -3552,6 +3559,13 @@ body.mobile-no-scroll {
   height: 100dvh;
   position: fixed;
   width: 100%;
+}
+
+/* Enable scrolling for multiplayer mode on mobile */
+body.multiplayer-mode {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 
 /* desktop-only: hide on mobile */

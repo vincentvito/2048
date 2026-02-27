@@ -19,6 +19,26 @@ function formatTime(seconds: number): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
+/** Mini grid component for opponent preview */
+function MiniGrid({ grid }: { grid: number[] }) {
+  // Get tile color based on value
+  const getTileClass = (value: number) => {
+    if (value === 0) return 'mini-tile-empty';
+    if (value <= 4) return 'mini-tile-low';
+    if (value <= 64) return 'mini-tile-mid';
+    if (value <= 512) return 'mini-tile-high';
+    return 'mini-tile-max';
+  };
+
+  return (
+    <div className="mini-grid">
+      {grid.slice(0, 16).map((value, i) => (
+        <div key={i} className={`mini-tile ${getTileClass(value)}`} />
+      ))}
+    </div>
+  );
+}
+
 export default function MultiplayerView() {
   const { state: matchmakingState, roomId, opponentInfo, startMatchmaking, cancelMatchmaking, myId } = useMatchmaking();
 
@@ -501,13 +521,7 @@ export default function MultiplayerView() {
         aria-label="View opponent board"
       >
         <div className="mp-mini-preview-inner">
-          <Game2048
-            readOnlyState={opponentState || emptyOpponentState}
-            disableInputs={true}
-            hideScore
-            themeName={themeName}
-            miniMode
-          />
+          <MiniGrid grid={opponentState?.grid || emptyOpponentState.grid} />
           {!opponentConnected && (
             <div className="mp-mini-preview-offline" />
           )}

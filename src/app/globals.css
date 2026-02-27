@@ -2788,6 +2788,43 @@ body {
    MOBILE MINI OPPONENT PREVIEW
 ------------------------------------------------------------------ */
 
+/* Mini grid for opponent preview */
+.mini-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  width: 100%;
+  height: 100%;
+  padding: 3px;
+  background: var(--board-bg, #bbada0);
+  border-radius: 4px;
+}
+
+.mini-tile {
+  border-radius: 2px;
+  aspect-ratio: 1;
+}
+
+.mini-tile-empty {
+  background: var(--tile-empty, rgba(238, 228, 218, 0.35));
+}
+
+.mini-tile-low {
+  background: var(--tile-2, #eee4da);
+}
+
+.mini-tile-mid {
+  background: var(--tile-8, #f2b179);
+}
+
+.mini-tile-high {
+  background: var(--tile-128, #edcf72);
+}
+
+.mini-tile-max {
+  background: var(--tile-2048, #edc22e);
+}
+
 /* Hide on desktop, show only on mobile */
 .mp-opponent-mini-preview {
   display: none;
@@ -2805,7 +2842,7 @@ body {
     align-items: center;
     position: fixed;
     left: 16px;
-    bottom: 100px;
+    bottom: 90px;
     z-index: 100;
     cursor: pointer;
     transition: transform 0.15s ease;
@@ -2817,41 +2854,29 @@ body {
 
   .mp-mini-preview-inner {
     position: relative;
-    width: 70px;
-    height: 70px;
-    border-radius: 12px;
+    width: 60px;
+    height: 60px;
+    border-radius: 8px;
     overflow: hidden;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
     border: 2px solid var(--accent);
-    background: var(--bg-card);
-  }
-
-  .mp-mini-preview-inner .board-section-mini {
-    transform: scale(0.175);
-    transform-origin: top left;
-    pointer-events: none;
-  }
-
-  .mp-mini-preview-inner .board-section-mini .game-container {
-    width: 400px !important;
-    height: 400px !important;
   }
 
   .mp-mini-preview-offline {
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.4);
     backdrop-filter: blur(2px);
   }
 
   .mp-mini-preview-label {
     margin-top: 4px;
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 700;
     color: var(--text-secondary);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    max-width: 70px;
+    letter-spacing: 0.03em;
+    max-width: 60px;
     text-align: center;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -2942,6 +2967,24 @@ body {
   position: relative;
   border-radius: 12px;
   overflow: hidden;
+  display: flex;
+  justify-content: center;
+}
+
+.mp-opponent-expanded-board .board-section {
+  width: 100%;
+  max-width: 100%;
+}
+
+.mp-opponent-expanded-board .game-container {
+  width: 100% !important;
+  max-width: 100% !important;
+  aspect-ratio: 1;
+}
+
+.mp-opponent-expanded-board .game-canvas {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .mp-opponent-expanded-board.dimmed {
@@ -2982,8 +3025,8 @@ body {
 .multiplayer-boards-container {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  margin-top: 50px;
+  gap: 16px;
+  margin-top: 20px;
   width: 100%;
 }
 
@@ -2993,10 +3036,18 @@ body {
   gap: 30px;
 }
 
+@media (max-width: 767px) {
+  .multiplayer-boards-container {
+    margin-top: 10px;
+    gap: 12px;
+  }
+}
+
 @media (min-width: 768px) {
   .multiplayer-boards-container {
     width: 200%;
     margin-left: -50%;
+    margin-top: 50px;
   }
   .boards-split {
     flex-direction: row;

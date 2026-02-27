@@ -264,37 +264,41 @@ export default function Home(): React.ReactElement {
           </div>
         )}
 
-        {/* Title */}
-        <div className="title-section">
-          <h1 className="game-title">2048</h1>
-          <p className="game-intro">Join the tiles, get to <strong>2048!</strong></p>
-        </div>
-
-        {/* Game Mode / Grid Controls */}
-        <div className="below-board-controls" style={{ marginBottom: "20px" }}>
-          <div className="grid-size-control" style={{ display: 'flex', gap: '8px' }}>
-            <button
-              className={`grid-size-option${gameMode === 'single' && activeGridSize === 4 ? " grid-size-active" : ""}`}
-              onClick={() => handleGridSizeChange(4)}
-            >
-              4&times;4 Single
-            </button>
-            {isSupabaseConfigured() && (
-              <button
-                className={`grid-size-option${gameMode === 'multi' ? " grid-size-active" : ""}`}
-                onClick={() => { setActiveGridSize(4); setGameMode('multi'); }}
-              >
-                4&times;4 Multi
-              </button>
-            )}
-            <button
-              className={`grid-size-option${gameMode === 'single' && activeGridSize === 8 ? " grid-size-active" : ""}`}
-              onClick={() => handleGridSizeChange(8)}
-            >
-              8&times;8 Single
-            </button>
+        {/* Title - hidden in multiplayer mode to save space */}
+        {gameMode === 'single' && (
+          <div className="title-section">
+            <h1 className="game-title">2048</h1>
+            <p className="game-intro">Join the tiles, get to <strong>2048!</strong></p>
           </div>
-        </div>
+        )}
+
+        {/* Game Mode / Grid Controls - hidden during active match */}
+        {gameMode === 'single' && (
+          <div className="below-board-controls" style={{ marginBottom: "20px" }}>
+            <div className="grid-size-control" style={{ display: 'flex', gap: '8px' }}>
+              <button
+                className={`grid-size-option${activeGridSize === 4 ? " grid-size-active" : ""}`}
+                onClick={() => handleGridSizeChange(4)}
+              >
+                4&times;4 Single
+              </button>
+              {isSupabaseConfigured() && (
+                <button
+                  className="grid-size-option"
+                  onClick={() => { setActiveGridSize(4); setGameMode('multi'); }}
+                >
+                  4&times;4 Multi
+                </button>
+              )}
+              <button
+                className={`grid-size-option${activeGridSize === 8 ? " grid-size-active" : ""}`}
+                onClick={() => handleGridSizeChange(8)}
+              >
+                8&times;8 Single
+              </button>
+            </div>
+          </div>
+        )}
 
         {gameMode === 'single' ? (
           <>

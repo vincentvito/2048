@@ -1002,6 +1002,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 5px;
+  max-height: 280px;
+  overflow-y: auto;
 }
 
 .lb-row {

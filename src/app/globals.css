@@ -214,10 +214,6 @@ body {
   display: none;
 }
 
-.sidebar-hamburger {
-  display: none;
-}
-
 @media (min-width: 601px) {
   .desktop-sidebar {
     display: flex;
@@ -230,20 +226,14 @@ body {
     background: var(--bg-page);
     border-right: 1px solid var(--accent-border-medium);
     z-index: 50;
-    transform: translateX(0);
-    transition: transform 0.3s ease;
   }
 
-  .desktop-sidebar.collapsed {
-    transform: translateX(-100%);
-  }
-
-  /* Sidebar header — title + close arrow */
+  /* Sidebar header — title only (always open) */
   .sidebar-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 16px 12px 12px 20px;
+    justify-content: center;
+    padding: 16px 20px 12px;
     border-bottom: 1px solid var(--accent-border-medium);
     flex-shrink: 0;
   }
@@ -256,25 +246,6 @@ body {
     letter-spacing: 0.02em;
   }
 
-  .sidebar-close {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 34px;
-    height: 34px;
-    border-radius: 8px;
-    border: none;
-    background: var(--accent-bg-subtle);
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s;
-  }
-
-  .sidebar-close:hover {
-    background: var(--accent-bg-light);
-    color: var(--text-primary);
-  }
-
   .desktop-sidebar-inner {
     flex: 1;
     overflow-y: auto;
@@ -282,44 +253,11 @@ body {
     -webkit-overflow-scrolling: touch;
   }
 
-  /* Hamburger button — visible when sidebar is collapsed */
-  .sidebar-hamburger {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    gap: 5px;
-    position: fixed;
-    top: 20px;
-    left: 20px;
-    z-index: 49;
-    width: 44px;
-    height: 44px;
-    border-radius: 10px;
-    background: var(--bg-score);
-    border: none;
-    cursor: pointer;
-    box-shadow: 0 2px 10px var(--button-shadow);
-    transition: background 0.15s, transform 0.15s;
+  /* Main content area offset by sidebar width and centered */
+  .page-layout {
+    padding-left: 300px;
   }
 
-  .sidebar-hamburger:hover {
-    transform: scale(1.05);
-  }
-
-  .sidebar-hamburger:active {
-    transform: scale(0.95);
-  }
-
-  .sidebar-hamburger span {
-    display: block;
-    width: 20px;
-    height: 2.5px;
-    background: var(--text-label);
-    border-radius: 2px;
-  }
-
-  /* Container stays centered in the full viewport — sidebar overlays */
   .page-layout .container {
     margin: 0 auto;
   }

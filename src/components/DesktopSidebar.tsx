@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Session } from "@supabase/supabase-js";
 import Leaderboard from "./Leaderboard";
 import HowToPlay from "./HowToPlay";
@@ -30,18 +30,6 @@ export default function DesktopSidebar({
   onScoresLoaded,
 }: DesktopSidebarProps): React.ReactElement {
   const [showSignIn, setShowSignIn] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
-
-  // Read persisted state on mount (avoid hydration mismatch)
-  useEffect(() => {
-    const saved = localStorage.getItem("2048_sidebar_collapsed") === "1";
-    if (saved) setCollapsed(true);
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("2048_sidebar_collapsed", collapsed ? "1" : "0");
-    document.querySelector(".page-layout")?.classList.toggle("sidebar-collapsed", collapsed);
-  }, [collapsed]);
 
   const displayName = session
     ? ((session.user.user_metadata?.username as string) || session.user.email?.split("@")[0] || "Player")
@@ -49,30 +37,10 @@ export default function DesktopSidebar({
 
   return (
     <>
-      {/* Hamburger button — visible only when sidebar is collapsed */}
-      {collapsed && (
-        <button
-          className="sidebar-hamburger"
-          onClick={() => setCollapsed(false)}
-          aria-label="Open sidebar"
-        >
-          <span /><span /><span />
-        </button>
-      )}
-
-      <aside className={`desktop-sidebar${collapsed ? " collapsed" : ""}`}>
-        {/* Header with title + close arrow */}
+      <aside className="desktop-sidebar">
+        {/* Header with title */}
         <div className="sidebar-header">
           <span className="sidebar-header-title">Menu</span>
-          <button
-            className="sidebar-close"
-            onClick={() => setCollapsed(true)}
-            aria-label="Close sidebar"
-          >
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 3L5 9l7 6" />
-            </svg>
-          </button>
         </div>
 
         <div className="desktop-sidebar-inner">

@@ -129,26 +129,14 @@ export default function Home(): React.ReactElement {
     }
   }, []);
 
-  // Disable body scroll on mobile for single-player mode so the page never scrolls —
+  // Disable body scroll on mobile so the page never scrolls —
   // secondary content lives in the mobile menu drawer instead.
-  // In multiplayer mode, allow scrolling so users can see the opponent's board.
   useEffect(() => {
     const isTouchDevice = "ontouchstart" in window || navigator.maxTouchPoints > 0;
     if (!isTouchDevice) return;
-
-    if (gameMode === 'single') {
-      document.body.classList.add("mobile-no-scroll");
-      document.body.classList.remove("multiplayer-mode");
-    } else {
-      document.body.classList.remove("mobile-no-scroll");
-      document.body.classList.add("multiplayer-mode");
-    }
-
-    return () => {
-      document.body.classList.remove("mobile-no-scroll");
-      document.body.classList.remove("multiplayer-mode");
-    };
-  }, [gameMode]);
+    document.body.classList.add("mobile-no-scroll");
+    return () => document.body.classList.remove("mobile-no-scroll");
+  }, []);
 
   const confettiPieces = useMemo(() => generateConfettiPieces(35), [showConfetti]);
 

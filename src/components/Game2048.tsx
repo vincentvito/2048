@@ -48,9 +48,10 @@ interface Game2048Props {
   hideScore?: boolean;
   initialSize?: number;
   themeName?: string;
+  miniMode?: boolean;
 }
 
-export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnlyState, onStateChange, disableInputs, onDevEndGameReady, hideScore, initialSize = 4, themeName = "classic" }: Game2048Props): React.ReactElement {
+export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnlyState, onStateChange, disableInputs, onDevEndGameReady, hideScore, initialSize = 4, themeName = "classic", miniMode = false }: Game2048Props): React.ReactElement {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const scoreElRef = useRef<HTMLElement>(null);
@@ -755,7 +756,7 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
   }, []);
 
   return (
-    <div className="board-section">
+    <div className={`board-section${miniMode ? ' board-section-mini' : ''}`}>
       {/* Scores */}
       {!hideScore && (
         <div className="score-row">

@@ -108,6 +108,7 @@ export default function MultiplayerView() {
 
   const [localGameResult, setLocalGameResult] = useState<{ won: boolean; score: number; gameOver: boolean } | null>(null);
   const [showResultModal, setShowResultModal] = useState(false);
+  const [showOpponentExpanded, setShowOpponentExpanded] = useState(false);
   const localGameResetRef = useRef<(() => void) | null>(null);
   const devEndGameRef = useRef<(() => void) | null>(null);
   const confettiFiredRef = useRef(false);
@@ -491,6 +492,52 @@ export default function MultiplayerView() {
       </div>
       {statusText && <div className="mp-status-bar">{statusText}</div>}
 
+      {/* Mobile: Mini opponent preview (floating button on left) */}
+      <div
+        className="mp-opponent-mini-preview"
+        onClick={() => setShowOpponentExpanded(true)}
+        role="button"
+        tabIndex={0}
+        aria-label="View opponent board"
+      >
+        <div className="mp-mini-preview-inner">
+          <Game2048
+            readOnlyState={opponentState || emptyOpponentState}
+            disableInputs={true}
+            hideScore
+            themeName={themeName}
+            miniMode
+          />
+          {!opponentConnected && (
+            <div className="mp-mini-preview-offline" />
+          )}
+        </div>
+        <span className="mp-mini-preview-label">{displayOpponentName}</span>
+      </div>
+
+      {/* Mobile: Expanded opponent view modal */}
+      {showOpponentExpanded && (
+        <div className="mp-opponent-expanded-backdrop" onClick={() => setShowOpponentExpanded(false)}>
+          <div className="mp-opponent-expanded-modal" onClick={e => e.stopPropagation()}>
+            <div className="mp-opponent-expanded-header">
+              <span className="mp-opponent-expanded-name">{displayOpponentName}</span>
+              <span className="mp-opponent-expanded-score">{(opponentState?.score || 0).toLocaleString()}</span>
+              <button className="mp-opponent-expanded-close" onClick={() => setShowOpponentExpanded(false)}>
+                &times;
+              </button>
+            </div>
+            <div className={`mp-opponent-expanded-board ${opponentDone || timerExpired || hasForfeit ? 'dimmed' : ''}`}>
+              {!opponentConnected && (
+                <div className="offline-overlay">
+                  {opponentEverConnected ? 'Opponent disconnected...' : 'Connecting...'}
+                </div>
+              )}
+              <Game2048 readOnlyState={opponentState || emptyOpponentState} disableInputs={true} hideScore themeName={themeName} />
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="boards-split">
         {/* Local board */}
         <div className={`mp-board-slot ${localDone || timerExpired || hasForfeit ? 'dimmed' : ''}`}>
@@ -511,8 +558,8 @@ export default function MultiplayerView() {
           )}
         </div>
 
-        {/* Opponent board */}
-        <div className={`mp-board-slot ${opponentDone || timerExpired || hasForfeit ? 'dimmed' : ''}`}>
+        {/* Opponent board (desktop only - hidden on mobile) */}
+        <div className={`mp-board-slot mp-opponent-desktop ${opponentDone || timerExpired || hasForfeit ? 'dimmed' : ''}`}>
           <div className="opponent-game-container">
             {!opponentConnected && (
               <div className="offline-overlay">

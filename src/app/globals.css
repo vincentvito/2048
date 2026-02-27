@@ -2785,6 +2785,170 @@ body {
 }
 
 /* ------------------------------------------------------------------
+   MOBILE MINI OPPONENT PREVIEW
+------------------------------------------------------------------ */
+
+/* Hide on desktop, show only on mobile */
+.mp-opponent-mini-preview {
+  display: none;
+}
+
+/* Hide desktop opponent board on mobile */
+@media (max-width: 767px) {
+  .mp-opponent-desktop {
+    display: none !important;
+  }
+
+  .mp-opponent-mini-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: fixed;
+    left: 16px;
+    bottom: 100px;
+    z-index: 100;
+    cursor: pointer;
+    transition: transform 0.15s ease;
+  }
+
+  .mp-opponent-mini-preview:active {
+    transform: scale(0.95);
+  }
+
+  .mp-mini-preview-inner {
+    position: relative;
+    width: 70px;
+    height: 70px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    border: 2px solid var(--accent);
+    background: var(--bg-card);
+  }
+
+  .mp-mini-preview-inner .board-section-mini {
+    transform: scale(0.175);
+    transform-origin: top left;
+    pointer-events: none;
+  }
+
+  .mp-mini-preview-inner .board-section-mini .game-container {
+    width: 400px !important;
+    height: 400px !important;
+  }
+
+  .mp-mini-preview-offline {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(2px);
+  }
+
+  .mp-mini-preview-label {
+    margin-top: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    max-width: 70px;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* Expanded opponent view modal */
+.mp-opponent-expanded-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.2s ease;
+}
+
+.mp-opponent-expanded-modal {
+  background: var(--bg-card);
+  border-radius: 20px;
+  padding: 16px;
+  max-width: 400px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: modalSlideIn 0.25s ease;
+}
+
+@keyframes modalSlideIn {
+  from {
+    transform: scale(0.9) translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+.mp-opponent-expanded-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--bg-card-border);
+}
+
+.mp-opponent-expanded-name {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.mp-opponent-expanded-score {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.mp-opponent-expanded-close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: var(--bg-page);
+  border-radius: 50%;
+  font-size: 24px;
+  line-height: 1;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.mp-opponent-expanded-close:hover {
+  background: var(--accent);
+  color: white;
+}
+
+.mp-opponent-expanded-board {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.mp-opponent-expanded-board.dimmed {
+  opacity: 0.55;
+}
+
+/* ------------------------------------------------------------------
    LEGACY BACKWARDS-COMPAT CLASSES (still used by existing components)
 ------------------------------------------------------------------ */
 .matchmaking-container {
@@ -2827,13 +2991,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 30px;
-}
-
-/* Mobile: add padding for comfortable scrolling in multiplayer */
-@media (max-width: 767px) {
-  .multiplayer-boards-container {
-    padding-bottom: 60px;
-  }
 }
 
 @media (min-width: 768px) {
@@ -3559,13 +3716,6 @@ body.mobile-no-scroll {
   height: 100dvh;
   position: fixed;
   width: 100%;
-}
-
-/* Enable scrolling for multiplayer mode on mobile */
-body.multiplayer-mode {
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
 }
 
 /* desktop-only: hide on mobile */

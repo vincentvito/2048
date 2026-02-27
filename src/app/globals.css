@@ -2825,6 +2825,43 @@ body {
   background: var(--tile-2048, #edc22e);
 }
 
+/* Expanded grid for opponent full board view */
+.expanded-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  aspect-ratio: 1;
+}
+
+.expanded-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-family: "Fredoka", "Nunito", sans-serif;
+  font-weight: 700;
+  aspect-ratio: 1;
+  transition: background 0.1s ease;
+}
+
+.expanded-offline-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: white;
+  font-size: 16px;
+  border-radius: 12px;
+}
+
 /* Hide on desktop, show only on mobile */
 .mp-opponent-mini-preview {
   display: none;
@@ -2854,11 +2891,11 @@ body {
 
   .mp-mini-preview-inner {
     position: relative;
-    width: 60px;
-    height: 60px;
-    border-radius: 8px;
+    width: 80px;
+    height: 80px;
+    border-radius: 10px;
     overflow: hidden;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
     border: 2px solid var(--accent);
   }
 
@@ -2870,13 +2907,13 @@ body {
   }
 
   .mp-mini-preview-label {
-    margin-top: 4px;
-    font-size: 9px;
+    margin-top: 5px;
+    font-size: 10px;
     font-weight: 700;
     color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.03em;
-    max-width: 60px;
+    max-width: 80px;
     text-align: center;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -2967,24 +3004,6 @@ body {
   position: relative;
   border-radius: 12px;
   overflow: hidden;
-  display: flex;
-  justify-content: center;
-}
-
-.mp-opponent-expanded-board .board-section {
-  width: 100%;
-  max-width: 100%;
-}
-
-.mp-opponent-expanded-board .game-container {
-  width: 100% !important;
-  max-width: 100% !important;
-  aspect-ratio: 1;
-}
-
-.mp-opponent-expanded-board .game-canvas {
-  width: 100% !important;
-  height: 100% !important;
 }
 
 .mp-opponent-expanded-board.dimmed {

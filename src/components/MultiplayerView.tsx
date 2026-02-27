@@ -19,27 +19,73 @@ function formatTime(seconds: number): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
+/** Get tile colors from theme */
+function getTileColors(value: number, theme: typeof themes.classic): [string, string] {
+  const tileValues = [0, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192];
+  let closest = 0;
+  for (const v of tileValues) {
+    if (v <= value) closest = v;
+  }
+  return theme.tiles[closest] || theme.tiles[0];
+}
+
 /** Mini grid component for opponent preview */
-function MiniGrid({ grid }: { grid: number[] }) {
-  // Get tile color based on value
-  const getTileClass = (value: number) => {
-    if (value === 0) return 'mini-tile-empty';
-    if (value <= 4) return 'mini-tile-low';
-    if (value <= 64) return 'mini-tile-mid';
-    if (value <= 512) return 'mini-tile-high';
-    return 'mini-tile-max';
-  };
+function MiniGrid({ grid, themeName }: { grid: number[]; themeName: ThemeName }) {
+  const theme = themes[themeName];
 
   return (
-    <div className="mini-grid">
+    <div className="mini-grid" style={{ background: theme.bgGrid }}>
       {grid.slice(0, 16).map((value, i) => (
-        <div key={i} className={`mini-tile ${getTileClass(value)}`} />
+        <div
+          key={i}
+          className="mini-tile"
+          style={{ background: getTileColors(value, theme)[0] }}
+        />
       ))}
     </div>
   );
 }
 
-export default function MultiplayerView() {
+/** Expanded grid component for full opponent board view */
+function ExpandedGrid({ grid, themeName }: { grid: number[]; themeName: ThemeName }) {
+  const theme = themes[themeName];
+
+  // Calculate font size based on number of digits
+  const getFontSize = (value: number): string => {
+    if (value === 0) return '0';
+    const digits = String(value).length;
+    if (digits <= 2) return '2rem';
+    if (digits === 3) return '1.6rem';
+    return '1.2rem';
+  };
+
+  return (
+    <div className="expanded-grid" style={{ background: theme.bgGrid }}>
+      {grid.slice(0, 16).map((value, i) => {
+        const [bg, text] = getTileColors(value, theme);
+        return (
+          <div
+            key={i}
+            className="expanded-tile"
+            style={{
+              background: bg,
+              color: text,
+              fontSize: getFontSize(value),
+            }}
+          >
+            {value > 0 ? value : ''}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+interface MultiplayerViewProps {
+  onMatchActiveChange?: (isActive: boolean) => void;
+}
+
+export default function MultiplayerView({ onMatchActiveChange }: MultiplayerViewProps) {
   const { state: matchmakingState, roomId, opponentInfo, startMatchmaking, cancelMatchmaking, myId } = useMatchmaking();
 
   // Track current theme for canvas boards
@@ -118,6 +164,11 @@ export default function MultiplayerView() {
   }, [session?.user?.id, myName]);
 
   const myElo = playerStats?.elo ?? DEFAULT_ELO;
+
+  // Notify parent when match becomes active (roomId is set)
+  useEffect(() => {
+    onMatchActiveChange?.(!!roomId);
+  }, [roomId, onMatchActiveChange]);
 
   const {
     opponentState, opponentConnected, opponentEverConnected, opponentName, opponentElo,
@@ -521,7 +572,7 @@ export default function MultiplayerView() {
         aria-label="View opponent board"
       >
         <div className="mp-mini-preview-inner">
-          <MiniGrid grid={opponentState?.grid || emptyOpponentState.grid} />
+          <MiniGrid grid={opponentState?.grid || emptyOpponentState.grid} themeName={themeName} />
           {!opponentConnected && (
             <div className="mp-mini-preview-offline" />
           )}
@@ -542,11 +593,11 @@ export default function MultiplayerView() {
             </div>
             <div className={`mp-opponent-expanded-board ${opponentDone || timerExpired || hasForfeit ? 'dimmed' : ''}`}>
               {!opponentConnected && (
-                <div className="offline-overlay">
+                <div className="expanded-offline-overlay">
                   {opponentEverConnected ? 'Opponent disconnected...' : 'Connecting...'}
                 </div>
               )}
-              <Game2048 readOnlyState={opponentState || emptyOpponentState} disableInputs={true} hideScore themeName={themeName} />
+              <ExpandedGrid grid={opponentState?.grid || emptyOpponentState.grid} themeName={themeName} />
             </div>
           </div>
         </div>

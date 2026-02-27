@@ -42,6 +42,7 @@ export default function Home(): React.ReactElement {
   const [currentScore, setCurrentScore] = useState<number>(0);
   const [activeGridSize, setActiveGridSize] = useState<number>(4);
   const [gameMode, setGameMode] = useState<'single' | 'multi'>('single');
+  const [matchActive, setMatchActive] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showSwipeHint, setShowSwipeHint] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
@@ -209,6 +210,7 @@ export default function Home(): React.ReactElement {
     const wasSingle = gameMode === 'single';
     setActiveGridSize(newSize);
     setGameMode('single');
+    setMatchActive(false);
 
     if (wasSingle) {
       // Already in single-player mode — only toggle size if it actually changed
@@ -264,8 +266,8 @@ export default function Home(): React.ReactElement {
           </div>
         )}
 
-        {/* Title - hidden in multiplayer mode to save space */}
-        {gameMode === 'single' && (
+        {/* Title - hidden when match is active to save space */}
+        {!matchActive && (
           <div className="title-section">
             <h1 className="game-title">2048</h1>
             <p className="game-intro">Join the tiles, get to <strong>2048!</strong></p>
@@ -273,7 +275,7 @@ export default function Home(): React.ReactElement {
         )}
 
         {/* Game Mode / Grid Controls - hidden during active match */}
-        {gameMode === 'single' && (
+        {!matchActive && (
           <div className="below-board-controls" style={{ marginBottom: "20px" }}>
             <div className="grid-size-control" style={{ display: 'flex', gap: '8px' }}>
               <button
@@ -339,7 +341,7 @@ export default function Home(): React.ReactElement {
             </div>
           </>
         ) : (
-          <MultiplayerView />
+          <MultiplayerView onMatchActiveChange={setMatchActive} />
         )}
 
         <p className="game-hint desktop-hint">

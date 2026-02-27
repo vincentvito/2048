@@ -6,8 +6,8 @@ import Game2048, { GameState } from './Game2048';
 import EmailSignIn from './EmailSignIn';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase-client';
 import { Session } from '@supabase/supabase-js';
-import { useMatchmaking } from '../hooks/useMatchmaking';
-import { useMultiplayerGame } from '../hooks/useMultiplayerGame';
+import { usePartyMatchmaking as useMatchmaking } from '../hooks/usePartyMatchmaking';
+import { usePartyGame as useMultiplayerGame } from '../hooks/usePartyGame';
 import { calculateElo, getEloRank, DEFAULT_ELO } from '@/lib/elo';
 import { themes, ThemeName } from '@/lib/themes';
 import { getOrCreatePlayerStats, updateStatsAfterGame, PlayerStats } from '@/lib/player-stats';
@@ -126,9 +126,8 @@ export default function MultiplayerView() {
 
   const handleLocalStateChange = useCallback((state: GameState) => {
     sendGameState(state);
-    if (state.won || state.gameOver) {
-      setLocalGameResult({ won: state.won, score: state.score, gameOver: state.gameOver });
-    }
+    // Always update local score for HUD display
+    setLocalGameResult({ won: state.won, score: state.score, gameOver: state.gameOver });
   }, [sendGameState]);
 
   const handleResetReady = useCallback((resetFn: () => void) => {

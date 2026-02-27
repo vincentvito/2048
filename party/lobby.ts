@@ -18,14 +18,17 @@ export default class LobbyServer implements Party.Server {
 
   // Load queue from storage on startup
   async onStart() {
+    console.log(`[Lobby] onStart called for room: ${this.room.id}`);
     const stored = await this.room.storage.get<WaitingPlayer[]>("queue");
-    if (stored) {
-      // Filter out stale entries (older than 2 minutes)
+    console.log(`[Lobby] Loaded from storage:`, stored);
+    if (stored && stored.length > 0) {
+      // Filter out stale entries (older than 5 minutes)
       const now = Date.now();
-      this.waitingPlayers = stored.filter(p => now - p.joinedAt < 120000);
+      this.waitingPlayers = stored.filter(p => now - p.joinedAt < 300000);
+      console.log(`[Lobby] After filtering stale: ${this.waitingPlayers.length} players`);
       await this.saveQueue();
     }
-    console.log(`[Lobby] Started with ${this.waitingPlayers.length} players in queue`);
+    console.log(`[Lobby] Ready with ${this.waitingPlayers.length} players in queue`);
   }
 
   // Handle new connection
@@ -62,7 +65,10 @@ export default class LobbyServer implements Party.Server {
     sender: Party.Connection
   ) {
     const { userId, username, elo } = data;
-    console.log(`[Lobby] ${username} joining queue. Current size: ${this.waitingPlayers.length}`);
+    console.log(`[Lobby] handleJoinQueue called`);
+    console.log(`[Lobby] Player: ${username} (${userId})`);
+    console.log(`[Lobby] Current queue size: ${this.waitingPlayers.length}`);
+    console.log(`[Lobby] Current queue:`, this.waitingPlayers.map(p => p.username));
 
     // Remove if already in queue (reconnection)
     this.waitingPlayers = this.waitingPlayers.filter(p => p.userId !== userId);

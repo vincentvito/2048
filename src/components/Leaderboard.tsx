@@ -20,9 +20,14 @@ interface Score {
   created_at: string;
 }
 
+export interface LeaderboardEntry {
+  username: string;
+  score: number;
+}
+
 interface LeaderboardProps {
   refreshTrigger?: number;
-  onScoresLoaded?: (scores: number[]) => void;
+  onScoresLoaded?: (scores: LeaderboardEntry[]) => void;
   currentScore?: number;
   gridSize?: number;
   isSignedIn?: boolean;
@@ -71,7 +76,7 @@ export default function Leaderboard({
 
       const data = json.scores ?? [];
       setScores(data);
-      onScoresLoaded?.(data.map((s) => s.score));
+      onScoresLoaded?.(data.map((s) => ({ username: s.username, score: s.score })));
     } catch (err: unknown) {
       const isAbort = err instanceof DOMException && err.name === 'AbortError';
       console.error('[Leaderboard] Fetch threw:', isAbort ? 'AbortError (timeout)' : err);

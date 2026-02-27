@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { Session } from "@supabase/supabase-js";
-import Leaderboard from "./Leaderboard";
+import Leaderboard, { LeaderboardEntry } from "./Leaderboard";
 import HowToPlay from "./HowToPlay";
 import EmailSignIn from "./EmailSignIn";
 import ThemeSwitcher from "./ThemeSwitcher";
@@ -16,7 +16,7 @@ interface DesktopSidebarProps {
   onSignOut: () => void;
   theme: ThemeName;
   onThemeChange: (theme: ThemeName) => void;
-  onScoresLoaded?: (scores: number[]) => void;
+  onScoresLoaded?: (scores: LeaderboardEntry[]) => void;
 }
 
 export default function DesktopSidebar({

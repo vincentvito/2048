@@ -1273,19 +1273,23 @@ body {
   line-height: 1.5;
 }
 
-/* Leaderboard rank preview */
-.modal-rank-preview {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+/* Leaderboard rank context */
+.modal-rank-context {
   margin: 8px 0 4px;
-  padding: 10px 16px;
+  padding: 12px;
   background: var(--accent-bg-subtle);
   border: 1.5px solid var(--accent-border-light);
   border-radius: 10px;
   animation: rankSlideIn 0.4s ease 0.3s both;
   box-shadow: 0 2px 8px var(--accent-glow);
+}
+
+.modal-rank-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
 @keyframes rankSlideIn {
@@ -1315,6 +1319,53 @@ body {
 .modal-rank-text strong {
   font-weight: 800;
   color: var(--accent);
+}
+
+.modal-rank-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.modal-rank-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.modal-rank-row-other {
+  background: var(--accent-bg-subtle);
+  opacity: 0.7;
+}
+
+.modal-rank-row-you {
+  background: var(--accent-bg-light);
+  border: 1.5px solid var(--accent-border-light);
+  font-weight: 700;
+}
+
+.modal-rank-pos {
+  min-width: 32px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.modal-rank-name {
+  flex: 1;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modal-rank-score {
+  color: var(--accent);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Success message */
@@ -1860,12 +1911,17 @@ body {
     font-size: 15px;
   }
 
-  .modal-rank-preview {
-    padding: 6px 12px;
+  .modal-rank-context {
+    padding: 8px;
   }
 
   .modal-rank-text {
     font-size: 12px;
+  }
+
+  .modal-rank-row {
+    padding: 5px 8px;
+    font-size: 11px;
   }
 
   /* Leaderboard tabs minimum height */
@@ -1970,13 +2026,27 @@ body {
     font-size: 12px;
   }
 
-  .modal-rank-preview {
-    padding: 6px 10px;
+  .modal-rank-context {
+    padding: 6px;
+  }
+
+  .modal-rank-header {
     gap: 4px;
+    margin-bottom: 6px;
   }
 
   .modal-rank-text {
     font-size: 11px;
+  }
+
+  .modal-rank-row {
+    padding: 4px 6px;
+    font-size: 10px;
+    gap: 4px;
+  }
+
+  .modal-rank-pos {
+    min-width: 28px;
   }
 
   /* Ghost entry compact layout */
@@ -2984,6 +3054,7 @@ body {
   flex-direction: column;
   gap: 16px;
   margin-top: 20px;
+  padding-top: 20px;
   width: 100%;
 }
 
@@ -2996,6 +3067,7 @@ body {
 @media (max-width: 767px) {
   .multiplayer-boards-container {
     margin-top: 10px;
+    padding-top: 16px;
     gap: 12px;
   }
 }

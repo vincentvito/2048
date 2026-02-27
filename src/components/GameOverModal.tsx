@@ -10,6 +10,7 @@ import {
   savePendingScore,
 } from "@/lib/guest-scores";
 import EmailSignIn from "./EmailSignIn";
+import { LeaderboardEntry } from "./Leaderboard";
 
 interface GameOverModalProps {
   open: boolean;
@@ -19,7 +20,7 @@ interface GameOverModalProps {
   onClose: () => void;
   onPlayAgain: () => void;
   onKeepPlaying?: () => void;
-  leaderboardScores?: number[];
+  leaderboardScores?: LeaderboardEntry[];
   isSignedIn?: boolean;
 }
 
@@ -38,6 +39,10 @@ export default function GameOverModal({
   const [personalBest, setPersonalBest] = useState(0);
   const [isNewBest, setIsNewBest] = useState(false);
   const [leaderboardRank, setLeaderboardRank] = useState<number | null>(null);
+  const [rankContext, setRankContext] = useState<{
+    above: LeaderboardEntry | null;
+    below: LeaderboardEntry | null;
+  } | null>(null);
   const [gamesPlayed, setGamesPlayed] = useState(0);
 
   const modalRef = useRef<HTMLDivElement>(null);
@@ -110,19 +115,30 @@ export default function GameOverModal({
       setGamesPlayed(count);
       recordScore(score, gridSize);
 
-      // Calculate leaderboard rank preview
+      // Calculate leaderboard rank preview and context
       if (leaderboardScores && leaderboardScores.length > 0) {
-        const rank = leaderboardScores.filter((s) => s > score).length + 1;
+        const rank = leaderboardScores.filter((s) => s.score > score).length + 1;
         if (rank <= 20) {
           setLeaderboardRank(rank);
+          // Find scores above and below
+          const sortedScores = [...leaderboardScores].sort((a, b) => b.score - a.score);
+          const aboveIndex = rank - 2; // rank is 1-indexed, so rank-2 is the index of the score above
+          const belowIndex = rank - 1; // The score at rank position (0-indexed)
+          setRankContext({
+            above: aboveIndex >= 0 ? sortedScores[aboveIndex] : null,
+            below: belowIndex < sortedScores.length ? sortedScores[belowIndex] : null,
+          });
         } else {
           setLeaderboardRank(null);
+          setRankContext(null);
         }
       } else {
         if (isSupabaseConfigured()) {
           setLeaderboardRank(1);
+          setRankContext(null);
         } else {
           setLeaderboardRank(null);
+          setRankContext(null);
         }
       }
     }
@@ -179,19 +195,46 @@ export default function GameOverModal({
           </p>
         )}
 
-        {/* Leaderboard rank preview - social proof motivation */}
+        {/* Leaderboard rank preview with context */}
         {configured && leaderboardRank !== null && (
-          <div className="modal-rank-preview">
-            <span className="modal-rank-icon">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M8 1L10.09 5.26L14.75 5.94L11.375 9.23L12.18 13.87L8 11.67L3.82 13.87L4.625 9.23L1.25 5.94L5.91 5.26L8 1Z" fill="currentColor" />
-              </svg>
-            </span>
-            <span className="modal-rank-text">
-              {"You'd be "}
-              <strong>{ordinal(leaderboardRank)}</strong>
-              {" on today's board!"}
-            </span>
+          <div className="modal-rank-context">
+            <div className="modal-rank-header">
+              <span className="modal-rank-icon">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M8 1L10.09 5.26L14.75 5.94L11.375 9.23L12.18 13.87L8 11.67L3.82 13.87L4.625 9.23L1.25 5.94L5.91 5.26L8 1Z" fill="currentColor" />
+                </svg>
+              </span>
+              <span className="modal-rank-text">
+                {isSignedIn ? (
+                  <><strong>{ordinal(leaderboardRank)}</strong>{" on today's board!"}</>
+                ) : (
+                  <>{"You'd be "}<strong>{ordinal(leaderboardRank)}</strong>{" on today's board!"}</>
+                )}
+              </span>
+            </div>
+            {rankContext && (rankContext.above || rankContext.below) && (
+              <div className="modal-rank-list">
+                {rankContext.above && (
+                  <div className="modal-rank-row modal-rank-row-other">
+                    <span className="modal-rank-pos">{ordinal(leaderboardRank - 1)}</span>
+                    <span className="modal-rank-name">{rankContext.above.username}</span>
+                    <span className="modal-rank-score">{rankContext.above.score.toLocaleString()}</span>
+                  </div>
+                )}
+                <div className="modal-rank-row modal-rank-row-you">
+                  <span className="modal-rank-pos">{ordinal(leaderboardRank)}</span>
+                  <span className="modal-rank-name">You</span>
+                  <span className="modal-rank-score">{score.toLocaleString()}</span>
+                </div>
+                {rankContext.below && (
+                  <div className="modal-rank-row modal-rank-row-other">
+                    <span className="modal-rank-pos">{ordinal(leaderboardRank + 1)}</span>
+                    <span className="modal-rank-name">{rankContext.below.username}</span>
+                    <span className="modal-rank-score">{rankContext.below.score.toLocaleString()}</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

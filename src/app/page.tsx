@@ -11,6 +11,7 @@ import { createClient, isSupabaseConfigured } from "@/lib/supabase-client";
 import { getPendingScore, clearPendingScore } from "@/lib/guest-scores";
 import { ThemeName } from "@/lib/themes";
 import { Session } from "@supabase/supabase-js";
+import { LeaderboardEntry } from "@/components/Leaderboard";
 
 // Generate confetti pieces with random properties (memoized outside component)
 function generateConfettiPieces(count: number) {
@@ -38,7 +39,7 @@ export default function Home(): React.ReactElement {
   const gameResetRef = useRef<(() => void) | null>(null);
   const devEndGameRef = useRef<(() => void) | null>(null);
   const isDev = process.env.NODE_ENV === 'development';
-  const [leaderboardScores, setLeaderboardScores] = useState<number[]>([]);
+  const [leaderboardScores, setLeaderboardScores] = useState<LeaderboardEntry[]>([]);
   const [currentScore, setCurrentScore] = useState<number>(0);
   const [activeGridSize, setActiveGridSize] = useState<number>(4);
   const [gameMode, setGameMode] = useState<'single' | 'multi'>('single');
@@ -202,7 +203,7 @@ export default function Home(): React.ReactElement {
     setGameResult(null);
   }, []);
 
-  const handleScoresLoaded = useCallback((scores: number[]) => {
+  const handleScoresLoaded = useCallback((scores: LeaderboardEntry[]) => {
     setLeaderboardScores(scores);
   }, []);
 

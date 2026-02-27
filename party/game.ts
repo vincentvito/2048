@@ -228,10 +228,9 @@ export default class GameServer implements Party.Server {
       elo: player.elo,
     });
 
-    // Check if match should resolve (someone finished or won 2048)
-    if (data.state.gameOver || data.state.won) {
-      await this.tryResolveMatch(data.state.won ? '2048' : 'score');
-    }
+    // Check if match should resolve on every state update
+    // (active player may have overtaken a done player's score)
+    await this.tryResolveMatch(data.state.won ? '2048' : 'score');
 
     await this.saveState();
   }
@@ -244,10 +243,20 @@ export default class GameServer implements Party.Server {
 
     const [p1, p2] = players;
     const someoneWon2048 = p1.won || p2.won;
-    const anyDone = (p1.gameOver || p1.won) || (p2.gameOver || p2.won);
+    const p1Done = p1.gameOver || p1.won;
+    const p2Done = p2.gameOver || p2.won;
+    const bothDone = p1Done && p2Done;
 
-    // Match resolves when: someone won 2048, any player ran out of moves, or timer expired
-    if (!someoneWon2048 && !anyDone && reason !== 'timer') return;
+    // Active player overtook done player's score → instant win
+    const overtook = (p1Done && !p2Done && p2.score > p1.score) ||
+                     (p2Done && !p1Done && p1.score > p2.score);
+
+    // Match resolves when:
+    // - Someone reached 2048 (instant win)
+    // - Timer expired (compare scores)
+    // - Both players ran out of moves (compare scores)
+    // - Active player's score exceeded done player's score (instant win)
+    if (!someoneWon2048 && !bothDone && reason !== 'timer' && !overtook) return;
 
     this.state.resultSent = true;
 

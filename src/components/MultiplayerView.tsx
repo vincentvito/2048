@@ -453,8 +453,8 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
   // In-game status text (shown while playing, before modal)
   let statusText = "";
   if (!isMatchResolved) {
-    if (localDone) statusText = "You ran out of moves. Waiting for result...";
-    else if (opponentDone) statusText = `${opponentName || 'Opponent'} ran out of moves. Keep playing!`;
+    if (localDone) statusText = "You ran out of moves. Waiting for opponent...";
+    else if (opponentDone) statusText = `${opponentName || 'Opponent'} ran out of moves at ${(opponentState?.score || 0).toLocaleString()}! Beat their score to win!`;
     else if (timerExpired) statusText = "Time's up! Waiting for result...";
   } else if (timerExpired && !hasForfeit) {
     statusText = "Time's up!";

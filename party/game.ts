@@ -18,6 +18,7 @@ interface Player {
 interface GameState {
   players: Map<string, Player>;
   gameStarted: boolean;
+  resultSent: boolean;
 }
 
 // Timeout before considering player disconnected
@@ -27,6 +28,7 @@ export default class GameServer implements Party.Server {
   private state: GameState = {
     players: new Map(),
     gameStarted: false,
+    resultSent: false,
   };
 
   // Enable hibernation for better scalability
@@ -41,12 +43,14 @@ export default class GameServer implements Party.Server {
     const stored = await this.room.storage.get<{
       players: [string, Player][];
       gameStarted: boolean;
+      resultSent?: boolean;
     }>("gameState");
 
     if (stored) {
       this.state = {
         players: new Map(stored.players),
         gameStarted: stored.gameStarted,
+        resultSent: stored.resultSent || false,
       };
     }
   }
@@ -102,6 +106,9 @@ export default class GameServer implements Party.Server {
           break;
         case 'forfeit':
           await this.handleForfeit(sender);
+          break;
+        case 'timer_expired':
+          await this.handleTimerExpired(sender);
           break;
         case 'heartbeat':
           this.handleHeartbeat(sender);
@@ -221,6 +228,70 @@ export default class GameServer implements Party.Server {
       elo: player.elo,
     });
 
+    // Check if match should resolve (someone finished or won 2048)
+    if (data.state.gameOver || data.state.won) {
+      await this.tryResolveMatch(data.state.won ? '2048' : 'score');
+    }
+
+    await this.saveState();
+  }
+
+  private async tryResolveMatch(reason: 'score' | '2048' | 'timer') {
+    if (this.state.resultSent) return;
+
+    const players = Array.from(this.state.players.values());
+    if (players.length !== 2) return;
+
+    const [p1, p2] = players;
+    const someoneWon2048 = p1.won || p2.won;
+    const anyDone = (p1.gameOver || p1.won) || (p2.gameOver || p2.won);
+
+    // Match resolves when: someone won 2048, any player ran out of moves, or timer expired
+    if (!someoneWon2048 && !anyDone && reason !== 'timer') return;
+
+    this.state.resultSent = true;
+
+    // Determine winner
+    let winnerId: string | null = null;
+    let actualReason = reason;
+
+    if (someoneWon2048) {
+      winnerId = p1.won ? p1.userId : p2.userId;
+      actualReason = '2048';
+    } else {
+      // Score comparison
+      if (p1.score > p2.score) winnerId = p1.userId;
+      else if (p2.score > p1.score) winnerId = p2.userId;
+      // else null = tie
+    }
+
+    // Send personalized result to each player
+    for (const player of players) {
+      const opponent = players.find(p => p.userId !== player.userId)!;
+      const outcome: 'win' | 'loss' | 'tie' =
+        winnerId === null ? 'tie' : winnerId === player.userId ? 'win' : 'loss';
+
+      const conn = this.room.getConnection(player.connectionId);
+      if (conn) {
+        conn.send(JSON.stringify({
+          type: 'game_result',
+          outcome,
+          yourScore: player.score,
+          opponentScore: opponent.score,
+          reason: actualReason,
+        }));
+      }
+    }
+
+    console.log(`[Game ${this.room.id}] Match resolved: ${winnerId ? `winner=${winnerId}` : 'tie'} (${actualReason}) scores: ${p1.username}=${p1.score} vs ${p2.username}=${p2.score}`);
+  }
+
+  private async handleTimerExpired(sender: Party.Connection) {
+    // Only process if result hasn't been sent yet
+    if (this.state.resultSent) return;
+
+    console.log(`[Game ${this.room.id}] Timer expired signal received`);
+    await this.tryResolveMatch('timer');
     await this.saveState();
   }
 
@@ -252,6 +323,7 @@ export default class GameServer implements Party.Server {
         p.wantsRematch = false;
         p.forfeited = false;
       }
+      this.state.resultSent = false;
 
       this.room.broadcast(JSON.stringify({ type: 'rematch_start' }));
       console.log(`[Game ${this.room.id}] Rematch started`);
@@ -367,6 +439,7 @@ export default class GameServer implements Party.Server {
     await this.room.storage.put("gameState", {
       players: Array.from(this.state.players.entries()),
       gameStarted: this.state.gameStarted,
+      resultSent: this.state.resultSent,
     });
   }
 }

@@ -154,7 +154,7 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
     opponentState, opponentConnected, opponentEverConnected, opponentName, opponentElo,
     sendGameState, requestRematch, resetRematchState, declareForfeit,
     localWantsRematch, opponentWantsRematch, rematchReady,
-    timeLeft, gameStarted, forfeitWin,
+    timeLeft, gameStarted, forfeitWin, serverResult,
   } = useMultiplayerGame(roomId, myId, user?.id || null, myName, myElo);
 
   const [localGameResult, setLocalGameResult] = useState<{ won: boolean; score: number; gameOver: boolean } | null>(null);
@@ -192,7 +192,8 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
 
   const handleLeaveMatch = () => {
     // If a live game is in progress, broadcast forfeit so opponent gets the win
-    if (gameStarted && !isMatchResolved) {
+    const gameStillLive = gameStarted && !serverResult && !hasForfeit;
+    if (gameStillLive) {
       declareForfeit();
     }
     cancelMatchmaking();
@@ -226,26 +227,21 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
   const timerExpired = timeLeft === 0 && gameStarted;
   const hasForfeit = !!forfeitWin;
 
-  // Match resolves as soon as ANY player finishes (runs out of moves / wins / timer / forfeit)
-  const isMatchResolved = someoneWon2048 || localDone || opponentDone || timerExpired || hasForfeit;
+  // Match resolves when server sends authoritative result, or on forfeit
+  const isMatchResolved = serverResult !== null || hasForfeit;
 
+  // Use server result for outcome when available; fall back to client-side for forfeit
   const localWon = (() => {
     if (forfeitWin === 'local') return true;
     if (forfeitWin === 'opponent') return false;
-    if (someoneWon2048) return !!localGameResult?.won;
-    // Any player ran out of moves, both done, or timer expired → higher score wins
-    if (localDone || opponentDone || timerExpired) {
-      return (localGameResult?.score || 0) > (opponentState?.score || 0);
-    }
+    if (serverResult) return serverResult.outcome === 'win';
     return false;
   })();
 
-  const isTie = !hasForfeit && !someoneWon2048 &&
-    (localDone || opponentDone || timerExpired) &&
-    (localGameResult?.score || 0) === (opponentState?.score || 0);
+  const isTie = !hasForfeit && serverResult?.outcome === 'tie';
 
-  // Disable local inputs when done
-  const disableLocalInputs = localDone || someoneWon2048 || timerExpired || hasForfeit;
+  // Disable local inputs when the local player is done or match is fully resolved
+  const disableLocalInputs = localDone || someoneWon2048 || timerExpired || hasForfeit || isMatchResolved;
 
   // Show result modal when match resolves
   useEffect(() => {
@@ -260,8 +256,8 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
 
     const processElo = async () => {
       setEloProcessed(true);
-      const localScore = localGameResult?.score || 0;
-      const opponentScore = opponentState?.score || 0;
+      const localScore = serverResult?.yourScore ?? localGameResult?.score ?? 0;
+      const opponentScore = serverResult?.opponentScore ?? opponentState?.score ?? 0;
 
       const outcome: 'win' | 'loss' | 'tie' = isTie ? 'tie' : localWon ? 'win' : 'loss';
       const oppElo = opponentElo ?? DEFAULT_ELO;
@@ -291,7 +287,7 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
     };
 
     processElo();
-  }, [isMatchResolved, eloProcessed, localGameResult, opponentState, localWon, isTie, myElo, opponentElo, user?.id, myName]);
+  }, [isMatchResolved, eloProcessed, localGameResult, opponentState, localWon, isTie, myElo, opponentElo, user?.id, myName, serverResult]);
 
   // Fire confetti when local player wins
   useEffect(() => {
@@ -457,8 +453,9 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
   // In-game status text (shown while playing, before modal)
   let statusText = "";
   if (!isMatchResolved) {
-    if (localDone) statusText = "You ran out of moves. Waiting for opponent...";
+    if (localDone) statusText = "You ran out of moves. Waiting for result...";
     else if (opponentDone) statusText = `${opponentName || 'Opponent'} ran out of moves. Keep playing!`;
+    else if (timerExpired) statusText = "Time's up! Waiting for result...";
   } else if (timerExpired && !hasForfeit) {
     statusText = "Time's up!";
   }
@@ -486,8 +483,8 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
   const getResultSubtitle = (): string | null => {
     if (forfeitWin === 'local') return 'Opponent Forfeited';
     if (forfeitWin === 'opponent') return 'You Forfeited';
-    if (timerExpired) return "Time's up!";
-    if (someoneWon2048) return localWon ? 'You reached 2048!' : `${displayOpponentName} reached 2048!`;
+    if (serverResult?.reason === 'timer' || timerExpired) return "Time's up!";
+    if (serverResult?.reason === '2048' || someoneWon2048) return localWon ? 'You reached 2048!' : `${displayOpponentName} reached 2048!`;
     return null;
   };
 
@@ -640,13 +637,13 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
             <div className="mp-result-scores">
               <div className={`mp-score-column ${localWon && !isTie ? 'mp-score-winner' : ''}`}>
                 <span className="mp-score-name">{myName}</span>
-                <span className="mp-score-value">{(localGameResult?.score || 0).toLocaleString()}</span>
+                <span className="mp-score-value">{(serverResult?.yourScore ?? localGameResult?.score ?? 0).toLocaleString()}</span>
                 {localWon && !isTie && <span className="mp-score-badge">Winner</span>}
               </div>
               <div className="mp-score-vs">VS</div>
               <div className={`mp-score-column ${!localWon && !isTie ? 'mp-score-winner' : ''}`}>
                 <span className="mp-score-name">{displayOpponentName}</span>
-                <span className="mp-score-value">{(opponentState?.score || 0).toLocaleString()}</span>
+                <span className="mp-score-value">{(serverResult?.opponentScore ?? opponentState?.score ?? 0).toLocaleString()}</span>
                 {!localWon && !isTie && <span className="mp-score-badge">Winner</span>}
               </div>
             </div>

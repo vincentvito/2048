@@ -23,6 +23,12 @@ export function usePartyGame(
   const [localWantsRematch, setLocalWantsRematch] = useState(false);
   const [opponentWantsRematch, setOpponentWantsRematch] = useState(false);
   const [forfeitWin, setForfeitWin] = useState<'local' | 'opponent' | null>(null);
+  const [serverResult, setServerResult] = useState<{
+    outcome: 'win' | 'loss' | 'tie';
+    yourScore: number;
+    opponentScore: number;
+    reason: 'score' | '2048' | 'forfeit' | 'timer';
+  } | null>(null);
 
   // Timer state
   const [timeLeft, setTimeLeft] = useState(GAME_DURATION);
@@ -34,6 +40,7 @@ export function usePartyGame(
   const initializedRef = useRef(false);
   const pendingStateRef = useRef<GameState | null>(null); // Queue state until socket connects
   const socketReadyRef = useRef(false);
+  const timerExpiredSentRef = useRef(false);
 
   const clearTimer = useCallback(() => {
     if (timerIntervalRef.current) {
@@ -57,11 +64,13 @@ export function usePartyGame(
     setLocalWantsRematch(false);
     setOpponentWantsRematch(false);
     setForfeitWin(null);
+    setServerResult(null);
     setTimeLeft(GAME_DURATION);
     setGameStarted(false);
     initializedRef.current = false;
     socketReadyRef.current = false;
     pendingStateRef.current = null;
+    timerExpiredSentRef.current = false;
   }, [roomId]);
 
   // Connect to game room
@@ -183,6 +192,16 @@ export function usePartyGame(
             setForfeitWin('local');
             break;
 
+          case 'game_result':
+            console.log('[usePartyGame] Server result:', message.outcome, message.yourScore, 'vs', message.opponentScore);
+            setServerResult({
+              outcome: message.outcome,
+              yourScore: message.yourScore,
+              opponentScore: message.opponentScore,
+              reason: message.reason,
+            });
+            break;
+
           case 'error':
             console.error('[usePartyGame] Error:', message.message);
             break;
@@ -228,6 +247,16 @@ export function usePartyGame(
     return () => clearTimer();
   }, [gameStarted, clearTimer]);
 
+  // Send timer_expired to server when timer hits 0
+  useEffect(() => {
+    if (timeLeft === 0 && gameStarted && !timerExpiredSentRef.current) {
+      timerExpiredSentRef.current = true;
+      if (socketRef.current?.readyState === WebSocket.OPEN) {
+        socketRef.current.send(JSON.stringify({ type: 'timer_expired' }));
+      }
+    }
+  }, [timeLeft, gameStarted]);
+
   // Send game state to server (instant via WebSocket)
   const sendGameState = useCallback((state: GameState) => {
     // Queue state if socket isn't ready yet (for initial game state)
@@ -263,6 +292,8 @@ export function usePartyGame(
     setTimeLeft(GAME_DURATION);
     setGameStarted(false);
     setForfeitWin(null);
+    setServerResult(null);
+    timerExpiredSentRef.current = false;
   }, []);
 
   // Declare forfeit
@@ -291,5 +322,6 @@ export function usePartyGame(
     timeLeft,
     gameStarted,
     forfeitWin,
+    serverResult,
   };
 }

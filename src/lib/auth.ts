@@ -24,7 +24,7 @@ export const auth = betterAuth({
       expiresIn: 300, // 5 minutes
       async sendVerificationOTP({ email, otp, type }) {
         const resend = getResend();
-        await resend.emails.send({
+        const { error } = await resend.emails.send({
           from: "2048 <noreply@auth.the2048league.com>",
           to: email,
           subject: type === "sign-in"
@@ -36,6 +36,10 @@ export const auth = betterAuth({
             <p>This code expires in 5 minutes.</p>
           `,
         });
+        if (error) {
+          console.error("Resend email error:", error);
+          throw new Error(`Failed to send OTP email: ${error.message}`);
+        }
       },
     }),
   ],

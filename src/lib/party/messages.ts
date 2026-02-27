@@ -35,7 +35,8 @@ export type GameClientMessage =
   | { type: 'state_update'; state: GameStateMessage }
   | { type: 'request_rematch' }
   | { type: 'forfeit' }
-  | { type: 'heartbeat' };
+  | { type: 'heartbeat' }
+  | { type: 'timer_expired' };
 
 // ============ Game Messages (Server -> Client) ============
 
@@ -48,4 +49,5 @@ export type GameServerMessage =
   | { type: 'rematch_requested'; by: 'local' | 'opponent' }
   | { type: 'rematch_start' }
   | { type: 'opponent_forfeited' }
+  | { type: 'game_result'; outcome: 'win' | 'loss' | 'tie'; yourScore: number; opponentScore: number; reason: 'score' | '2048' | 'forfeit' | 'timer' }
   | { type: 'error'; message: string };

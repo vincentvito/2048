@@ -130,6 +130,7 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
     let gameOver = false;
     let won = false;
     let keepPlaying = false;
+    const SAVE_KEY = "2048_game_state_";
     const tiles: Tile[] = [];
     const scorePopups: ScorePopup[] = [];
     let popupAnimFrame: number | null = null;
@@ -201,6 +202,41 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
         void el.offsetHeight;
         el.textContent = message;
       }
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(SAVE_KEY + SIZE, JSON.stringify({
+          grid: Array.from(grid), score, gameOver, won, keepPlaying,
+        }));
+      } catch { /* noop */ }
+    }
+
+    function restoreState(): boolean {
+      try {
+        const saved = localStorage.getItem(SAVE_KEY + SIZE);
+        if (!saved) return false;
+        const state = JSON.parse(saved);
+        if (!state.grid || state.grid.length !== SIZE * SIZE) return false;
+        for (let i = 0; i < state.grid.length; i++) grid[i] = state.grid[i];
+        score = state.score || 0;
+        gameOver = !!state.gameOver;
+        won = !!state.won;
+        keepPlaying = !!state.keepPlaying;
+        tiles.length = 0;
+        for (let i = 0; i < grid.length; i++) {
+          if (grid[i] !== 0) {
+            tiles.push({
+              value: grid[i], r: (i / SIZE) | 0, c: i % SIZE,
+              fromR: (i / SIZE) | 0, fromC: i % SIZE, scale: 1, merged: false,
+            });
+          }
+        }
+        updateScore();
+        render();
+        onStateChangeRef.current?.({ grid: Array.from(grid), score, gameOver, won });
+        return true;
+      } catch { return false; }
     }
 
     function renderPopups() {
@@ -396,6 +432,7 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
         renderBoard(1);
         renderPopups();
         onStateChangeRef.current?.({ grid: Array.from(grid), score, gameOver, won });
+        saveState();
       }
     }
 
@@ -508,6 +545,7 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
       updateScore();
       render();
       onStateChangeRef.current?.({ grid: Array.from(grid), score, gameOver, won });
+      saveState();
     }
 
     // React buttons can't access the useEffect closure, so we attach game functions to the container DOM node
@@ -542,6 +580,7 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
       keepPlaying = true;
       won = false;
       render();
+      saveState();
     };
     (container as unknown as Record<string, (s: number) => void>)._toggleSize = (newSize: number) => {
       setSizeInternal(newSize);
@@ -659,7 +698,7 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
 
     setSizeInternal(initialSize);
     if (!initialReadOnlyRef.current) {
-      init();
+      if (!restoreState()) init();
     } else {
       // Read-only mode: just render the empty grid, no random tiles
       render(1);

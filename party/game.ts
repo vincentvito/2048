@@ -19,7 +19,11 @@ interface GameState {
   players: Map<string, Player>;
   gameStarted: boolean;
   resultSent: boolean;
+  mode: 'ranked' | 'friendly';
 }
+
+const RANKED_DURATION = 5 * 60;    // 5 minutes
+const FRIENDLY_DURATION = 60 * 60; // 1 hour
 
 // Timeout before considering player disconnected
 const DISCONNECT_TIMEOUT = 15000; // 15 seconds
@@ -29,6 +33,7 @@ export default class GameServer implements Party.Server {
     players: new Map(),
     gameStarted: false,
     resultSent: false,
+    mode: 'ranked',
   };
 
   // Enable hibernation for better scalability
@@ -44,6 +49,7 @@ export default class GameServer implements Party.Server {
       players: [string, Player][];
       gameStarted: boolean;
       resultSent?: boolean;
+      mode?: 'ranked' | 'friendly';
     }>("gameState");
 
     if (stored) {
@@ -51,6 +57,7 @@ export default class GameServer implements Party.Server {
         players: new Map(stored.players),
         gameStarted: stored.gameStarted,
         resultSent: stored.resultSent || false,
+        mode: stored.mode || 'ranked',
       };
     }
   }
@@ -61,6 +68,7 @@ export default class GameServer implements Party.Server {
     const players = Array.from(this.state.players.values());
 
     if (players.length > 0) {
+      const duration = this.state.mode === 'friendly' ? FRIENDLY_DURATION : RANKED_DURATION;
       connection.send(JSON.stringify({
         type: 'game_start',
         players: players.map(p => ({
@@ -68,6 +76,8 @@ export default class GameServer implements Party.Server {
           username: p.username,
           elo: p.elo,
         })),
+        duration,
+        mode: this.state.mode,
       }));
 
       // Send opponent state if exists
@@ -124,10 +134,15 @@ export default class GameServer implements Party.Server {
   }
 
   private async handleJoin(
-    data: { userId: string; username: string; elo: number },
+    data: { userId: string; username: string; elo: number; mode?: 'ranked' | 'friendly' },
     sender: Party.Connection
   ) {
     const { userId, username, elo } = data;
+
+    // First player to join sets the game mode
+    if (this.state.players.size === 0 && data.mode) {
+      this.state.mode = data.mode;
+    }
 
     // Check if player already exists (reconnection)
     const existing = this.state.players.get(userId);
@@ -177,6 +192,7 @@ export default class GameServer implements Party.Server {
     if (playerCount === 2 && !this.state.gameStarted) {
       this.state.gameStarted = true;
 
+      const duration = this.state.mode === 'friendly' ? FRIENDLY_DURATION : RANKED_DURATION;
       this.room.broadcast(JSON.stringify({
         type: 'game_start',
         players: players.map(p => ({
@@ -184,6 +200,8 @@ export default class GameServer implements Party.Server {
           username: p.username,
           elo: p.elo,
         })),
+        duration,
+        mode: this.state.mode,
       }));
 
       console.log(`[Game ${this.room.id}] Game started with ${players.map(p => p.username).join(' vs ')}`);
@@ -449,6 +467,7 @@ export default class GameServer implements Party.Server {
       players: Array.from(this.state.players.entries()),
       gameStarted: this.state.gameStarted,
       resultSent: this.state.resultSent,
+      mode: this.state.mode,
     });
   }
 }

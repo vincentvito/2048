@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import PartySocket from 'partysocket';
 import type { GameState } from '../components/Game2048';
-import type { GameServerMessage } from '@/lib/party/messages';
+import type { GameServerMessage, GameMode } from '@/lib/party/messages';
 
-const GAME_DURATION = 5 * 60; // 300 seconds
+const GAME_DURATION = 5 * 60; // 300 seconds (default)
 const HEARTBEAT_INTERVAL = 5000; // Send heartbeat every 5 seconds
 
 const PARTYKIT_HOST = process.env.NEXT_PUBLIC_PARTYKIT_HOST || 'localhost:1999';
@@ -13,7 +13,8 @@ export function usePartyGame(
   myId: string,
   userId: string | null,
   myName?: string,
-  myElo?: number
+  myElo?: number,
+  gameMode: GameMode = 'ranked'
 ) {
   const [opponentState, setOpponentState] = useState<GameState | null>(null);
   const [opponentConnected, setOpponentConnected] = useState(false);
@@ -31,6 +32,7 @@ export function usePartyGame(
   } | null>(null);
 
   // Timer state
+  const gameDurationRef = useRef(GAME_DURATION);
   const [timeLeft, setTimeLeft] = useState(GAME_DURATION);
   const [gameStarted, setGameStarted] = useState(false);
 
@@ -65,6 +67,7 @@ export function usePartyGame(
     setOpponentWantsRematch(false);
     setForfeitWin(null);
     setServerResult(null);
+    gameDurationRef.current = GAME_DURATION;
     setTimeLeft(GAME_DURATION);
     setGameStarted(false);
     initializedRef.current = false;
@@ -97,6 +100,7 @@ export function usePartyGame(
         userId,
         username: myName,
         elo: myElo || 1200,
+        mode: gameMode,
       }));
 
       // Send any pending state (initial game state that was queued)
@@ -145,7 +149,7 @@ export function usePartyGame(
             break;
 
           case 'game_start':
-            console.log('[usePartyGame] Game starting!', message.players);
+            console.log('[usePartyGame] Game starting!', message.players, 'duration:', message.duration, 'mode:', message.mode);
             // Find opponent info
             const opponent = message.players.find(p => p.id !== userId);
             if (opponent) {
@@ -153,6 +157,11 @@ export function usePartyGame(
               setOpponentElo(opponent.elo);
               setOpponentConnected(true);
               setOpponentEverConnected(true);
+            }
+            // Use server-provided duration
+            if (message.duration) {
+              gameDurationRef.current = message.duration;
+              setTimeLeft(message.duration);
             }
             setGameStarted(true);
             break;
@@ -228,7 +237,7 @@ export function usePartyGame(
       }
       initializedRef.current = false;
     };
-  }, [roomId, userId, myName, myElo, clearTimer]);
+  }, [roomId, userId, myName, myElo, gameMode, clearTimer]);
 
   // Timer countdown
   useEffect(() => {
@@ -289,7 +298,7 @@ export function usePartyGame(
     setLocalWantsRematch(false);
     setOpponentWantsRematch(false);
     setOpponentState(null);
-    setTimeLeft(GAME_DURATION);
+    setTimeLeft(gameDurationRef.current);
     setGameStarted(false);
     setForfeitWin(null);
     setServerResult(null);

@@ -11,6 +11,20 @@ import { usePartyGame as useMultiplayerGame } from '../hooks/usePartyGame';
 import { calculateElo, getEloRank, DEFAULT_ELO } from '@/lib/elo';
 import { themes, ThemeName } from '@/lib/themes';
 import { getOrCreatePlayerStats, updateStatsAfterGame, PlayerStats } from '@/lib/player-stats';
+import type { GameMode } from '@/lib/party/messages';
+
+// Characters that avoid ambiguity (no 0/O, 1/I/l)
+const ROOM_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+function generateRoomCode(): string {
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += ROOM_CODE_CHARS[Math.floor(Math.random() * ROOM_CODE_CHARS.length)];
+  }
+  return code;
+}
+
+type LobbyScreen = 'main' | 'friend-menu' | 'create-room' | 'join-room';
 
 /** Format seconds into MM:SS display */
 function formatTime(seconds: number): string {
@@ -145,17 +159,28 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
 
   const myElo = playerStats?.elo ?? DEFAULT_ELO;
 
-  // Notify parent when match becomes active (roomId is set)
+  // Friend mode state
+  const [lobbyScreen, setLobbyScreen] = useState<LobbyScreen>('main');
+  const [friendRoomId, setFriendRoomId] = useState<string | null>(null);
+  const [friendRoomCode, setFriendRoomCode] = useState<string>('');
+  const [joinRoomInput, setJoinRoomInput] = useState('');
+  const [gameMode, setGameMode] = useState<GameMode>('ranked');
+  const [codeCopied, setCodeCopied] = useState(false);
+
+  // Compute effective room ID — friend room takes priority when in friendly mode
+  const effectiveRoomId = gameMode === 'friendly' ? friendRoomId : roomId;
+
+  // Notify parent when match becomes active
   useEffect(() => {
-    onMatchActiveChange?.(!!roomId);
-  }, [roomId, onMatchActiveChange]);
+    onMatchActiveChange?.(!!effectiveRoomId);
+  }, [effectiveRoomId, onMatchActiveChange]);
 
   const {
     opponentState, opponentConnected, opponentEverConnected, opponentName, opponentElo,
     sendGameState, requestRematch, resetRematchState, declareForfeit,
     localWantsRematch, opponentWantsRematch, rematchReady,
     timeLeft, gameStarted, forfeitWin, serverResult,
-  } = useMultiplayerGame(roomId, myId, user?.id || null, myName, myElo);
+  } = useMultiplayerGame(effectiveRoomId, myId, user?.id || null, myName, myElo, gameMode);
 
   const [localGameResult, setLocalGameResult] = useState<{ won: boolean; score: number; gameOver: boolean } | null>(null);
   const [showResultModal, setShowResultModal] = useState(false);
@@ -197,6 +222,13 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
       declareForfeit();
     }
     cancelMatchmaking();
+    // Clear friend state
+    setFriendRoomId(null);
+    setFriendRoomCode('');
+    setJoinRoomInput('');
+    setGameMode('ranked');
+    setLobbyScreen('main');
+    setCodeCopied(false);
     setLocalGameResult(null);
     setShowResultModal(false);
     confettiFiredRef.current = false;
@@ -250,12 +282,16 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
     }
   }, [isMatchResolved, showResultModal]);
 
-  // Process ELO changes when match resolves
+  // Process ELO changes when match resolves (skip for friendly games)
   useEffect(() => {
     if (!isMatchResolved || eloProcessed) return;
 
     const processElo = async () => {
       setEloProcessed(true);
+
+      // Skip ELO updates for friendly games
+      if (gameMode === 'friendly') return;
+
       const localScore = serverResult?.yourScore ?? localGameResult?.score ?? 0;
       const opponentScore = serverResult?.opponentScore ?? opponentState?.score ?? 0;
 
@@ -287,7 +323,7 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
     };
 
     processElo();
-  }, [isMatchResolved, eloProcessed, localGameResult, opponentState, localWon, isTie, myElo, opponentElo, user?.id, myName, serverResult]);
+  }, [isMatchResolved, eloProcessed, localGameResult, opponentState, localWon, isTie, myElo, opponentElo, user?.id, myName, serverResult, gameMode]);
 
   // Fire confetti when local player wins
   useEffect(() => {
@@ -374,11 +410,118 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
 
     const eloRank = playerStats ? getEloRank(playerStats.elo) : null;
 
+    const handleCreateRoom = () => {
+      const code = generateRoomCode();
+      setFriendRoomCode(code);
+      setFriendRoomId(`friend_${code}`);
+      setGameMode('friendly');
+      setLobbyScreen('create-room');
+    };
+
+    const handleJoinRoom = () => {
+      const code = joinRoomInput.trim().toUpperCase();
+      if (code.length !== 6) return;
+      setFriendRoomCode(code);
+      setFriendRoomId(`friend_${code}`);
+      setGameMode('friendly');
+    };
+
+    const handleCopyCode = async () => {
+      try {
+        await navigator.clipboard.writeText(friendRoomCode);
+        setCodeCopied(true);
+        setTimeout(() => setCodeCopied(false), 2000);
+      } catch { /* clipboard not available */ }
+    };
+
+    const handleCancelFriend = () => {
+      setFriendRoomId(null);
+      setFriendRoomCode('');
+      setJoinRoomInput('');
+      setGameMode('ranked');
+      setLobbyScreen('main');
+      setCodeCopied(false);
+    };
+
+    // Friend mode: waiting for opponent after creating room
+    if (lobbyScreen === 'create-room' && friendRoomId && !gameStarted) {
+      return (
+        <div className="mp-lobby">
+          <h2 className="mp-lobby-title">Waiting for Friend</h2>
+          <p className="mp-lobby-subtitle">Share this code with your friend</p>
+
+          <div className="mp-room-code-display">
+            <span className="mp-room-code">{friendRoomCode}</span>
+            <button className="mp-copy-btn" onClick={handleCopyCode}>
+              {codeCopied ? 'Copied!' : 'Copy'}
+            </button>
+          </div>
+
+          <div className="loader" style={{ margin: '20px auto' }}></div>
+          <p className="hint">Waiting for friend to join...</p>
+          <button className="mp-back-btn" onClick={handleCancelFriend}>Cancel</button>
+        </div>
+      );
+    }
+
+    // Friend mode: join room screen
+    if (lobbyScreen === 'join-room') {
+      return (
+        <div className="mp-lobby">
+          <h2 className="mp-lobby-title">Join a Friend</h2>
+          <p className="mp-lobby-subtitle">Enter the 6-character room code</p>
+
+          <div className="mp-room-code-input-wrapper">
+            <input
+              className="mp-room-code-input"
+              type="text"
+              maxLength={6}
+              placeholder="ABCDEF"
+              value={joinRoomInput}
+              onChange={(e) => setJoinRoomInput(e.target.value.toUpperCase().replace(/[^A-Z2-9]/g, ''))}
+              autoFocus
+            />
+          </div>
+
+          <button
+            className="mp-find-btn"
+            style={{ marginTop: 16 }}
+            onClick={handleJoinRoom}
+            disabled={joinRoomInput.trim().length !== 6}
+          >
+            Join Game
+          </button>
+          <button className="mp-back-btn" onClick={() => { setJoinRoomInput(''); setLobbyScreen('friend-menu'); }}>Back</button>
+        </div>
+      );
+    }
+
+    // Friend mode: choose create or join
+    if (lobbyScreen === 'friend-menu') {
+      return (
+        <div className="mp-lobby">
+          <h2 className="mp-lobby-title">Play with a Friend</h2>
+          <p className="mp-lobby-subtitle">Create a room or join one with a code</p>
+
+          <div className="mp-lobby-buttons">
+            <button className="mp-find-btn" onClick={handleCreateRoom}>Create Room</button>
+            <button className="mp-friend-btn" onClick={() => setLobbyScreen('join-room')}>Join Room</button>
+          </div>
+
+          <button className="mp-back-btn" onClick={() => setLobbyScreen('main')}>Back</button>
+        </div>
+      );
+    }
+
     return (
       <div className="mp-lobby">
         <h2 className="mp-lobby-title">Multiplayer</h2>
         <p className="mp-lobby-subtitle">Play against an online opponent in real-time!</p>
-        <button className="mp-find-btn" onClick={() => user?.id && startMatchmaking(user.id, myName, myElo)}>Find Match</button>
+
+        <div className="mp-lobby-buttons">
+          <button className="mp-find-btn" onClick={() => user?.id && startMatchmaking(user.id, myName, myElo)}>Play Online</button>
+          <button className="mp-friend-btn" onClick={() => setLobbyScreen('friend-menu')}>Play with a Friend</button>
+        </div>
 
         {statsLoading && (
           <div className="mp-stats-card" style={{ marginTop: 20 }}>
@@ -648,8 +791,8 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
               </div>
             </div>
 
-            {/* ELO change — prominent pill */}
-            {localEloDelta !== null && (
+            {/* ELO change — prominent pill (hidden for friendly games) */}
+            {gameMode === 'ranked' && localEloDelta !== null && (
               <div className="mp-elo-section">
                 <span className={eloChangeClass}>
                   {localEloDelta >= 0 ? '+' : ''}{localEloDelta} ELO
@@ -663,6 +806,10 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
                   </div>
                 )}
               </div>
+            )}
+
+            {gameMode === 'friendly' && (
+              <p className="mp-friendly-label">Friendly Match — no ELO change</p>
             )}
 
             {opponentWantsRematch && !localWantsRematch && (
@@ -681,7 +828,9 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
                   : 'Rematch'}
               </button>
               <div className="mp-result-actions-row">
-                <button className="mp-result-btn-secondary" onClick={handleNewOpponent}>New Opponent</button>
+                {gameMode === 'ranked' && (
+                  <button className="mp-result-btn-secondary" onClick={handleNewOpponent}>New Opponent</button>
+                )}
                 <button className="mp-result-btn-secondary" onClick={handleLeaveMatch}>Menu</button>
               </div>
             </div>

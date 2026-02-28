@@ -1,5 +1,8 @@
 // Shared message types for PartyKit communication
 
+// Game mode
+export type GameMode = 'ranked' | 'friendly';
+
 // Player info
 export interface PlayerInfo {
   userId: string;
@@ -31,7 +34,7 @@ export type LobbyServerMessage =
 // ============ Game Messages (Client -> Server) ============
 
 export type GameClientMessage =
-  | { type: 'join'; userId: string; username: string; elo: number }
+  | { type: 'join'; userId: string; username: string; elo: number; mode?: GameMode }
   | { type: 'state_update'; state: GameStateMessage }
   | { type: 'request_rematch' }
   | { type: 'forfeit' }
@@ -43,7 +46,7 @@ export type GameClientMessage =
 export type GameServerMessage =
   | { type: 'player_joined'; playerId: string; username: string; elo: number; playerCount: number }
   | { type: 'player_left'; playerId: string }
-  | { type: 'game_start'; players: Array<{ id: string; username: string; elo: number }> }
+  | { type: 'game_start'; players: Array<{ id: string; username: string; elo: number }>; duration: number; mode: GameMode }
   | { type: 'opponent_state'; state: GameStateMessage; username: string; elo: number }
   | { type: 'opponent_connected'; connected: boolean }
   | { type: 'rematch_requested'; by: 'local' | 'opponent' }

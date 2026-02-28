@@ -18,12 +18,13 @@ interface Player {
 interface GameState {
   players: Map<string, Player>;
   gameStarted: boolean;
+  gameStartedAt: number | null;
   resultSent: boolean;
   mode: 'ranked' | 'friendly';
 }
 
 const RANKED_DURATION = 5 * 60;    // 5 minutes
-const FRIENDLY_DURATION = 60 * 60; // 1 hour
+const FRIENDLY_DURATION = 5 * 60;  // 5 minutes (room code valid for 1 hour)
 
 // Timeout before considering player disconnected
 const DISCONNECT_TIMEOUT = 15000; // 15 seconds
@@ -32,6 +33,7 @@ export default class GameServer implements Party.Server {
   private state: GameState = {
     players: new Map(),
     gameStarted: false,
+    gameStartedAt: null,
     resultSent: false,
     mode: 'ranked',
   };
@@ -48,6 +50,7 @@ export default class GameServer implements Party.Server {
     const stored = await this.room.storage.get<{
       players: [string, Player][];
       gameStarted: boolean;
+      gameStartedAt?: number | null;
       resultSent?: boolean;
       mode?: 'ranked' | 'friendly';
     }>("gameState");
@@ -56,6 +59,7 @@ export default class GameServer implements Party.Server {
       this.state = {
         players: new Map(stored.players),
         gameStarted: stored.gameStarted,
+        gameStartedAt: stored.gameStartedAt ?? null,
         resultSent: stored.resultSent || false,
         mode: stored.mode || 'ranked',
       };
@@ -69,6 +73,12 @@ export default class GameServer implements Party.Server {
 
     if (players.length > 0) {
       const duration = this.state.mode === 'friendly' ? FRIENDLY_DURATION : RANKED_DURATION;
+      // Compute remaining time if game is already in progress
+      let timeRemaining: number | undefined;
+      if (this.state.gameStartedAt) {
+        const elapsed = Math.floor((Date.now() - this.state.gameStartedAt) / 1000);
+        timeRemaining = Math.max(0, duration - elapsed);
+      }
       connection.send(JSON.stringify({
         type: 'game_start',
         players: players.map(p => ({
@@ -77,6 +87,7 @@ export default class GameServer implements Party.Server {
           elo: p.elo,
         })),
         duration,
+        timeRemaining,
         mode: this.state.mode,
       }));
 
@@ -157,6 +168,19 @@ export default class GameServer implements Party.Server {
         type: 'opponent_connected',
         connected: true,
       });
+
+      // Send the player's own saved state back so they can restore their board
+      if (existing.grid.length > 0) {
+        sender.send(JSON.stringify({
+          type: 'your_state',
+          state: {
+            grid: existing.grid,
+            score: existing.score,
+            gameOver: existing.gameOver,
+            won: existing.won,
+          },
+        }));
+      }
     } else {
       // New player joining
       const player: Player = {
@@ -191,6 +215,7 @@ export default class GameServer implements Party.Server {
     // Start game when 2 players are connected
     if (playerCount === 2 && !this.state.gameStarted) {
       this.state.gameStarted = true;
+      this.state.gameStartedAt = Date.now();
 
       const duration = this.state.mode === 'friendly' ? FRIENDLY_DURATION : RANKED_DURATION;
       this.room.broadcast(JSON.stringify({
@@ -351,6 +376,7 @@ export default class GameServer implements Party.Server {
         p.forfeited = false;
       }
       this.state.resultSent = false;
+      this.state.gameStartedAt = Date.now();
 
       this.room.broadcast(JSON.stringify({ type: 'rematch_start' }));
       console.log(`[Game ${this.room.id}] Rematch started`);
@@ -466,6 +492,7 @@ export default class GameServer implements Party.Server {
     await this.room.storage.put("gameState", {
       players: Array.from(this.state.players.entries()),
       gameStarted: this.state.gameStarted,
+      gameStartedAt: this.state.gameStartedAt,
       resultSent: this.state.resultSent,
       mode: this.state.mode,
     });

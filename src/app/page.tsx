@@ -12,6 +12,7 @@ import { getPendingScore, clearPendingScore } from "@/lib/guest-scores";
 import { ThemeName } from "@/lib/themes";
 import { useSession, signOut, authClient, BetterAuthUser } from "@/lib/auth-client";
 import { LeaderboardEntry } from "@/components/Leaderboard";
+import { getMultiplayerSession, clearMultiplayerSession } from "@/lib/multiplayer-session";
 
 // Generate confetti pieces with random properties (memoized outside component)
 function generateConfettiPieces(count: number) {
@@ -44,6 +45,7 @@ export default function Home(): React.ReactElement {
   const [activeGridSize, setActiveGridSize] = useState<number>(4);
   const [gameMode, setGameMode] = useState<'single' | 'multi'>('single');
   const [matchActive, setMatchActive] = useState(false);
+  const [pendingSession, setPendingSession] = useState<{ roomId: string; gameMode: 'ranked' | 'friendly'; friendRoomCode?: string } | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showSwipeHint, setShowSwipeHint] = useState(false);
   const [showSignInModal, setShowSignInModal] = useState(false);
@@ -53,6 +55,14 @@ export default function Home(): React.ReactElement {
   const { data: sessionData, isPending: sessionLoading } = useSession();
   const session = sessionData?.session ?? null;
   const user = (sessionData?.user as BetterAuthUser | undefined) ?? null;
+
+  // Check for an active multiplayer session when user is loaded
+  useEffect(() => {
+    if (!user?.id) return;
+    getMultiplayerSession(user.id).then((saved) => {
+      if (saved) setPendingSession(saved);
+    });
+  }, [user?.id]);
 
   // Read persisted theme on mount, then apply/persist on every change
   useEffect(() => {
@@ -330,7 +340,7 @@ export default function Home(): React.ReactElement {
             </div>
           </>
         ) : (
-          <MultiplayerView onMatchActiveChange={setMatchActive} />
+          <MultiplayerView onMatchActiveChange={setMatchActive} reconnectSession={pendingSession} />
         )}
 
         <p className="game-hint desktop-hint">
@@ -350,6 +360,45 @@ export default function Home(): React.ReactElement {
         />
 
         <UsernamePrompt />
+
+        {/* Rejoin multiplayer match modal */}
+        {pendingSession && gameMode === 'single' && (
+          <div className="mp-result-backdrop" role="dialog" aria-modal="true">
+            <div className="mp-result-card" style={{ textAlign: 'center', padding: '28px 24px' }}>
+              <h2 style={{ margin: '0 0 12px', fontSize: '1.4rem' }}>Match In Progress</h2>
+              <p style={{ margin: '0 0 8px', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+                You have an active {pendingSession.gameMode === 'friendly' ? 'friendly' : 'ranked'} match
+              </p>
+              {pendingSession.friendRoomCode && (
+                <p style={{ margin: '0 0 4px', fontFamily: 'monospace', fontSize: '1.1rem', fontWeight: 600 }}>
+                  Room: {pendingSession.friendRoomCode}
+                </p>
+              )}
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '24px' }}>
+                <button
+                  className="mp-result-btn-primary"
+                  onClick={() => {
+                    setActiveGridSize(4);
+                    setGameMode('multi');
+                    // Don't clear pendingSession here — it's passed as reconnectSession prop
+                    // to MultiplayerView. The modal hides because gameMode !== 'single'.
+                  }}
+                >
+                  Rejoin
+                </button>
+                <button
+                  className="mp-result-btn-secondary"
+                  onClick={() => {
+                    if (user?.id) clearMultiplayerSession(user.id);
+                    setPendingSession(null);
+                  }}
+                >
+                  Leave
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {gameResult && (
           <GameOverModal

@@ -8,6 +8,7 @@ import { isSupabaseConfigured } from '@/lib/supabase-client';
 import { useSession, BetterAuthUser } from '@/lib/auth-client';
 import { usePartyMatchmaking as useMatchmaking } from '../hooks/usePartyMatchmaking';
 import { usePartyGame as useMultiplayerGame } from '../hooks/usePartyGame';
+import { saveMultiplayerSession, clearMultiplayerSession } from '@/lib/multiplayer-session';
 import { calculateElo, getEloRank, DEFAULT_ELO } from '@/lib/elo';
 import { themes, ThemeName } from '@/lib/themes';
 import { getOrCreatePlayerStats, updateStatsAfterGame, PlayerStats } from '@/lib/player-stats';
@@ -97,10 +98,11 @@ function ExpandedGrid({ grid, themeName }: { grid: number[]; themeName: ThemeNam
 
 interface MultiplayerViewProps {
   onMatchActiveChange?: (isActive: boolean) => void;
+  reconnectSession?: { roomId: string; gameMode: 'ranked' | 'friendly'; friendRoomCode?: string } | null;
 }
 
-export default function MultiplayerView({ onMatchActiveChange }: MultiplayerViewProps) {
-  const { state: matchmakingState, roomId, opponentInfo, startMatchmaking, cancelMatchmaking, myId } = useMatchmaking();
+export default function MultiplayerView({ onMatchActiveChange, reconnectSession }: MultiplayerViewProps) {
+  const { state: matchmakingState, setState: setMatchmakingState, roomId, setRoomId: setMatchmakingRoomId, opponentInfo, startMatchmaking, cancelMatchmaking, myId } = useMatchmaking();
 
   // Track current theme for canvas boards
   const [themeName, setThemeName] = useState<ThemeName>(() => {
@@ -159,16 +161,44 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
 
   const myElo = playerStats?.elo ?? DEFAULT_ELO;
 
-  // Friend mode state
+  // Friend mode state — restore from session on mount
   const [lobbyScreen, setLobbyScreen] = useState<LobbyScreen>('main');
   const [friendRoomId, setFriendRoomId] = useState<string | null>(null);
   const [friendRoomCode, setFriendRoomCode] = useState<string>('');
   const [joinRoomInput, setJoinRoomInput] = useState('');
   const [gameMode, setGameMode] = useState<GameMode>('ranked');
   const [codeCopied, setCodeCopied] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
+
+  // Restore session from reconnect prop
+  useEffect(() => {
+    if (!reconnectSession) return;
+    setIsReconnecting(true);
+    if (reconnectSession.gameMode === 'friendly') {
+      setFriendRoomId(reconnectSession.roomId);
+      setFriendRoomCode(reconnectSession.friendRoomCode || '');
+      setGameMode('friendly');
+    } else {
+      setMatchmakingRoomId(reconnectSession.roomId);
+      setMatchmakingState('matched');
+      setGameMode('ranked');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Compute effective room ID — friend room takes priority when in friendly mode
   const effectiveRoomId = gameMode === 'friendly' ? friendRoomId : roomId;
+
+  // Persist session whenever we have an active room
+  useEffect(() => {
+    if (effectiveRoomId && user?.id) {
+      saveMultiplayerSession(user.id, {
+        roomId: effectiveRoomId,
+        gameMode,
+        friendRoomCode: gameMode === 'friendly' ? friendRoomCode : undefined,
+      });
+    }
+  }, [effectiveRoomId, gameMode, friendRoomCode, user?.id]);
 
   // Notify parent when match becomes active
   useEffect(() => {
@@ -176,11 +206,37 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
   }, [effectiveRoomId, onMatchActiveChange]);
 
   const {
-    opponentState, opponentConnected, opponentEverConnected, opponentName, opponentElo,
+    opponentState, restoredLocalState, opponentConnected, opponentEverConnected, opponentName, opponentElo,
     sendGameState, requestRematch, resetRematchState, declareForfeit,
     localWantsRematch, opponentWantsRematch, rematchReady,
     timeLeft, gameStarted, forfeitWin, serverResult,
   } = useMultiplayerGame(effectiveRoomId, myId, user?.id || null, myName, myElo, gameMode);
+
+  // Clear reconnecting flag once the game has started
+  useEffect(() => {
+    if (gameStarted && isReconnecting) {
+      setIsReconnecting(false);
+    }
+  }, [gameStarted, isReconnecting]);
+
+  // Stale room timeout: if reconnecting and game doesn't start within 5s, bail
+  useEffect(() => {
+    if (!isReconnecting || !effectiveRoomId) return;
+    const timeout = setTimeout(() => {
+      if (!gameStarted) {
+        console.log('[MultiplayerView] Stale room detected, returning to lobby');
+        if (user?.id) clearMultiplayerSession(user.id);
+        cancelMatchmaking();
+        setFriendRoomId(null);
+        setFriendRoomCode('');
+        setGameMode('ranked');
+        setLobbyScreen('main');
+        setIsReconnecting(false);
+      }
+    }, 5000);
+    return () => clearTimeout(timeout);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isReconnecting, effectiveRoomId]);
 
   const [localGameResult, setLocalGameResult] = useState<{ won: boolean; score: number; gameOver: boolean } | null>(null);
   const [showResultModal, setShowResultModal] = useState(false);
@@ -192,6 +248,38 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
 
   // Final fallback state for opponent
   const emptyOpponentState: GameState = { grid: Array(16).fill(0), score: 0, gameOver: false, won: false };
+  const localBoardRef = useRef<HTMLDivElement>(null);
+  const suppressStateRef = useRef(!!reconnectSession);
+
+  // Restore local board state when server sends it back on reconnect
+  useEffect(() => {
+    if (!restoredLocalState) return;
+    const applyRestore = () => {
+      const container = localBoardRef.current?.querySelector('.game-container') as any;
+      const updateFn = container?._updateState;
+      if (updateFn) {
+        updateFn(restoredLocalState);
+        setLocalGameResult({
+          won: restoredLocalState.won,
+          score: restoredLocalState.score,
+          gameOver: restoredLocalState.gameOver,
+        });
+        suppressStateRef.current = false;
+        sendGameState(restoredLocalState);
+        return true;
+      }
+      return false;
+    };
+    if (applyRestore()) return;
+    let attempts = 0;
+    const interval = setInterval(() => {
+      if (applyRestore() || ++attempts >= 10) {
+        clearInterval(interval);
+        if (attempts >= 10) suppressStateRef.current = false;
+      }
+    }, 100);
+    return () => clearInterval(interval);
+  }, [restoredLocalState, sendGameState]);
 
   const handleLocalGameOver = useCallback((score: number) => {
     setLocalGameResult({ won: false, score, gameOver: true });
@@ -202,8 +290,8 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
   }, []);
 
   const handleLocalStateChange = useCallback((state: GameState) => {
+    if (suppressStateRef.current) return;
     sendGameState(state);
-    // Always update local score for HUD display
     setLocalGameResult({ won: state.won, score: state.score, gameOver: state.gameOver });
   }, [sendGameState]);
 
@@ -216,13 +304,12 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
   }, []);
 
   const handleLeaveMatch = () => {
-    // If a live game is in progress, broadcast forfeit so opponent gets the win
     const gameStillLive = gameStarted && !serverResult && !hasForfeit;
     if (gameStillLive) {
       declareForfeit();
     }
+    if (user?.id) clearMultiplayerSession(user.id);
     cancelMatchmaking();
-    // Clear friend state
     setFriendRoomId(null);
     setFriendRoomCode('');
     setJoinRoomInput('');
@@ -236,9 +323,11 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
     setOpponentEloDelta(null);
     setLocalEloAfter(null);
     setEloProcessed(false);
+    setIsReconnecting(false);
   };
 
   const handleNewOpponent = () => {
+    if (user?.id) clearMultiplayerSession(user.id);
     cancelMatchmaking();
     setLocalGameResult(null);
     setShowResultModal(false);
@@ -247,6 +336,7 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
     setOpponentEloDelta(null);
     setLocalEloAfter(null);
     setEloProcessed(false);
+    setIsReconnecting(false);
     if (user?.id) {
       startMatchmaking(user.id, myName, myElo);
     }
@@ -275,12 +365,13 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
   // Disable local inputs when the local player is done or match is fully resolved
   const disableLocalInputs = localDone || someoneWon2048 || timerExpired || hasForfeit || isMatchResolved;
 
-  // Show result modal when match resolves
+  // Show result modal and clear active match when match resolves
   useEffect(() => {
     if (isMatchResolved && !showResultModal) {
       setShowResultModal(true);
+      if (user?.id) clearMultiplayerSession(user.id);
     }
-  }, [isMatchResolved, showResultModal]);
+  }, [isMatchResolved, showResultModal, user?.id]);
 
   // Process ELO changes when match resolves (skip for friendly games)
   useEffect(() => {
@@ -368,7 +459,7 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
     }
   }, [rematchReady, resetRematchState]);
 
-  if (matchmakingState === 'idle') {
+  if (matchmakingState === 'idle' && !(gameMode === 'friendly' && friendRoomId && (gameStarted || isReconnecting))) {
     if (!sessionLoaded) {
       return (
         <div className="matchmaking-container">
@@ -435,6 +526,7 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
     };
 
     const handleCancelFriend = () => {
+      if (user?.id) clearMultiplayerSession(user.id);
       setFriendRoomId(null);
       setFriendRoomCode('');
       setJoinRoomInput('');
@@ -464,8 +556,8 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
       );
     }
 
-    // Friend mode: join room screen
-    if (lobbyScreen === 'join-room') {
+    // Friend mode: join room screen (only show while game hasn't started)
+    if (lobbyScreen === 'join-room' && !gameStarted) {
       return (
         <div className="mp-lobby">
           <h2 className="mp-lobby-title">Join a Friend</h2>
@@ -725,7 +817,7 @@ export default function MultiplayerView({ onMatchActiveChange }: MultiplayerView
 
       <div className="boards-split">
         {/* Local board */}
-        <div className={`mp-board-slot ${localDone || timerExpired || hasForfeit ? 'dimmed' : ''}`}>
+        <div ref={localBoardRef} className={`mp-board-slot ${localDone || timerExpired || hasForfeit ? 'dimmed' : ''}`}>
           <Game2048
             onGameOver={handleLocalGameOver}
             onGameWon={handleLocalGameWon}

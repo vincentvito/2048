@@ -109,7 +109,9 @@ export function usePartyMatchmaking() {
 
   return {
     state,
+    setState,
     roomId,
+    setRoomId,
     opponentInfo,
     startMatchmaking,
     cancelMatchmaking,

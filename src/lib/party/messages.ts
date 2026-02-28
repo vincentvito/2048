@@ -46,8 +46,9 @@ export type GameClientMessage =
 export type GameServerMessage =
   | { type: 'player_joined'; playerId: string; username: string; elo: number; playerCount: number }
   | { type: 'player_left'; playerId: string }
-  | { type: 'game_start'; players: Array<{ id: string; username: string; elo: number }>; duration: number; mode: GameMode }
+  | { type: 'game_start'; players: Array<{ id: string; username: string; elo: number }>; duration: number; timeRemaining?: number; mode: GameMode }
   | { type: 'opponent_state'; state: GameStateMessage; username: string; elo: number }
+  | { type: 'your_state'; state: GameStateMessage }
   | { type: 'opponent_connected'; connected: boolean }
   | { type: 'rematch_requested'; by: 'local' | 'opponent' }
   | { type: 'rematch_start' }

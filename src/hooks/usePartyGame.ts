@@ -17,6 +17,7 @@ export function usePartyGame(
   gameMode: GameMode = 'ranked'
 ) {
   const [opponentState, setOpponentState] = useState<GameState | null>(null);
+  const [restoredLocalState, setRestoredLocalState] = useState<GameState | null>(null);
   const [opponentConnected, setOpponentConnected] = useState(false);
   const [opponentEverConnected, setOpponentEverConnected] = useState(false);
   const [opponentName, setOpponentName] = useState<string | null>(null);
@@ -59,6 +60,7 @@ export function usePartyGame(
   useEffect(() => {
     // Reset state for new match
     setOpponentState(null);
+    setRestoredLocalState(null);
     setOpponentConnected(false);
     setOpponentEverConnected(false);
     setOpponentName(null);
@@ -158,8 +160,11 @@ export function usePartyGame(
               setOpponentConnected(true);
               setOpponentEverConnected(true);
             }
-            // Use server-provided duration
-            if (message.duration) {
+            // Use remaining time if reconnecting, otherwise full duration
+            if (message.timeRemaining !== undefined) {
+              gameDurationRef.current = message.duration;
+              setTimeLeft(message.timeRemaining);
+            } else if (message.duration) {
               gameDurationRef.current = message.duration;
               setTimeLeft(message.duration);
             }
@@ -172,6 +177,16 @@ export function usePartyGame(
             setOpponentConnected(true);
             setOpponentEverConnected(true);
             setOpponentState({
+              grid: message.state.grid || Array(16).fill(0),
+              score: message.state.score,
+              gameOver: message.state.gameOver,
+              won: message.state.won,
+            });
+            break;
+
+          case 'your_state':
+            console.log('[usePartyGame] Restoring local state, score:', message.state.score);
+            setRestoredLocalState({
               grid: message.state.grid || Array(16).fill(0),
               score: message.state.score,
               gameOver: message.state.gameOver,
@@ -317,6 +332,7 @@ export function usePartyGame(
 
   return {
     opponentState,
+    restoredLocalState,
     opponentConnected,
     opponentEverConnected,
     opponentName,

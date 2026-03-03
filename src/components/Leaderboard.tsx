@@ -187,7 +187,6 @@ export default function Leaderboard({
                           {rankDisplay(ghostInserted ? rank + 1 : rank)}
                         </span>
                         <span className="lb-name">{entry.username}</span>
-                        <span className="lb-grid">{entry.grid_size}x{entry.grid_size}</span>
                         <span className="lb-score">{entry.score.toLocaleString()}</span>
                       </div>
                     </React.Fragment>

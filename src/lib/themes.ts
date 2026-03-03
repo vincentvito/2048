@@ -84,22 +84,22 @@ export const themes: Record<ThemeName, ThemeColors> = {
     popupColor: "#edc22e",
     confettiColors: ["#f59e0b", "#d97706", "#fbbf24", "#78350f", "#fde68a"],
 
-    // Classic theme - bold distinct colors with hue shifts
+    // Classic theme - warm cream to chocolate gradient
     tiles: {
       0: ["rgba(238,228,218,0.35)", "#776e65"],
-      2: ["#eee4da", "#776e65"],
-      4: ["#eee1c9", "#776e65"],
-      8: ["#f3b27a", "#f9f6f2"],
-      16: ["#f69664", "#f9f6f2"],
-      32: ["#f77c5f", "#f9f6f2"],
-      64: ["#f75f3b", "#f9f6f2"],
-      128: ["#edd073", "#f9f6f2"],
-      256: ["#edcc62", "#f9f6f2"],
-      512: ["#5cd1e5", "#f9f6f2"],
-      1024: ["#24c1a0", "#f9f6f2"],
-      2048: ["#ffd700", "#776e65"],
-      4096: ["#ff3d7f", "#f9f6f2"],
-      8192: ["#9b59b6", "#f9f6f2"],
+      2: ["#F6E5C0", "#776e65"],      // Light Cream
+      4: ["#EED2A4", "#776e65"],      // Warm Sand
+      8: ["#E6BA80", "#776e65"],      // Toasted Macadamia
+      16: ["#E29B5A", "#f9f6f2"],     // Soft Caramel
+      32: ["#D87A45", "#f9f6f2"],     // Terracotta
+      64: ["#C46231", "#f9f6f2"],     // Burnt Orange
+      128: ["#AD4D23", "#f9f6f2"],    // Sienna
+      256: ["#933D19", "#f9f6f2"],    // Chestnut
+      512: ["#7A2F11", "#f9f6f2"],    // Mocha
+      1024: ["#5C220A", "#f9f6f2"],   // Espresso
+      2048: ["#3F1504", "#f9f6f2"],   // Dark Chocolate
+      4096: ["#2A0E02", "#f9f6f2"],   // Darker
+      8192: ["#1A0901", "#f9f6f2"],   // Darkest
     },
   },
 

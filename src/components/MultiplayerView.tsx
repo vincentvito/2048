@@ -231,6 +231,23 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
     }
   }, [gameStarted, isReconnecting]);
 
+  // Reset local board when a NEW game starts (not reconnect)
+  // This ensures we don't carry over localStorage state from single-player
+  const hasResetForGame = useRef(false);
+  useEffect(() => {
+    if (gameStarted && !isReconnecting && !reconnectSession && !hasResetForGame.current) {
+      hasResetForGame.current = true;
+      // Small delay to ensure the reset ref is available
+      setTimeout(() => {
+        localGameResetRef.current?.();
+      }, 50);
+    }
+    // Reset the flag when game ends
+    if (!gameStarted) {
+      hasResetForGame.current = false;
+    }
+  }, [gameStarted, isReconnecting, reconnectSession]);
+
   // Stale room timeout: if reconnecting and game doesn't start within 5s, bail
   useEffect(() => {
     if (!isReconnecting || !effectiveRoomId) return;

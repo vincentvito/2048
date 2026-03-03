@@ -1,4 +1,8 @@
 import type * as Party from "partykit/server";
+import { generateBotName, generateBotElo } from "./bot-game";
+
+// How long to wait for a human opponent before matching with a bot
+const BOT_MATCH_TIMEOUT = 15000; // 15 seconds
 
 // Waiting player in queue
 interface WaitingPlayer {
@@ -7,6 +11,7 @@ interface WaitingPlayer {
   elo: number;
   connectionId: string;
   joinedAt: number;
+  botMatchScheduled?: boolean;
 }
 
 // Note: "userId" matches the field name sent from client as "userId"
@@ -101,13 +106,15 @@ export default class LobbyServer implements Party.Server {
       await this.saveQueue();
     } else {
       // Add to waiting queue
-      this.waitingPlayers.push({
+      const player: WaitingPlayer = {
         userId,
         username,
         elo,
         connectionId: sender.id,
         joinedAt: Date.now(),
-      });
+        botMatchScheduled: false,
+      };
+      this.waitingPlayers.push(player);
 
       console.log(`[Lobby] ${username} added to queue. New size: ${this.waitingPlayers.length}`);
 
@@ -116,8 +123,65 @@ export default class LobbyServer implements Party.Server {
         position: 1,
       }));
 
+      // Schedule bot match after 15 seconds if no human opponent found
+      await this.room.storage.setAlarm(Date.now() + BOT_MATCH_TIMEOUT);
+      player.botMatchScheduled = true;
+
       await this.saveQueue();
     }
+  }
+
+  // Handle alarm - match waiting player with a bot
+  async onAlarm() {
+    console.log(`[Lobby] Alarm fired, checking for waiting players`);
+
+    // Process any players who have been waiting too long
+    const now = Date.now();
+    const playersToMatch: WaitingPlayer[] = [];
+
+    for (const player of this.waitingPlayers) {
+      if (now - player.joinedAt >= BOT_MATCH_TIMEOUT) {
+        playersToMatch.push(player);
+      }
+    }
+
+    for (const player of playersToMatch) {
+      // Remove from waiting list
+      this.waitingPlayers = this.waitingPlayers.filter(p => p.userId !== player.userId);
+
+      // Generate bot opponent
+      const botName = generateBotName();
+      const botElo = generateBotElo(player.elo);
+      const roomId = `bot_${Date.now()}_${player.userId.slice(0, 8)}`;
+
+      console.log(`[Lobby] Bot match: ${player.username} vs ${botName} (ELO: ${botElo}) -> ${roomId}`);
+
+      // Notify the player
+      const conn = this.room.getConnection(player.connectionId);
+      if (conn) {
+        conn.send(JSON.stringify({
+          type: 'matched',
+          roomId,
+          opponent: { username: botName, elo: botElo, isBot: true },
+        }));
+      }
+    }
+
+    // If there are still players waiting, schedule another alarm
+    if (this.waitingPlayers.length > 0) {
+      const oldestPlayer = this.waitingPlayers.reduce((oldest, p) =>
+        p.joinedAt < oldest.joinedAt ? p : oldest
+      );
+      const timeUntilBotMatch = BOT_MATCH_TIMEOUT - (now - oldestPlayer.joinedAt);
+      if (timeUntilBotMatch > 0) {
+        await this.room.storage.setAlarm(now + timeUntilBotMatch);
+      } else {
+        // Immediate alarm for overdue players
+        await this.room.storage.setAlarm(now + 100);
+      }
+    }
+
+    await this.saveQueue();
   }
 
   private async handleLeaveQueue(sender: Party.Connection) {

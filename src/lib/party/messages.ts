@@ -28,7 +28,7 @@ export type LobbyClientMessage =
 
 export type LobbyServerMessage =
   | { type: 'waiting'; position: number }
-  | { type: 'matched'; roomId: string; opponent: { username: string; elo: number } }
+  | { type: 'matched'; roomId: string; opponent: { username: string; elo: number; isBot?: boolean } }
   | { type: 'error'; message: string };
 
 // ============ Game Messages (Client -> Server) ============
@@ -44,10 +44,10 @@ export type GameClientMessage =
 // ============ Game Messages (Server -> Client) ============
 
 export type GameServerMessage =
-  | { type: 'player_joined'; playerId: string; username: string; elo: number; playerCount: number }
+  | { type: 'player_joined'; playerId: string; username: string; elo: number; playerCount: number; isBot?: boolean }
   | { type: 'player_left'; playerId: string }
-  | { type: 'game_start'; players: Array<{ id: string; username: string; elo: number }>; duration: number; timeRemaining?: number; mode: GameMode }
-  | { type: 'opponent_state'; state: GameStateMessage; username: string; elo: number }
+  | { type: 'game_start'; players: Array<{ id: string; username: string; elo: number; isBot?: boolean }>; duration: number; timeRemaining?: number; mode: GameMode }
+  | { type: 'opponent_state'; state: GameStateMessage; username: string; elo: number; isBot?: boolean }
   | { type: 'your_state'; state: GameStateMessage }
   | { type: 'opponent_connected'; connected: boolean }
   | { type: 'rematch_requested'; by: 'local' | 'opponent' }

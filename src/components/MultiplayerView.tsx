@@ -102,7 +102,10 @@ interface MultiplayerViewProps {
 }
 
 export default function MultiplayerView({ onMatchActiveChange, reconnectSession }: MultiplayerViewProps) {
-  const { state: matchmakingState, setState: setMatchmakingState, roomId, setRoomId: setMatchmakingRoomId, opponentInfo, startMatchmaking, cancelMatchmaking, myId } = useMatchmaking();
+  const { state: matchmakingState, setState: setMatchmakingState, roomId, setRoomId: setMatchmakingRoomId, opponentInfo, startMatchmaking, cancelMatchmaking, myId, searchTimeLeft } = useMatchmaking();
+
+  // Bot opponent info from matchmaking
+  const [botOpponent, setBotOpponent] = useState<{ username: string; elo: number } | null>(null);
 
   // Track current theme for canvas boards
   const [themeName, setThemeName] = useState<ThemeName>(() => {
@@ -189,6 +192,15 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
   // Compute effective room ID — friend room takes priority when in friendly mode
   const effectiveRoomId = gameMode === 'friendly' ? friendRoomId : roomId;
 
+  // Set bot opponent info when matched with a bot
+  useEffect(() => {
+    if (opponentInfo?.isBot) {
+      setBotOpponent({ username: opponentInfo.username, elo: opponentInfo.elo });
+    } else {
+      setBotOpponent(null);
+    }
+  }, [opponentInfo]);
+
   // Persist session whenever we have an active room
   useEffect(() => {
     if (effectiveRoomId && user?.id) {
@@ -206,11 +218,11 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
   }, [effectiveRoomId, onMatchActiveChange]);
 
   const {
-    opponentState, restoredLocalState, opponentConnected, opponentEverConnected, opponentName, opponentElo,
+    opponentState, restoredLocalState, opponentConnected, opponentEverConnected, opponentName, opponentElo, opponentIsBot,
     sendGameState, requestRematch, resetRematchState, declareForfeit,
     localWantsRematch, opponentWantsRematch, rematchReady,
     timeLeft, gameStarted, forfeitWin, serverResult,
-  } = useMultiplayerGame(effectiveRoomId, myId, user?.id || null, myName, myElo, gameMode);
+  } = useMultiplayerGame(effectiveRoomId, myId, user?.id || null, myName, myElo, gameMode, botOpponent);
 
   // Clear reconnecting flag once the game has started
   useEffect(() => {
@@ -324,6 +336,7 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
     setLocalEloAfter(null);
     setEloProcessed(false);
     setIsReconnecting(false);
+    setBotOpponent(null);
   };
 
   const handleNewOpponent = () => {
@@ -380,7 +393,7 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
     const processElo = async () => {
       setEloProcessed(true);
 
-      // Skip ELO updates for friendly games
+      // Skip ELO updates for friendly games only (bot games still affect ELO)
       if (gameMode === 'friendly') return;
 
       const localScore = serverResult?.yourScore ?? localGameResult?.score ?? 0;
@@ -679,7 +692,11 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
           </div>
         )}
         <div className="loader" style={{ margin: '20px auto' }}></div>
-        <p className="hint">Waiting for another player to join...</p>
+        <div className="mp-search-timer">
+          <p className="mp-search-timer-text">
+            Looking for a human player... <span className="mp-search-timer-count">{searchTimeLeft}s</span>
+          </p>
+        </div>
         <button className="game-btn match-btn secondary" onClick={cancelMatchmaking}>Cancel</button>
       </div>
     );

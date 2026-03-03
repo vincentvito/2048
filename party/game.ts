@@ -1,4 +1,5 @@
 import type * as Party from "partykit/server";
+import { createInitialBotState, botMakeMove, BotGameState } from "./bot-game";
 
 // Player state in a game room
 interface Player {
@@ -13,6 +14,7 @@ interface Player {
   wantsRematch: boolean;
   forfeited: boolean;
   lastSeen: number;
+  isBot?: boolean;
 }
 
 interface GameState {
@@ -21,7 +23,13 @@ interface GameState {
   gameStartedAt: number | null;
   resultSent: boolean;
   mode: 'ranked' | 'friendly';
+  botState?: BotGameState;
+  botMoveInterval?: ReturnType<typeof setInterval>;
 }
+
+// Bot move interval - make a move every 2-4 seconds (random)
+const BOT_MIN_MOVE_INTERVAL = 2000;
+const BOT_MAX_MOVE_INTERVAL = 4000;
 
 const RANKED_DURATION = 5 * 60;    // 5 minutes
 const FRIENDLY_DURATION = 5 * 60;  // 5 minutes (room code valid for 1 hour)
@@ -38,22 +46,21 @@ export default class GameServer implements Party.Server {
     mode: 'ranked',
   };
 
-  // Enable hibernation for better scalability
-  readonly options: Party.ServerOptions = {
-    hibernate: true,
-  };
-
   constructor(readonly room: Party.Room) {}
 
   // Load state on startup
   async onStart() {
+    console.log(`[Game ${this.room.id}] onStart called`);
     const stored = await this.room.storage.get<{
       players: [string, Player][];
       gameStarted: boolean;
       gameStartedAt?: number | null;
       resultSent?: boolean;
       mode?: 'ranked' | 'friendly';
+      botState?: BotGameState;
     }>("gameState");
+
+    console.log(`[Game ${this.room.id}] Stored state:`, stored ? 'found' : 'none');
 
     if (stored) {
       this.state = {
@@ -62,7 +69,16 @@ export default class GameServer implements Party.Server {
         gameStartedAt: stored.gameStartedAt ?? null,
         resultSent: stored.resultSent || false,
         mode: stored.mode || 'ranked',
+        botState: stored.botState,
       };
+
+      // If this is a bot game, restart bot moves
+      const isBotGame = this.room.id.startsWith('bot_');
+      console.log(`[Game ${this.room.id}] isBotGame: ${isBotGame}, hasBotState: ${!!this.state.botState}, resultSent: ${this.state.resultSent}`);
+      if (isBotGame && this.state.botState && !this.state.resultSent) {
+        console.log(`[Game ${this.room.id}] Restarting bot moves...`);
+        this.scheduleBotMove();
+      }
     }
   }
 
@@ -145,7 +161,7 @@ export default class GameServer implements Party.Server {
   }
 
   private async handleJoin(
-    data: { userId: string; username: string; elo: number; mode?: 'ranked' | 'friendly' },
+    data: { userId: string; username: string; elo: number; mode?: 'ranked' | 'friendly'; botOpponent?: { username: string; elo: number } },
     sender: Party.Connection
   ) {
     const { userId, username, elo } = data;
@@ -195,9 +211,21 @@ export default class GameServer implements Party.Server {
         wantsRematch: false,
         forfeited: false,
         lastSeen: Date.now(),
+        isBot: false,
       };
 
       this.state.players.set(userId, player);
+    }
+
+    // Check if this is a bot game (room ID starts with "bot_")
+    const isBotGame = this.room.id.startsWith('bot_');
+
+    // If this is a bot game and we only have one human player, create the bot player
+    if (isBotGame && this.state.players.size === 1) {
+      // Generate bot info - use provided info or generate new
+      const botName = data.botOpponent?.username || generateBotName();
+      const botElo = data.botOpponent?.elo || generateBotElo(elo);
+      await this.createBotPlayer(botName, botElo);
     }
 
     // Notify all players
@@ -210,6 +238,7 @@ export default class GameServer implements Party.Server {
       username,
       elo,
       playerCount,
+      isBot: false,
     }));
 
     // Start game when 2 players are connected
@@ -224,15 +253,176 @@ export default class GameServer implements Party.Server {
           id: p.userId,
           username: p.username,
           elo: p.elo,
+          isBot: p.isBot,
         })),
         duration,
         mode: this.state.mode,
       }));
 
-      console.log(`[Game ${this.room.id}] Game started with ${players.map(p => p.username).join(' vs ')}`);
+      console.log(`[Game ${this.room.id}] Game started with ${players.map(p => p.username + (p.isBot ? ' (BOT)' : '')).join(' vs ')}`);
+
+      // Start bot moves if this is a bot game
+      if (isBotGame) {
+        this.startBotMoves();
+      }
     }
 
     await this.saveState();
+  }
+
+  private async createBotPlayer(botName: string, botElo: number) {
+    const botUserId = `bot_${Date.now()}`;
+
+    // Initialize bot game state with ELO (affects difficulty)
+    this.state.botState = createInitialBotState(botElo);
+
+    const botPlayer: Player = {
+      userId: botUserId,
+      username: botName,
+      elo: botElo,
+      connectionId: 'bot', // Special connection ID for bot
+      grid: this.state.botState.grid,
+      score: this.state.botState.score,
+      gameOver: this.state.botState.gameOver,
+      won: this.state.botState.won,
+      wantsRematch: false,
+      forfeited: false,
+      lastSeen: Date.now(),
+      isBot: true,
+    };
+
+    this.state.players.set(botUserId, botPlayer);
+
+    // Notify the human player about the bot joining
+    this.room.broadcast(JSON.stringify({
+      type: 'player_joined',
+      playerId: botUserId,
+      username: botName,
+      elo: botElo,
+      playerCount: 2,
+      isBot: true,
+    }));
+
+    console.log(`[Game ${this.room.id}] Bot player created: ${botName} (ELO: ${botElo})`);
+  }
+
+  private startBotMoves() {
+    // Schedule periodic bot moves using alarm
+    this.scheduleBotMove();
+  }
+
+  private async scheduleBotMove() {
+    if (this.state.resultSent) return;
+
+    // Random delay between moves
+    const delay = BOT_MIN_MOVE_INTERVAL + Math.random() * (BOT_MAX_MOVE_INTERVAL - BOT_MIN_MOVE_INTERVAL);
+    await this.room.storage.setAlarm(Date.now() + delay);
+  }
+
+  async onAlarm() {
+    console.log(`[Game] Alarm fired!`);
+    // Check if this is a bot move alarm or a disconnect timeout
+    const now = Date.now();
+
+    // First, handle disconnected players (existing logic)
+    const playersToRemove: string[] = [];
+
+    for (const [id, player] of this.state.players) {
+      if (player.isBot) continue; // Skip bots for disconnect check
+
+      // Check if connection is still active
+      const connection = this.room.getConnection(player.connectionId);
+      if (!connection && now - player.lastSeen > DISCONNECT_TIMEOUT) {
+        playersToRemove.push(id);
+      }
+    }
+
+    for (const id of playersToRemove) {
+      const player = this.state.players.get(id);
+      if (player) {
+        this.state.players.delete(id);
+
+        this.room.broadcast(JSON.stringify({
+          type: 'player_left',
+          playerId: id,
+        }));
+
+        console.log(`[Game] ${player.username} removed (timeout)`);
+      }
+    }
+
+    // Now handle bot moves
+    if (this.state.botState && !this.state.resultSent && this.state.gameStarted) {
+      await this.performBotMove();
+    }
+
+    await this.saveState();
+  }
+
+  private async performBotMove() {
+    console.log(`[Bot] performBotMove called - checking state...`);
+    if (!this.state.botState || this.state.botState.gameOver || this.state.botState.won) {
+      console.log(`[Bot] Skipping move - botState: ${!!this.state.botState}, gameOver: ${this.state.botState?.gameOver}, won: ${this.state.botState?.won}`);
+      return;
+    }
+
+    // Find the bot player
+    let botPlayer: Player | undefined;
+    for (const player of this.state.players.values()) {
+      if (player.isBot) {
+        botPlayer = player;
+        break;
+      }
+    }
+
+    if (!botPlayer) return;
+
+    // Log state before move
+    const beforeGrid = [...this.state.botState.grid];
+    const beforeScore = this.state.botState.score;
+
+    // Make a bot move
+    this.state.botState = botMakeMove(this.state.botState);
+
+    // Update bot player state
+    botPlayer.grid = this.state.botState.grid;
+    botPlayer.score = this.state.botState.score;
+    botPlayer.gameOver = this.state.botState.gameOver;
+    botPlayer.won = this.state.botState.won;
+
+    // Log the move with grid visualization
+    const formatGrid = (g: number[]) => {
+      const rows = [];
+      for (let r = 0; r < 4; r++) {
+        rows.push(g.slice(r * 4, r * 4 + 4).map(v => v.toString().padStart(4)).join(' '));
+      }
+      return rows.join('\n');
+    };
+
+    console.log(`[Bot] ELO: ${this.state.botState.elo} | Score: ${beforeScore} -> ${botPlayer.score} (+${botPlayer.score - beforeScore})`);
+    console.log(`[Bot] Grid:\n${formatGrid(botPlayer.grid)}`);
+
+    // Broadcast bot state to human player
+    this.room.broadcast(JSON.stringify({
+      type: 'opponent_state',
+      state: {
+        grid: botPlayer.grid,
+        score: botPlayer.score,
+        gameOver: botPlayer.gameOver,
+        won: botPlayer.won,
+      },
+      username: botPlayer.username,
+      elo: botPlayer.elo,
+      isBot: true,
+    }));
+
+    // Check if match should resolve
+    await this.tryResolveMatch(botPlayer.won ? '2048' : 'score');
+
+    // Schedule next bot move if game is not over
+    if (!this.state.resultSent && !this.state.botState.gameOver && !this.state.botState.won) {
+      await this.scheduleBotMove();
+    }
   }
 
   private async handleStateUpdate(
@@ -335,7 +525,7 @@ export default class GameServer implements Party.Server {
       }
     }
 
-    console.log(`[Game ${this.room.id}] Match resolved: ${winnerId ? `winner=${winnerId}` : 'tie'} (${actualReason}) scores: ${p1.username}=${p1.score} vs ${p2.username}=${p2.score}`);
+    console.log(`[Game] Match resolved: ${winnerId ? `winner=${winnerId}` : 'tie'} (${actualReason}) scores: ${p1.username}=${p1.score} vs ${p2.username}=${p2.score}`);
   }
 
   private async handleTimerExpired(sender: Party.Connection) {
@@ -361,6 +551,17 @@ export default class GameServer implements Party.Server {
 
     player.wantsRematch = true;
 
+    // Check if this is a bot game - if so, auto-accept rematch
+    const isBotGame = this.room.id.startsWith('bot_');
+    if (isBotGame) {
+      // Find bot player and auto-accept
+      for (const p of this.state.players.values()) {
+        if (p.isBot) {
+          p.wantsRematch = true;
+        }
+      }
+    }
+
     // Check if both want rematch
     const players = Array.from(this.state.players.values());
     const allWantRematch = players.length === 2 && players.every(p => p.wantsRematch);
@@ -368,10 +569,19 @@ export default class GameServer implements Party.Server {
     if (allWantRematch) {
       // Reset game state for both players
       for (const p of players) {
-        p.grid = [];
-        p.score = 0;
-        p.gameOver = false;
-        p.won = false;
+        if (p.isBot) {
+          // Reset bot state (preserve ELO for difficulty)
+          this.state.botState = createInitialBotState(p.elo);
+          p.grid = this.state.botState.grid;
+          p.score = this.state.botState.score;
+          p.gameOver = this.state.botState.gameOver;
+          p.won = this.state.botState.won;
+        } else {
+          p.grid = [];
+          p.score = 0;
+          p.gameOver = false;
+          p.won = false;
+        }
         p.wantsRematch = false;
         p.forfeited = false;
       }
@@ -380,6 +590,11 @@ export default class GameServer implements Party.Server {
 
       this.room.broadcast(JSON.stringify({ type: 'rematch_start' }));
       console.log(`[Game ${this.room.id}] Rematch started`);
+
+      // Restart bot moves for bot games
+      if (isBotGame) {
+        this.startBotMoves();
+      }
     } else {
       // Notify opponent that rematch was requested
       this.broadcastToOthers(sender.id, {
@@ -447,36 +662,6 @@ export default class GameServer implements Party.Server {
     await this.room.storage.setAlarm(Date.now() + DISCONNECT_TIMEOUT);
   }
 
-  // Handle alarm (cleanup disconnected players)
-  async onAlarm() {
-    const now = Date.now();
-    const playersToRemove: string[] = [];
-
-    for (const [id, player] of this.state.players) {
-      // Check if connection is still active
-      const connection = this.room.getConnection(player.connectionId);
-      if (!connection && now - player.lastSeen > DISCONNECT_TIMEOUT) {
-        playersToRemove.push(id);
-      }
-    }
-
-    for (const id of playersToRemove) {
-      const player = this.state.players.get(id);
-      if (player) {
-        this.state.players.delete(id);
-
-        this.room.broadcast(JSON.stringify({
-          type: 'player_left',
-          playerId: id,
-        }));
-
-        console.log(`[Game] ${player.username} removed (timeout)`);
-      }
-    }
-
-    await this.saveState();
-  }
-
   // Broadcast to all except sender
   private broadcastToOthers(senderId: string, message: object) {
     const msgStr = JSON.stringify(message);
@@ -495,6 +680,7 @@ export default class GameServer implements Party.Server {
       gameStartedAt: this.state.gameStartedAt,
       resultSent: this.state.resultSent,
       mode: this.state.mode,
+      botState: this.state.botState,
     });
   }
 }

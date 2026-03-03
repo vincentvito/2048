@@ -14,7 +14,8 @@ export function usePartyGame(
   userId: string | null,
   myName?: string,
   myElo?: number,
-  gameMode: GameMode = 'ranked'
+  gameMode: GameMode = 'ranked',
+  botOpponent?: { username: string; elo: number } | null
 ) {
   const [opponentState, setOpponentState] = useState<GameState | null>(null);
   const [restoredLocalState, setRestoredLocalState] = useState<GameState | null>(null);
@@ -22,6 +23,7 @@ export function usePartyGame(
   const [opponentEverConnected, setOpponentEverConnected] = useState(false);
   const [opponentName, setOpponentName] = useState<string | null>(null);
   const [opponentElo, setOpponentElo] = useState<number | null>(null);
+  const [opponentIsBot, setOpponentIsBot] = useState(false);
   const [localWantsRematch, setLocalWantsRematch] = useState(false);
   const [opponentWantsRematch, setOpponentWantsRematch] = useState(false);
   const [forfeitWin, setForfeitWin] = useState<'local' | 'opponent' | null>(null);
@@ -65,6 +67,7 @@ export function usePartyGame(
     setOpponentEverConnected(false);
     setOpponentName(null);
     setOpponentElo(null);
+    setOpponentIsBot(false);
     setLocalWantsRematch(false);
     setOpponentWantsRematch(false);
     setForfeitWin(null);
@@ -97,13 +100,20 @@ export function usePartyGame(
       socketReadyRef.current = true;
 
       // Join the game
-      socket.send(JSON.stringify({
+      const joinMessage: Record<string, unknown> = {
         type: 'join',
         userId,
         username: myName,
         elo: myElo || 1200,
         mode: gameMode,
-      }));
+      };
+
+      // Include bot opponent info if this is a bot game
+      if (botOpponent) {
+        joinMessage.botOpponent = botOpponent;
+      }
+
+      socket.send(JSON.stringify(joinMessage));
 
       // Send any pending state (initial game state that was queued)
       if (pendingStateRef.current) {
@@ -134,10 +144,11 @@ export function usePartyGame(
 
         switch (message.type) {
           case 'player_joined':
-            console.log(`[usePartyGame] Player joined: ${message.username}`);
+            console.log(`[usePartyGame] Player joined: ${message.username}${message.isBot ? ' (BOT)' : ''}`);
             if (message.playerId !== userId) {
               setOpponentName(message.username);
               setOpponentElo(message.elo);
+              setOpponentIsBot(!!message.isBot);
               setOpponentConnected(true);
               setOpponentEverConnected(true);
             }
@@ -157,6 +168,7 @@ export function usePartyGame(
             if (opponent) {
               setOpponentName(opponent.username);
               setOpponentElo(opponent.elo);
+              setOpponentIsBot(!!opponent.isBot);
               setOpponentConnected(true);
               setOpponentEverConnected(true);
             }
@@ -174,6 +186,9 @@ export function usePartyGame(
           case 'opponent_state':
             setOpponentName(message.username);
             setOpponentElo(message.elo);
+            if (message.isBot !== undefined) {
+              setOpponentIsBot(!!message.isBot);
+            }
             setOpponentConnected(true);
             setOpponentEverConnected(true);
             setOpponentState({
@@ -252,7 +267,7 @@ export function usePartyGame(
       }
       initializedRef.current = false;
     };
-  }, [roomId, userId, myName, myElo, gameMode, clearTimer]);
+  }, [roomId, userId, myName, myElo, gameMode, botOpponent, clearTimer]);
 
   // Timer countdown
   useEffect(() => {
@@ -337,6 +352,7 @@ export function usePartyGame(
     opponentEverConnected,
     opponentName,
     opponentElo,
+    opponentIsBot,
     sendGameState,
     requestRematch,
     resetRematchState,

@@ -2681,6 +2681,35 @@ body {
   align-items: center;
 }
 
+.mp-search-timer {
+  margin: 16px 0;
+  text-align: center;
+}
+
+.mp-search-timer-text {
+  font-size: 15px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.mp-search-timer-count {
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.mp-search-timer-bot {
+  font-size: 14px;
+  color: var(--accent);
+  margin: 8px 0 0;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
 /* ------------------------------------------------------------------
    IN-GAME HUD (replaces .match-header)
 ------------------------------------------------------------------ */

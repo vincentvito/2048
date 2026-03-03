@@ -5,19 +5,26 @@ import type { LobbyServerMessage } from '@/lib/party/messages';
 export type MatchmakingState = 'idle' | 'searching' | 'matched';
 
 const PARTYKIT_HOST = process.env.NEXT_PUBLIC_PARTYKIT_HOST || 'localhost:1999';
+const BOT_MATCH_TIMEOUT = 15; // seconds until bot match
 
 export function usePartyMatchmaking() {
   const [state, setState] = useState<MatchmakingState>('idle');
   const [roomId, setRoomId] = useState<string | null>(null);
-  const [opponentInfo, setOpponentInfo] = useState<{ username: string; elo: number } | null>(null);
+  const [opponentInfo, setOpponentInfo] = useState<{ username: string; elo: number; isBot?: boolean } | null>(null);
   const [myId] = useState(() => Math.random().toString(36).substring(2, 10));
+  const [searchTimeLeft, setSearchTimeLeft] = useState(BOT_MATCH_TIMEOUT);
 
   const socketRef = useRef<PartySocket | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const cleanup = useCallback(() => {
     if (socketRef.current) {
       socketRef.current.close();
       socketRef.current = null;
+    }
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
     }
   }, []);
 
@@ -33,6 +40,15 @@ export function usePartyMatchmaking() {
     setState('searching');
     setRoomId(null);
     setOpponentInfo(null);
+    setSearchTimeLeft(BOT_MATCH_TIMEOUT);
+
+    // Start countdown timer
+    timerRef.current = setInterval(() => {
+      setSearchTimeLeft((prev) => {
+        if (prev <= 1) return 0;
+        return prev - 1;
+      });
+    }, 1000);
 
     // Connect to lobby
     const socket = new PartySocket({
@@ -116,5 +132,6 @@ export function usePartyMatchmaking() {
     startMatchmaking,
     cancelMatchmaking,
     myId,
+    searchTimeLeft,
   };
 }

@@ -844,9 +844,6 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
 
       {/* Controls */}
       <div className="button-row">
-        <button onClick={handleSizeToggle} className="size-btn">
-          {displaySize === 4 ? "4\u00d74" : "8\u00d78"}
-        </button>
         <button onClick={handleInit} className="game-btn">
           New Game
         </button>

@@ -1,5 +1,5 @@
 import type * as Party from "partykit/server";
-import { createInitialBotState, botMakeMove, BotGameState } from "./bot-game";
+import { createInitialBotState, botMakeMove, BotGameState, generateBotName, generateBotElo } from "./bot-game";
 
 // Player state in a game room
 interface Player {

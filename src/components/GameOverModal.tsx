@@ -22,6 +22,8 @@ interface GameOverModalProps {
   onKeepPlaying?: () => void;
   leaderboardScores?: LeaderboardEntry[];
   isSignedIn?: boolean;
+  boardScreenshot?: string;
+  currentUsername?: string;
 }
 
 export default function GameOverModal({
@@ -34,6 +36,8 @@ export default function GameOverModal({
   onKeepPlaying,
   leaderboardScores,
   isSignedIn,
+  boardScreenshot,
+  currentUsername,
 }: GameOverModalProps): React.ReactElement | null {
   const [showEmail, setShowEmail] = useState(false);
   const [personalBest, setPersonalBest] = useState(0);
@@ -44,6 +48,7 @@ export default function GameOverModal({
     below: LeaderboardEntry | null;
   } | null>(null);
   const [gamesPlayed, setGamesPlayed] = useState(0);
+  const [shareCopied, setShareCopied] = useState(false);
 
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -120,13 +125,14 @@ export default function GameOverModal({
         const rank = leaderboardScores.filter((s) => s.score > score).length + 1;
         if (rank <= 20) {
           setLeaderboardRank(rank);
-          // Find scores above and below
-          const sortedScores = [...leaderboardScores].sort((a, b) => b.score - a.score);
-          const aboveIndex = rank - 2; // rank is 1-indexed, so rank-2 is the index of the score above
-          const belowIndex = rank - 1; // The score at rank position (0-indexed)
+          // Find scores above and below, excluding the current user's own entries
+          const others = [...leaderboardScores]
+            .filter(s => !currentUsername || s.username !== currentUsername)
+            .sort((a, b) => b.score - a.score);
+          const aboveEntries = others.filter(s => s.score > score);
           setRankContext({
-            above: aboveIndex >= 0 ? sortedScores[aboveIndex] : null,
-            below: belowIndex < sortedScores.length ? sortedScores[belowIndex] : null,
+            above: aboveEntries.length > 0 ? aboveEntries[aboveEntries.length - 1] : null,
+            below: others.find(s => s.score <= score) || null,
           });
         } else {
           setLeaderboardRank(null);
@@ -142,7 +148,50 @@ export default function GameOverModal({
         }
       }
     }
-  }, [open, score, gridSize, leaderboardScores]);
+  }, [open, score, gridSize, leaderboardScores, currentUsername]);
+
+  const handleShare = async () => {
+    const text = won
+      ? `I reached 2048 with a score of ${score.toLocaleString()}! Can you beat it?\nhttps://the2048league.com`
+      : `I scored ${score.toLocaleString()} in 2048! Can you beat my score?\nhttps://the2048league.com`;
+
+    // Convert data URL to File for sharing
+    const getImageFile = async (): Promise<File | null> => {
+      if (!boardScreenshot) return null;
+      try {
+        const response = await fetch(boardScreenshot);
+        const blob = await response.blob();
+        return new File([blob], '2048-board.png', { type: 'image/png' });
+      } catch {
+        return null;
+      }
+    };
+
+    if (navigator.share) {
+      try {
+        const imageFile = await getImageFile();
+        // Check if the browser supports sharing files
+        if (imageFile && navigator.canShare?.({ files: [imageFile] })) {
+          await navigator.share({
+            text,
+            files: [imageFile],
+          });
+        } else {
+          await navigator.share({ text });
+        }
+      } catch {
+        // User cancelled or share failed
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(text);
+        setShareCopied(true);
+        setTimeout(() => setShareCopied(false), 2000);
+      } catch {
+        // Clipboard not available
+      }
+    }
+  };
 
   if (!open) return null;
 
@@ -257,6 +306,22 @@ export default function GameOverModal({
             </button>
           )}
         </div>
+
+        {/* Share button */}
+        <button
+          type="button"
+          className={`modal-btn-share${shareCopied ? ' modal-btn-share-copied' : ''}`}
+          onClick={handleShare}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="18" cy="5" r="3"/>
+            <circle cx="6" cy="12" r="3"/>
+            <circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+          </svg>
+          {shareCopied ? 'Copied!' : 'Share'}
+        </button>
 
         {/* SECONDARY: Sign-in for leaderboard (only if Supabase is configured and not already signed in) */}
         {configured && !isSignedIn && !showEmail && (

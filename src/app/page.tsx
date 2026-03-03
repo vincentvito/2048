@@ -36,6 +36,7 @@ export default function Home(): React.ReactElement {
     won: boolean;
     score: number;
     gridSize: number;
+    boardScreenshot?: string;
   } | null>(null);
   const gameResetRef = useRef<(() => void) | null>(null);
   const devEndGameRef = useRef<(() => void) | null>(null);
@@ -168,18 +169,31 @@ export default function Home(): React.ReactElement {
     }
   }, [user]);
 
+  // Capture the game board canvas as a screenshot
+  const captureBoardScreenshot = useCallback((): string | undefined => {
+    const canvas = document.querySelector('.game-canvas') as HTMLCanvasElement | null;
+    if (!canvas) return undefined;
+    try {
+      return canvas.toDataURL('image/png');
+    } catch {
+      return undefined;
+    }
+  }, []);
+
   const handleGameOver = useCallback((score: number, gridSize: number) => {
+    const boardScreenshot = captureBoardScreenshot();
     setCurrentScore(score);
-    setGameResult({ open: true, won: false, score, gridSize });
+    setGameResult({ open: true, won: false, score, gridSize, boardScreenshot });
     saveScoreToSupabase(score, gridSize);
-  }, [saveScoreToSupabase]);
+  }, [saveScoreToSupabase, captureBoardScreenshot]);
 
   const handleGameWon = useCallback((score: number, gridSize: number) => {
+    const boardScreenshot = captureBoardScreenshot();
     setCurrentScore(score);
-    setGameResult({ open: true, won: true, score, gridSize });
+    setGameResult({ open: true, won: true, score, gridSize, boardScreenshot });
     setShowConfetti(true);
     saveScoreToSupabase(score, gridSize);
-  }, [saveScoreToSupabase]);
+  }, [saveScoreToSupabase, captureBoardScreenshot]);
 
   // Auto-hide confetti after animation completes
   useEffect(() => {
@@ -405,6 +419,8 @@ export default function Home(): React.ReactElement {
             onKeepPlaying={gameResult.won ? handleKeepPlaying : undefined}
             leaderboardScores={leaderboardScores}
             isSignedIn={!!user}
+            boardScreenshot={gameResult.boardScreenshot}
+            currentUsername={user?.username || user?.email?.split("@")[0]}
           />
         )}
       </div>

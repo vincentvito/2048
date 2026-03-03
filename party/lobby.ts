@@ -124,8 +124,11 @@ export default class LobbyServer implements Party.Server {
       }));
 
       // Schedule bot match after 15 seconds if no human opponent found
-      await this.room.storage.setAlarm(Date.now() + BOT_MATCH_TIMEOUT);
+      const alarmTime = Date.now() + BOT_MATCH_TIMEOUT;
+      console.log(`[Lobby] Scheduling bot match alarm for ${new Date(alarmTime).toISOString()} (in ${BOT_MATCH_TIMEOUT}ms)`);
+      await this.room.storage.setAlarm(alarmTime);
       player.botMatchScheduled = true;
+      console.log(`[Lobby] Alarm scheduled, botMatchScheduled=${player.botMatchScheduled}`);
 
       await this.saveQueue();
     }
@@ -133,17 +136,28 @@ export default class LobbyServer implements Party.Server {
 
   // Handle alarm - match waiting player with a bot
   async onAlarm() {
-    console.log(`[Lobby] Alarm fired, checking for waiting players`);
+    const now = Date.now();
+    console.log(`[Lobby] Alarm fired at ${new Date(now).toISOString()}`);
+    console.log(`[Lobby] Waiting players: ${this.waitingPlayers.length}`);
+    console.log(`[Lobby] Players:`, this.waitingPlayers.map(p => ({
+      username: p.username,
+      joinedAt: new Date(p.joinedAt).toISOString(),
+      waitTime: now - p.joinedAt,
+      shouldMatch: (now - p.joinedAt) >= BOT_MATCH_TIMEOUT
+    })));
 
     // Process any players who have been waiting too long
-    const now = Date.now();
     const playersToMatch: WaitingPlayer[] = [];
 
     for (const player of this.waitingPlayers) {
-      if (now - player.joinedAt >= BOT_MATCH_TIMEOUT) {
+      const waitTime = now - player.joinedAt;
+      console.log(`[Lobby] Checking ${player.username}: waited ${waitTime}ms, threshold ${BOT_MATCH_TIMEOUT}ms`);
+      if (waitTime >= BOT_MATCH_TIMEOUT) {
         playersToMatch.push(player);
       }
     }
+
+    console.log(`[Lobby] Players to match with bot: ${playersToMatch.length}`);
 
     for (const player of playersToMatch) {
       // Remove from waiting list
@@ -158,12 +172,18 @@ export default class LobbyServer implements Party.Server {
 
       // Notify the player
       const conn = this.room.getConnection(player.connectionId);
+      console.log(`[Lobby] Connection for ${player.username}: ${conn ? 'found' : 'NOT FOUND'} (id: ${player.connectionId})`);
       if (conn) {
-        conn.send(JSON.stringify({
+        const matchMsg = {
           type: 'matched',
           roomId,
           opponent: { username: botName, elo: botElo, isBot: true },
-        }));
+        };
+        console.log(`[Lobby] Sending bot match message:`, matchMsg);
+        conn.send(JSON.stringify(matchMsg));
+        console.log(`[Lobby] Bot match message sent to ${player.username}`);
+      } else {
+        console.log(`[Lobby] WARNING: Could not send bot match to ${player.username} - connection lost`);
       }
     }
 

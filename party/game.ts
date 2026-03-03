@@ -484,6 +484,8 @@ export default class GameServer implements Party.Server {
     const overtook = (p1Done && !p2Done && p2.score > p1.score) ||
                      (p2Done && !p1Done && p1.score > p2.score);
 
+    console.log(`[Game ${this.room.id}] tryResolveMatch: reason=${reason}, p1Done=${p1Done}, p2Done=${p2Done}, p1.score=${p1.score}, p2.score=${p2.score}, overtook=${overtook}`);
+
     // Match resolves when:
     // - Someone reached 2048 (instant win)
     // - Timer expired (compare scores)

@@ -270,6 +270,7 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
   const [localGameResult, setLocalGameResult] = useState<{ won: boolean; score: number; gameOver: boolean } | null>(null);
   const [showResultModal, setShowResultModal] = useState(false);
   const [showOpponentExpanded, setShowOpponentExpanded] = useState(false);
+  const [showLeaveWarning, setShowLeaveWarning] = useState(false);
   const localGameResetRef = useRef<(() => void) | null>(null);
   const devEndGameRef = useRef<(() => void) | null>(null);
   const confettiFiredRef = useRef(false);
@@ -333,6 +334,17 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
   }, []);
 
   const handleLeaveMatch = () => {
+    const gameStillLive = gameStarted && !serverResult && !hasForfeit;
+    // Show warning modal for ranked games that are still live
+    if (gameStillLive && gameMode === 'ranked') {
+      setShowLeaveWarning(true);
+      return;
+    }
+    confirmLeaveMatch();
+  };
+
+  const confirmLeaveMatch = () => {
+    setShowLeaveWarning(false);
     const gameStillLive = gameStarted && !serverResult && !hasForfeit;
     if (gameStillLive) {
       declareForfeit();
@@ -905,6 +917,36 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
         </button>
       )}
       </div>
+
+      {/* Leave Match Warning Modal */}
+      {showLeaveWarning && (
+        <div className="mp-result-backdrop" role="dialog" aria-modal="true">
+          <div className="mp-result-card" style={{ textAlign: 'center', padding: '28px 24px' }}>
+            <h2 style={{ margin: '0 0 12px', fontSize: '1.4rem', color: 'var(--text-primary)' }}>Leave Match?</h2>
+            <p style={{ margin: '0 0 8px', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+              Leaving now will count as a forfeit.
+            </p>
+            <p style={{ margin: '0 0 20px', color: '#dc2626', fontSize: '0.9rem', fontWeight: 500 }}>
+              Your ELO rating will decrease.
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button
+                className="mp-result-btn-secondary"
+                onClick={() => setShowLeaveWarning(false)}
+              >
+                Keep Playing
+              </button>
+              <button
+                className="mp-result-btn-primary"
+                style={{ background: '#dc2626' }}
+                onClick={confirmLeaveMatch}
+              >
+                Leave & Forfeit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Match Result Overlay Modal */}
       {showResultModal && isMatchResolved && (

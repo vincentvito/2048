@@ -28,8 +28,8 @@ interface GameState {
 }
 
 // Bot move interval - make a move every 2-4 seconds (random)
-const BOT_MIN_MOVE_INTERVAL = 2000;
-const BOT_MAX_MOVE_INTERVAL = 4000;
+const BOT_MIN_MOVE_INTERVAL = 1000;
+const BOT_MAX_MOVE_INTERVAL = 3000;
 
 const RANKED_DURATION = 5 * 60;    // 5 minutes
 const FRIENDLY_DURATION = 5 * 60;  // 5 minutes (room code valid for 1 hour)

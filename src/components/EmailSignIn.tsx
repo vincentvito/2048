@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { authClient } from "@/lib/auth-client";
 
 const OTP_LENGTH = 6;
+const SIGNIN_PROGRESS_KEY = "2048_signin_progress";
 
 type Variant = "modal" | "mobile" | "inline";
 
@@ -137,6 +138,20 @@ export default function EmailSignIn({
   const [verifying, setVerifying] = useState(false);
   const [otpError, setOtpError] = useState("");
 
+  // Restore sign-in progress after page reload (e.g. user switched to email app)
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(SIGNIN_PROGRESS_KEY);
+      if (saved) {
+        const { email: savedEmail } = JSON.parse(saved);
+        if (savedEmail) {
+          setEmail(savedEmail);
+          setStep("otp");
+        }
+      }
+    } catch { /* noop */ }
+  }, []);
+
   async function handleSendOtp() {
     if (!email.trim() || sending) return;
 
@@ -157,6 +172,7 @@ export default function EmailSignIn({
       }
 
       setStep("otp");
+      try { sessionStorage.setItem(SIGNIN_PROGRESS_KEY, JSON.stringify({ email })); } catch { /* noop */ }
     } catch (e) {
       setOtpError(e instanceof Error ? e.message : "Failed to send code");
     } finally {
@@ -183,6 +199,7 @@ export default function EmailSignIn({
       }
 
       // Success! Better Auth handles session management automatically
+      try { sessionStorage.removeItem(SIGNIN_PROGRESS_KEY); } catch { /* noop */ }
       onSuccess?.();
     } catch (e) {
       setOtpError(e instanceof Error ? e.message : "Verification failed");
@@ -197,6 +214,7 @@ export default function EmailSignIn({
       setOtpCode("");
       setOtpError("");
     } else {
+      try { sessionStorage.removeItem(SIGNIN_PROGRESS_KEY); } catch { /* noop */ }
       onCancel?.();
     }
   }

@@ -38,6 +38,7 @@ export function usePartyGame(
   const gameDurationRef = useRef(GAME_DURATION);
   const [timeLeft, setTimeLeft] = useState(GAME_DURATION);
   const [gameStarted, setGameStarted] = useState(false);
+  const [rematchStarted, setRematchStarted] = useState(false);
 
   const socketRef = useRef<PartySocket | null>(null);
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -223,7 +224,13 @@ export function usePartyGame(
 
           case 'rematch_start':
             console.log('[usePartyGame] Rematch starting!');
-            // Reset is handled by the component via rematchReady
+            // Signal to component that rematch is starting - it should reset the board
+            setRematchStarted(true);
+            setLocalWantsRematch(false);
+            setOpponentWantsRematch(false);
+            setServerResult(null);
+            setForfeitWin(null);
+            setOpponentState(null);
             break;
 
           case 'opponent_forfeited':
@@ -345,6 +352,10 @@ export function usePartyGame(
 
   const rematchReady = localWantsRematch && opponentWantsRematch;
 
+  const clearRematchStarted = useCallback(() => {
+    setRematchStarted(false);
+  }, []);
+
   return {
     opponentState,
     restoredLocalState,
@@ -360,6 +371,8 @@ export function usePartyGame(
     localWantsRematch,
     opponentWantsRematch,
     rematchReady,
+    rematchStarted,
+    clearRematchStarted,
     timeLeft,
     gameStarted,
     forfeitWin,

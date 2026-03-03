@@ -753,7 +753,47 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
       }
       render(1);
     }
-    if (typeof window !== 'undefined') (window as any).__devPreviewTiles = devPreviewTiles;
+
+    // Dev-only: fill board to near game-over (one empty cell, no merges possible)
+    // After one move, the game will naturally end
+    function devAlmostGameOver() {
+      // Checkerboard pattern of non-adjacent values - no merges possible
+      const pattern = [
+        2, 4, 2, 4,
+        8, 16, 8, 16,
+        2, 4, 2, 4,
+        8, 16, 8, 0,  // Last cell empty
+      ];
+      tiles.length = 0;
+      gameOver = false;
+      won = false;
+      keepPlaying = false;
+      score = Math.floor(Math.random() * 3000) + 1000;
+      for (let i = 0; i < pattern.length && i < SIZE * SIZE; i++) {
+        grid[i] = pattern[i];
+        if (grid[i] !== 0) {
+          tiles.push({
+            value: grid[i],
+            r: (i / SIZE) | 0,
+            c: i % SIZE,
+            fromR: (i / SIZE) | 0,
+            fromC: i % SIZE,
+            scale: 1,
+            merged: false,
+          });
+        }
+      }
+      updateScore();
+      render(1);
+      // Notify multiplayer of the state change
+      onStateChangeRef.current?.({ grid: Array.from(grid), score, gameOver, won });
+    }
+
+    // Only expose dev functions for the local (non-read-only) board
+    if (typeof window !== 'undefined' && !initialReadOnlyRef.current) {
+      (window as any).__devPreviewTiles = devPreviewTiles;
+      (window as any).__devAlmostGameOver = devAlmostGameOver;
+    }
     onDevEndGameReadyRef.current?.(devEndGame);
 
     // Expose reset function to parent via callback

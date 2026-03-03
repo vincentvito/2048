@@ -220,7 +220,7 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
   const {
     opponentState, restoredLocalState, opponentConnected, opponentEverConnected, opponentName, opponentElo, opponentIsBot,
     sendGameState, requestRematch, resetRematchState, declareForfeit,
-    localWantsRematch, opponentWantsRematch, rematchReady,
+    localWantsRematch, opponentWantsRematch, rematchReady, rematchStarted, clearRematchStarted,
     timeLeft, gameStarted, forfeitWin, serverResult,
   } = useMultiplayerGame(effectiveRoomId, myId, user?.id || null, myName, myElo, gameMode, botOpponent);
 
@@ -488,6 +488,22 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
       localGameResetRef.current?.();
     }
   }, [rematchReady, resetRematchState]);
+
+  // Handle rematch_start from server (fixes the case where first requester doesn't get rematchReady)
+  useEffect(() => {
+    if (rematchStarted) {
+      clearRematchStarted();
+      setLocalGameResult(null);
+      setShowResultModal(false);
+      confettiFiredRef.current = false;
+      setLocalEloDelta(null);
+      setOpponentEloDelta(null);
+      setLocalEloAfter(null);
+      setEloProcessed(false);
+      hasResetForGame.current = false; // Allow new game reset
+      localGameResetRef.current?.();
+    }
+  }, [rematchStarted, clearRematchStarted]);
 
   if (matchmakingState === 'idle' && !(gameMode === 'friendly' && friendRoomId && (gameStarted || isReconnecting))) {
     if (!sessionLoaded) {

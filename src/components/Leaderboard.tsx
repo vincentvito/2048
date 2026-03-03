@@ -229,14 +229,12 @@ function GhostEntry({ rank, score }: { rank: number; score: number }): React.Rea
 /** Fallback display when Supabase is not configured: show local personal bests */
 function LocalBestDisplay(): React.ReactElement {
   const [best4, setBest4] = useState(0);
-  const [best8, setBest8] = useState(0);
 
   useEffect(() => {
     setBest4(getPersonalBest(4));
-    setBest8(getPersonalBest(8));
   }, []);
 
-  if (best4 === 0 && best8 === 0) {
+  if (best4 === 0) {
     return (
       <div className="lb-empty-state">
         <div className="lb-empty-icon">
@@ -258,16 +256,7 @@ function LocalBestDisplay(): React.ReactElement {
           <div className="lb-row lb-row-top">
             <span className="lb-rank">{"\u{1F947}"}</span>
             <span className="lb-name">You</span>
-            <span className="lb-grid">4x4</span>
             <span className="lb-score">{best4.toLocaleString()}</span>
-          </div>
-        )}
-        {best8 > 0 && (
-          <div className="lb-row lb-row-top">
-            <span className="lb-rank">{"\u{1F947}"}</span>
-            <span className="lb-name">You</span>
-            <span className="lb-grid">8x8</span>
-            <span className="lb-score">{best8.toLocaleString()}</span>
           </div>
         )}
       </div>

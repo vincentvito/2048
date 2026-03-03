@@ -588,7 +588,23 @@ export default class GameServer implements Party.Server {
       this.state.resultSent = false;
       this.state.gameStartedAt = Date.now();
 
+      // Send rematch_start to trigger UI reset
       this.room.broadcast(JSON.stringify({ type: 'rematch_start' }));
+
+      // Also send game_start to restart the timer
+      const duration = this.state.mode === 'friendly' ? FRIENDLY_DURATION : RANKED_DURATION;
+      this.room.broadcast(JSON.stringify({
+        type: 'game_start',
+        players: players.map(p => ({
+          id: p.userId,
+          username: p.username,
+          elo: p.elo,
+          isBot: p.isBot,
+        })),
+        duration,
+        mode: this.state.mode,
+      }));
+
       console.log(`[Game ${this.room.id}] Rematch started`);
 
       // Restart bot moves for bot games

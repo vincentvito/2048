@@ -644,6 +644,31 @@ export default class GameServer implements Party.Server {
     });
 
     console.log(`[Game ${this.room.id}] ${player.username} forfeited`);
+
+    // Send game_result to both players (forfeiter loses)
+    if (!this.state.resultSent) {
+      this.state.resultSent = true;
+      const players = Array.from(this.state.players.values());
+
+      for (const p of players) {
+        const opponent = players.find(op => op.userId !== p.userId);
+        const isForfeitingPlayer = p.userId === player.userId;
+        const outcome: 'win' | 'loss' = isForfeitingPlayer ? 'loss' : 'win';
+
+        const conn = this.room.getConnection(p.connectionId);
+        if (conn) {
+          conn.send(JSON.stringify({
+            type: 'game_result',
+            outcome,
+            yourScore: p.score,
+            opponentScore: opponent?.score ?? 0,
+            reason: 'forfeit',
+          }));
+        }
+      }
+      console.log(`[Game ${this.room.id}] Forfeit result sent - ${player.username} loses`);
+    }
+
     await this.saveState();
   }
 

@@ -8,7 +8,7 @@ const ANIM_DURATION = 50;
 const PULSE_DURATION = 120;
 const MOVE_DELAY = 60;
 const REPEAT_DELAY = 200;
-const MIN_SWIPE_DISTANCE = 30;
+const MIN_SWIPE_DISTANCE = 15;
 const DIR_MAP: Record<string, number> = { ArrowLeft: 0, ArrowRight: 1, ArrowUp: 2, ArrowDown: 3 };
 
 interface Tile {

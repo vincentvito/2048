@@ -302,7 +302,7 @@ export default function Home(): React.ReactElement {
                   className={`grid-size-option${gameMode === 'multi' ? " grid-size-active" : ""}`}
                   onClick={() => { setActiveGridSize(4); setGameMode('multi'); }}
                 >
-                  Multiplayer
+                  Play with a Friend
                 </button>
               )}
             </div>

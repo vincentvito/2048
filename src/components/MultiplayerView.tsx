@@ -343,9 +343,29 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
     confirmLeaveMatch();
   };
 
-  const confirmLeaveMatch = () => {
+  const confirmLeaveMatch = async () => {
     setShowLeaveWarning(false);
     const gameStillLive = gameStarted && !serverResult && !hasForfeit;
+
+    // Process ELO loss immediately for ranked forfeits before leaving
+    if (gameStillLive && gameMode === 'ranked' && user?.id) {
+      try {
+        const oppElo = opponentElo ?? DEFAULT_ELO;
+        const result = calculateElo(myElo, oppElo, 'loss');
+        console.log(`[Forfeit] ELO change: ${myElo} -> ${result.newPlayerElo} (${result.playerDelta})`);
+
+        await updateStatsAfterGame(user.id, {
+          won: false,
+          tied: false,
+          score: localGameResult?.score ?? 0,
+          newElo: result.newPlayerElo,
+        });
+        console.log('[Forfeit] Stats updated in database');
+      } catch (err) {
+        console.error('[Forfeit] Failed to update stats:', err);
+      }
+    }
+
     if (gameStillLive) {
       declareForfeit();
     }

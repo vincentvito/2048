@@ -871,14 +871,18 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
         />
         <div className="overlay win">
           <h2>You Win!</h2>
-          <div className="overlay-buttons">
-            <button onClick={handleKeepPlaying}>Keep Playing</button>
-            <button onClick={handleInit} className="secondary">New Game</button>
-          </div>
+          {/* Hide buttons in multiplayer mode — result modal handles actions */}
+          {!onStateChange && (
+            <div className="overlay-buttons">
+              <button onClick={handleKeepPlaying}>Keep Playing</button>
+              <button onClick={handleInit} className="secondary">New Game</button>
+            </div>
+          )}
         </div>
         <div className="overlay lose">
           <h2>Game Over!</h2>
-          <button onClick={handleInit}>Try Again</button>
+          {/* Hide button in multiplayer mode — result modal handles actions */}
+          {!onStateChange && <button onClick={handleInit}>Try Again</button>}
         </div>
       </div>
 

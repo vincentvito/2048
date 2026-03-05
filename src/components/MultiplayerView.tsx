@@ -909,6 +909,7 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
             onDevEndGameReady={isDev ? handleDevEndGameReady : undefined}
             hideScore
             themeName={themeName}
+            disableSave
           />
           {isDev && !localDone && (
             <button className="dev-end-game-btn" onClick={() => devEndGameRef.current?.()}>
@@ -925,7 +926,7 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
                 {opponentEverConnected ? 'Opponent disconnected...' : 'Connecting...'}
               </div>
             )}
-            <Game2048 readOnlyState={opponentState || emptyOpponentState} disableInputs={true} hideScore themeName={themeName} />
+            <Game2048 readOnlyState={opponentState || emptyOpponentState} disableInputs={true} hideScore themeName={themeName} disableSave />
           </div>
         </div>
       </div>

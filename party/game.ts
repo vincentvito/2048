@@ -25,11 +25,16 @@ interface GameState {
   mode: 'ranked' | 'friendly';
   botState?: BotGameState;
   botMoveInterval?: ReturnType<typeof setInterval>;
+  nextSlowMoveAt?: number; // Timestamp for next "thinking" pause
 }
 
-// Bot move interval - make a move every 0.5-1 seconds (random)
-const BOT_MIN_MOVE_INTERVAL = 500;
-const BOT_MAX_MOVE_INTERVAL = 1000;
+// Bot move interval - make a move every 0.2-0.8 seconds (random)
+const BOT_MIN_MOVE_INTERVAL = 200;
+const BOT_MAX_MOVE_INTERVAL = 800;
+// Occasionally slow down to simulate "thinking" (every 15-20 seconds)
+const BOT_SLOW_MOVE_INTERVAL = 1500;
+const BOT_SLOW_MOVE_MIN_GAP = 15000; // 15 seconds
+const BOT_SLOW_MOVE_MAX_GAP = 20000; // 20 seconds
 
 const RANKED_DURATION = 5 * 60;    // 5 minutes
 const FRIENDLY_DURATION = 5 * 60;  // 5 minutes (room code valid for 1 hour)
@@ -307,22 +312,47 @@ export default class GameServer implements Party.Server {
   }
 
   private startBotMoves() {
+    // Initialize first "thinking" pause at 15-20 seconds from now
+    const firstSlowGap = BOT_SLOW_MOVE_MIN_GAP + Math.random() * (BOT_SLOW_MOVE_MAX_GAP - BOT_SLOW_MOVE_MIN_GAP);
+    this.state.nextSlowMoveAt = Date.now() + firstSlowGap;
     // Schedule periodic bot moves using alarm
     this.scheduleBotMove();
   }
 
   private async scheduleBotMove() {
-    if (this.state.resultSent) return;
+    if (this.state.resultSent) {
+      console.log(`[Bot] scheduleBotMove: skipping, resultSent=true`);
+      return;
+    }
 
-    // Random delay between moves
-    const delay = BOT_MIN_MOVE_INTERVAL + Math.random() * (BOT_MAX_MOVE_INTERVAL - BOT_MIN_MOVE_INTERVAL);
-    await this.room.storage.setAlarm(Date.now() + delay);
+    const now = Date.now();
+    let delay: number;
+    let moveType: string;
+
+    // Check if it's time for a "thinking" pause
+    if (this.state.nextSlowMoveAt && now >= this.state.nextSlowMoveAt) {
+      delay = BOT_SLOW_MOVE_INTERVAL;
+      moveType = 'SLOW';
+      // Schedule next slow move in 15-20 seconds
+      const nextGap = BOT_SLOW_MOVE_MIN_GAP + Math.random() * (BOT_SLOW_MOVE_MAX_GAP - BOT_SLOW_MOVE_MIN_GAP);
+      this.state.nextSlowMoveAt = now + nextGap;
+    } else {
+      // Normal speed move
+      delay = BOT_MIN_MOVE_INTERVAL + Math.random() * (BOT_MAX_MOVE_INTERVAL - BOT_MIN_MOVE_INTERVAL);
+      moveType = 'NORMAL';
+    }
+
+    console.log(`[Bot] scheduleBotMove: ${moveType} delay=${delay.toFixed(0)}ms, alarmAt=${now + delay}`);
+    await this.room.storage.setAlarm(now + delay);
   }
 
+  private lastAlarmTime = 0;
   async onAlarm() {
-    console.log(`[Game] Alarm fired!`);
-    // Check if this is a bot move alarm or a disconnect timeout
     const now = Date.now();
+    const timeSinceLastAlarm = this.lastAlarmTime ? now - this.lastAlarmTime : 0;
+    console.log(`[Game] Alarm fired! timeSinceLastAlarm=${timeSinceLastAlarm}ms`);
+    this.lastAlarmTime = now;
+    // Check if this is a bot move alarm or a disconnect timeout
 
     // First, handle disconnected players (existing logic)
     const playersToRemove: string[] = [];
@@ -482,7 +512,7 @@ export default class GameServer implements Party.Server {
     const p1RanOutOfMoves = p1.gameOver && !p1.won;
     const p2RanOutOfMoves = p2.gameOver && !p2.won;
 
-    console.log(`[Game ${this.room.id}] tryResolveMatch: reason=${reason}, p1RanOut=${p1RanOutOfMoves}, p2RanOut=${p2RanOutOfMoves}, p1.score=${p1.score}, p2.score=${p2.score}`);
+    console.log(`[Game] tryResolveMatch: reason=${reason}, p1RanOut=${p1RanOutOfMoves}, p2RanOut=${p2RanOutOfMoves}, p1.score=${p1.score}, p2.score=${p2.score}`);
 
     // Match resolves when:
     // - Someone reached 2048 (instant win)

@@ -48,10 +48,11 @@ interface Game2048Props {
   hideScore?: boolean;
   initialSize?: number;
   themeName?: string;
+  disableSave?: boolean;
   miniMode?: boolean;
 }
 
-export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnlyState, onStateChange, disableInputs, onDevEndGameReady, hideScore, initialSize = 4, themeName = "classic", miniMode = false }: Game2048Props): React.ReactElement {
+export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnlyState, onStateChange, disableInputs, onDevEndGameReady, hideScore, initialSize = 4, themeName = "classic", miniMode = false, disableSave = false }: Game2048Props): React.ReactElement {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const scoreElRef = useRef<HTMLElement>(null);
@@ -64,6 +65,7 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
   const disableInputsRef = useRef(disableInputs);
   const onDevEndGameReadyRef = useRef(onDevEndGameReady);
   const initialReadOnlyRef = useRef(!!readOnlyState);
+  const disableSaveRef = useRef(disableSave);
   const [displaySize, setDisplaySize] = useState(4);
   const themeRef = useRef<ThemeColors>(themes[(themeName as keyof typeof themes)] || themes.classic);
 
@@ -86,6 +88,10 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
   useEffect(() => {
     disableInputsRef.current = disableInputs;
   }, [disableInputs]);
+
+  useEffect(() => {
+    disableSaveRef.current = disableSave;
+  }, [disableSave]);
 
   useEffect(() => {
     onDevEndGameReadyRef.current = onDevEndGameReady;
@@ -205,6 +211,7 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
     }
 
     function saveState() {
+      if (disableSaveRef.current) return; // Skip save in multiplayer mode
       try {
         localStorage.setItem(SAVE_KEY + SIZE, JSON.stringify({
           grid: Array.from(grid), score, gameOver, won, keepPlaying,
@@ -213,6 +220,7 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
     }
 
     function restoreState(): boolean {
+      if (disableSaveRef.current) return false; // Skip restore in multiplayer mode
       try {
         const saved = localStorage.getItem(SAVE_KEY + SIZE);
         if (!saved) return false;
@@ -549,29 +557,77 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
     }
 
     // React buttons can't access the useEffect closure, so we attach game functions to the container DOM node
+    let prevGrid = new Uint16Array(SIZE * SIZE);
+    let prevScore = 0;
     (container as unknown as Record<string, (state: GameState) => void>)._updateState = (state: GameState) => {
+      const oldScore = prevScore;
+      const scoreDiff = state.score - oldScore;
+
+      // Detect merged tiles by comparing old vs new grid
+      const mergedPositions = new Set<number>();
+      for (let i = 0; i < state.grid.length; i++) {
+        // A tile merged if its value increased (and wasn't 0 before, or is now higher than any single tile could be from new spawn)
+        if (state.grid[i] > 0 && prevGrid[i] > 0 && state.grid[i] > prevGrid[i]) {
+          mergedPositions.add(i);
+        }
+      }
+
       score = state.score;
+      prevScore = state.score;
       gameOver = state.gameOver;
       won = state.won;
       for (let i = 0; i < state.grid.length; i++) {
+        prevGrid[i] = state.grid[i];
         grid[i] = state.grid[i];
       }
+
       tiles.length = 0;
       for (let i = 0; i < grid.length; i++) {
         if (grid[i] !== 0) {
+          const isMerged = mergedPositions.has(i);
+          const r = (i / SIZE) | 0;
+          const c = i % SIZE;
           tiles.push({
             value: grid[i],
-            r: (i / SIZE) | 0,
-            c: i % SIZE,
-            fromR: (i / SIZE) | 0,
-            fromC: i % SIZE,
-            scale: 1,
-            merged: false,
+            r,
+            c,
+            fromR: r,
+            fromC: c,
+            scale: isMerged ? 0.8 : 1, // Start small for pulse animation
+            merged: isMerged,
           });
+
+          // Add score popup for merged tiles
+          if (isMerged && scoreDiff > 0) {
+            const x = cellPos(c) + CELL / 2;
+            const y = cellPos(r) + CELL / 2;
+            scorePopups.push({
+              value: grid[i], // Show the merged tile value
+              x,
+              y,
+              opacity: 1,
+              offsetY: 0,
+              startTime: performance.now(),
+            });
+          }
         }
       }
+
       updateScore();
-      render(1);
+
+      // Animate merged tiles with pulse
+      if (mergedPositions.size > 0) {
+        animating = true;
+        animStart = performance.now();
+        requestAnimationFrame(animate);
+      } else {
+        render(1);
+      }
+
+      // Start score popup animation if not already running
+      if (scorePopups.length > 0 && !popupAnimFrame) {
+        popupAnimFrame = requestAnimationFrame(popupLoop);
+      }
     };
 
     (container as unknown as Record<string, () => void>)._rerender = () => render(1);

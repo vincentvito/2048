@@ -97,7 +97,7 @@ export function usePartyGame(
     socketRef.current = socket;
 
     socket.onopen = () => {
-      console.log(`[usePartyGame] Connected to room ${roomId}`);
+      // console.log(`[usePartyGame] Connected to room ${roomId}`);
       socketReadyRef.current = true;
 
       // Join the game
@@ -118,7 +118,7 @@ export function usePartyGame(
 
       // Send any pending state (initial game state that was queued)
       if (pendingStateRef.current) {
-        console.log('[usePartyGame] Sending queued initial state');
+        // console.log('[usePartyGame] Sending queued initial state');
         socket.send(JSON.stringify({
           type: 'state_update',
           state: {
@@ -145,7 +145,7 @@ export function usePartyGame(
 
         switch (message.type) {
           case 'player_joined':
-            console.log(`[usePartyGame] Player joined: ${message.username}${message.isBot ? ' (BOT)' : ''}`);
+            // console.log(`[usePartyGame] Player joined: ${message.username}${message.isBot ? ' (BOT)' : ''}`);
             if (message.playerId !== userId) {
               setOpponentName(message.username);
               setOpponentElo(message.elo);
@@ -156,14 +156,14 @@ export function usePartyGame(
             break;
 
           case 'player_left':
-            console.log(`[usePartyGame] Player left: ${message.playerId}`);
+            // console.log(`[usePartyGame] Player left: ${message.playerId}`);
             if (message.playerId !== userId) {
               setOpponentConnected(false);
             }
             break;
 
           case 'game_start':
-            console.log('[usePartyGame] Game starting!', message.players, 'duration:', message.duration, 'mode:', message.mode);
+            // console.log('[usePartyGame] Game starting!', message.players, 'duration:', message.duration, 'mode:', message.mode);
             // Find opponent info
             const opponent = message.players.find(p => p.id !== userId);
             if (opponent) {
@@ -201,7 +201,7 @@ export function usePartyGame(
             break;
 
           case 'your_state':
-            console.log('[usePartyGame] Restoring local state, score:', message.state.score);
+            // console.log('[usePartyGame] Restoring local state, score:', message.state.score);
             setRestoredLocalState({
               grid: message.state.grid || Array(16).fill(0),
               score: message.state.score,
@@ -218,12 +218,12 @@ export function usePartyGame(
             break;
 
           case 'rematch_requested':
-            console.log('[usePartyGame] Opponent wants rematch');
+            // console.log('[usePartyGame] Opponent wants rematch');
             setOpponentWantsRematch(true);
             break;
 
           case 'rematch_start':
-            console.log('[usePartyGame] Rematch starting!');
+            // console.log('[usePartyGame] Rematch starting!');
             // Signal to component that rematch is starting - it should reset the board
             setRematchStarted(true);
             setLocalWantsRematch(false);
@@ -234,12 +234,12 @@ export function usePartyGame(
             break;
 
           case 'opponent_forfeited':
-            console.log('[usePartyGame] Opponent forfeited');
+            // console.log('[usePartyGame] Opponent forfeited');
             setForfeitWin('local');
             break;
 
           case 'game_result':
-            console.log('[usePartyGame] Server result:', message.outcome, message.yourScore, 'vs', message.opponentScore);
+            // console.log('[usePartyGame] Server result:', message.outcome, message.yourScore, 'vs', message.opponentScore);
             setServerResult({
               outcome: message.outcome,
               yourScore: message.yourScore,
@@ -258,7 +258,7 @@ export function usePartyGame(
     };
 
     socket.onclose = () => {
-      console.log('[usePartyGame] Disconnected from game room');
+      // console.log('[usePartyGame] Disconnected from game room');
       socketReadyRef.current = false;
     };
 

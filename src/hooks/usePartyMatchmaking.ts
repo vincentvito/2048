@@ -60,7 +60,7 @@ export function usePartyMatchmaking() {
     socketRef.current = socket;
 
     socket.onopen = () => {
-      console.log('[usePartyMatchmaking] Connected to lobby');
+      // console.log('[usePartyMatchmaking] Connected to lobby');
       // Join queue
       socket.send(JSON.stringify({
         type: 'join_queue',
@@ -76,11 +76,11 @@ export function usePartyMatchmaking() {
 
         switch (message.type) {
           case 'waiting':
-            console.log(`[usePartyMatchmaking] In queue, position: ${message.position}`);
+            // console.log(`[usePartyMatchmaking] In queue, position: ${message.position}`);
             break;
 
           case 'matched':
-            console.log(`[usePartyMatchmaking] Matched! Room: ${message.roomId}`);
+            // console.log(`[usePartyMatchmaking] Matched! Room: ${message.roomId}`);
             setRoomId(message.roomId);
             setOpponentInfo(message.opponent);
             setState('matched');
@@ -100,7 +100,7 @@ export function usePartyMatchmaking() {
     };
 
     socket.onclose = () => {
-      console.log('[usePartyMatchmaking] Disconnected from lobby');
+      // console.log('[usePartyMatchmaking] Disconnected from lobby');
     };
 
     socket.onerror = (e) => {

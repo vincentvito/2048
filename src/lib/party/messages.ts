@@ -53,5 +53,5 @@ export type GameServerMessage =
   | { type: 'rematch_requested'; by: 'local' | 'opponent' }
   | { type: 'rematch_start' }
   | { type: 'opponent_forfeited' }
-  | { type: 'game_result'; outcome: 'win' | 'loss' | 'tie'; yourScore: number; opponentScore: number; reason: 'score' | '2048' | 'forfeit' | 'timer' }
+  | { type: 'game_result'; outcome: 'win' | 'loss' | 'tie'; yourScore: number; opponentScore: number; reason: 'score' | '2048' | 'forfeit' | 'timer' | 'no_moves' }
   | { type: 'error'; message: string };

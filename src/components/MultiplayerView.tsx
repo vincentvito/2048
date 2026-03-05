@@ -768,11 +768,10 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
   }
 
   // In-game status text (shown while playing, before modal)
+  // Note: Running out of moves = instant loss, so the match resolves immediately
   let statusText = "";
   if (!isMatchResolved) {
-    if (localDone) statusText = "You ran out of moves. Waiting for opponent...";
-    else if (opponentDone) statusText = `${opponentName || 'Opponent'} ran out of moves at ${(opponentState?.score || 0).toLocaleString()}! Beat their score to win!`;
-    else if (timerExpired) statusText = "Time's up! Waiting for result...";
+    if (timerExpired) statusText = "Time's up! Waiting for result...";
   } else if (timerExpired && !hasForfeit) {
     statusText = "Time's up!";
   }
@@ -800,8 +799,9 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
   const getResultSubtitle = (): string | null => {
     if (forfeitWin === 'local') return 'Opponent Forfeited';
     if (forfeitWin === 'opponent') return 'You Forfeited';
-    if (serverResult?.reason === 'timer' || timerExpired) return "Time's up!";
     if (serverResult?.reason === '2048' || someoneWon2048) return localWon ? 'You reached 2048!' : `${displayOpponentName} reached 2048!`;
+    if (serverResult?.reason === 'no_moves') return localWon ? `${displayOpponentName} ran out of moves!` : 'You ran out of moves!';
+    if (serverResult?.reason === 'timer' || timerExpired) return "Time's up!";
     return null;
   };
 

@@ -31,7 +31,7 @@ export function usePartyGame(
     outcome: 'win' | 'loss' | 'tie';
     yourScore: number;
     opponentScore: number;
-    reason: 'score' | '2048' | 'forfeit' | 'timer';
+    reason: 'score' | '2048' | 'forfeit' | 'timer' | 'no_moves';
   } | null>(null);
 
   // Timer state

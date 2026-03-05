@@ -476,34 +476,46 @@ export default class GameServer implements Party.Server {
 
     const [p1, p2] = players;
     const someoneWon2048 = p1.won || p2.won;
-    const p1Done = p1.gameOver || p1.won;
-    const p2Done = p2.gameOver || p2.won;
-    const bothDone = p1Done && p2Done;
 
-    // Active player overtook done player's score → instant win
-    const overtook = (p1Done && !p2Done && p2.score > p1.score) ||
-                     (p2Done && !p1Done && p1.score > p2.score);
+    // Running out of moves = instant loss (like running out of time in chess)
+    // gameOver means no more moves available (but didn't reach 2048)
+    const p1RanOutOfMoves = p1.gameOver && !p1.won;
+    const p2RanOutOfMoves = p2.gameOver && !p2.won;
 
-    console.log(`[Game ${this.room.id}] tryResolveMatch: reason=${reason}, p1Done=${p1Done}, p2Done=${p2Done}, p1.score=${p1.score}, p2.score=${p2.score}, overtook=${overtook}`);
+    console.log(`[Game ${this.room.id}] tryResolveMatch: reason=${reason}, p1RanOut=${p1RanOutOfMoves}, p2RanOut=${p2RanOutOfMoves}, p1.score=${p1.score}, p2.score=${p2.score}`);
 
     // Match resolves when:
     // - Someone reached 2048 (instant win)
+    // - Someone ran out of moves (instant loss for them)
     // - Timer expired (compare scores)
-    // - Both players ran out of moves (compare scores)
-    // - Active player's score exceeded done player's score (instant win)
-    if (!someoneWon2048 && !bothDone && reason !== 'timer' && !overtook) return;
+    if (!someoneWon2048 && !p1RanOutOfMoves && !p2RanOutOfMoves && reason !== 'timer') return;
 
     this.state.resultSent = true;
 
     // Determine winner
     let winnerId: string | null = null;
-    let actualReason = reason;
+    let actualReason: 'score' | '2048' | 'timer' | 'no_moves' = reason;
 
     if (someoneWon2048) {
+      // 2048 = instant win
       winnerId = p1.won ? p1.userId : p2.userId;
       actualReason = '2048';
+    } else if (p1RanOutOfMoves && !p2RanOutOfMoves) {
+      // P1 ran out of moves first = P2 wins instantly
+      winnerId = p2.userId;
+      actualReason = 'no_moves';
+    } else if (p2RanOutOfMoves && !p1RanOutOfMoves) {
+      // P2 ran out of moves first = P1 wins instantly
+      winnerId = p1.userId;
+      actualReason = 'no_moves';
+    } else if (p1RanOutOfMoves && p2RanOutOfMoves) {
+      // Both ran out of moves at the same time = compare scores
+      if (p1.score > p2.score) winnerId = p1.userId;
+      else if (p2.score > p1.score) winnerId = p2.userId;
+      // else null = tie
+      actualReason = 'no_moves';
     } else {
-      // Score comparison
+      // Timer expired = compare scores
       if (p1.score > p2.score) winnerId = p1.userId;
       else if (p2.score > p1.score) winnerId = p2.userId;
       // else null = tie

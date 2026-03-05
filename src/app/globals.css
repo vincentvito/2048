@@ -812,7 +812,7 @@ body {
 }
 
 .how-to-play-content {
-  padding: 0 18px 18px;
+  padding: 14px 18px 18px;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -1161,6 +1161,13 @@ body {
   animation: fadeIn 0.3s ease both;
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
+}
+
+/* On desktop, offset modal centering by sidebar width */
+@media (min-width: 601px) {
+  .modal-backdrop {
+    padding-left: 300px;
+  }
 }
 
 /* Card: the main modal panel */
@@ -3461,6 +3468,13 @@ body {
   animation: fadeIn 0.3s ease both;
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
+}
+
+/* On desktop, offset modal centering by sidebar width (300px / 2 = 150px shift right) */
+@media (min-width: 601px) {
+  .mp-result-backdrop {
+    padding-left: 300px;
+  }
 }
 
 .mp-result-card {

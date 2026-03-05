@@ -84,22 +84,21 @@ export const themes: Record<ThemeName, ThemeColors> = {
     popupColor: "#edc22e",
     confettiColors: ["#f59e0b", "#d97706", "#fbbf24", "#78350f", "#fde68a"],
 
-    // Classic theme - warm cream to chocolate gradient
     tiles: {
-      0: ["rgba(238,228,218,0.35)", "#776e65"],
-      2: ["#F6E5C0", "#776e65"],      // Light Cream
-      4: ["#EED2A4", "#776e65"],      // Warm Sand
-      8: ["#E6BA80", "#776e65"],      // Toasted Macadamia
-      16: ["#E29B5A", "#f9f6f2"],     // Soft Caramel
-      32: ["#D87A45", "#f9f6f2"],     // Terracotta
-      64: ["#C46231", "#f9f6f2"],     // Burnt Orange
-      128: ["#AD4D23", "#f9f6f2"],    // Sienna
-      256: ["#933D19", "#f9f6f2"],    // Chestnut
-      512: ["#7A2F11", "#f9f6f2"],    // Mocha
-      1024: ["#5C220A", "#f9f6f2"],   // Espresso
-      2048: ["#3F1504", "#f9f6f2"],   // Dark Chocolate
-      4096: ["#2A0E02", "#f9f6f2"],   // Darker
-      8192: ["#1A0901", "#f9f6f2"],   // Darkest
+      0: ["rgba(255,255,255,0.15)", "#78350f"],
+      2: ["#fef3c7", "#78350f"],
+      4: ["#fde68a", "#78350f"],
+      8: ["#fdba74", "#78350f"],
+      16: ["#fb923c", "#fff"],
+      32: ["#f97316", "#fff"],
+      64: ["#ea580c", "#fff"],
+      128: ["#fcd34d", "#78350f"],
+      256: ["#fbbf24", "#78350f"],
+      512: ["#f59e0b", "#fff"],
+      1024: ["#d97706", "#fff"],
+      2048: ["#b45309", "#fff"],
+      4096: ["#7c2d12", "#fff"],
+      8192: ["#1c1917", "#fcd34d"],
     },
   },
 
@@ -137,22 +136,21 @@ export const themes: Record<ThemeName, ThemeColors> = {
     popupColor: "#22d3ee",
     confettiColors: ["#06b6d4", "#0891b2", "#22d3ee", "#164e63", "#a5f3fc"],
 
-    // Ocean theme - distinct hues for each tier
     tiles: {
-      0: ["rgba(207,250,254,0.35)", "#164e63"],
-      2: ["#e0f7fa", "#164e63"],
-      4: ["#b2ebf2", "#164e63"],
-      8: ["#4dd0e1", "#f9f6f2"],
-      16: ["#26c6da", "#f9f6f2"],
-      32: ["#00bcd4", "#f9f6f2"],
-      64: ["#00acc1", "#f9f6f2"],
-      128: ["#0097a7", "#f9f6f2"],
-      256: ["#00838f", "#f9f6f2"],
-      512: ["#7e57c2", "#f9f6f2"],
-      1024: ["#ab47bc", "#f9f6f2"],
-      2048: ["#ffd54f", "#164e63"],
-      4096: ["#ff7043", "#f9f6f2"],
-      8192: ["#ec407a", "#f9f6f2"],
+      0: ["rgba(255,255,255,0.15)", "#164e63"],
+      2: ["#cffafe", "#164e63"],
+      4: ["#a5f3fc", "#164e63"],
+      8: ["#67e8f9", "#164e63"],
+      16: ["#22d3ee", "#fff"],
+      32: ["#06b6d4", "#fff"],
+      64: ["#0891b2", "#fff"],
+      128: ["#7dd3fc", "#164e63"],
+      256: ["#38bdf8", "#164e63"],
+      512: ["#0ea5e9", "#fff"],
+      1024: ["#0284c7", "#fff"],
+      2048: ["#0369a1", "#fff"],
+      4096: ["#075985", "#fff"],
+      8192: ["#0c4a6e", "#a5f3fc"],
     },
   },
 
@@ -190,22 +188,21 @@ export const themes: Record<ThemeName, ThemeColors> = {
     popupColor: "#4ade80",
     confettiColors: ["#22c55e", "#16a34a", "#4ade80", "#14532d", "#bbf7d0"],
 
-    // Forest theme - distinct hues for each tier
     tiles: {
-      0: ["rgba(220,252,231,0.35)", "#14532d"],
-      2: ["#e8f5e9", "#2e7d32"],
-      4: ["#c8e6c9", "#2e7d32"],
-      8: ["#81c784", "#f9f6f2"],
-      16: ["#66bb6a", "#f9f6f2"],
-      32: ["#4caf50", "#f9f6f2"],
-      64: ["#43a047", "#f9f6f2"],
-      128: ["#388e3c", "#f9f6f2"],
-      256: ["#2e7d32", "#f9f6f2"],
-      512: ["#00acc1", "#f9f6f2"],
-      1024: ["#26a69a", "#f9f6f2"],
-      2048: ["#ffca28", "#2e7d32"],
-      4096: ["#ff7043", "#f9f6f2"],
-      8192: ["#ef5350", "#f9f6f2"],
+      0: ["rgba(255,255,255,0.15)", "#14532d"],
+      2: ["#dcfce7", "#14532d"],
+      4: ["#bbf7d0", "#14532d"],
+      8: ["#86efac", "#14532d"],
+      16: ["#4ade80", "#fff"],
+      32: ["#22c55e", "#fff"],
+      64: ["#16a34a", "#fff"],
+      128: ["#fde68a", "#14532d"],
+      256: ["#fbbf24", "#14532d"],
+      512: ["#f59e0b", "#fff"],
+      1024: ["#15803d", "#fff"],
+      2048: ["#166534", "#fff"],
+      4096: ["#14532d", "#fff"],
+      8192: ["#052e16", "#bbf7d0"],
     },
   },
 
@@ -243,22 +240,21 @@ export const themes: Record<ThemeName, ThemeColors> = {
     popupColor: "#c084fc",
     confettiColors: ["#8b5cf6", "#a78bfa", "#c084fc", "#ec4899", "#f59e0b"],
 
-    // Midnight theme - vibrant neon progression
     tiles: {
       0: ["rgba(255,255,255,0.07)", "#94a3b8"],
-      2: ["#3d3d5c", "#e2e8f0"],
-      4: ["#4a4a6a", "#e2e8f0"],
-      8: ["#7c3aed", "#f9f6f2"],
-      16: ["#8b5cf6", "#f9f6f2"],
-      32: ["#a855f7", "#f9f6f2"],
-      64: ["#c026d3", "#f9f6f2"],
-      128: ["#db2777", "#f9f6f2"],
-      256: ["#e11d48", "#f9f6f2"],
-      512: ["#06b6d4", "#f9f6f2"],
-      1024: ["#10b981", "#f9f6f2"],
-      2048: ["#fbbf24", "#1e1b4b"],
-      4096: ["#f97316", "#f9f6f2"],
-      8192: ["#ef4444", "#f9f6f2"],
+      2: ["#2d3a4f", "#e2e8f0"],
+      4: ["#3d4b63", "#e2e8f0"],
+      8: ["#7c3aed", "#fff"],
+      16: ["#8b5cf6", "#fff"],
+      32: ["#a78bfa", "#fff"],
+      64: ["#c084fc", "#1e1b4b"],
+      128: ["#ec4899", "#fff"],
+      256: ["#f472b6", "#fff"],
+      512: ["#f59e0b", "#1e1b4b"],
+      1024: ["#6d28d9", "#fff"],
+      2048: ["#5b21b6", "#fff"],
+      4096: ["#4c1d95", "#e2e8f0"],
+      8192: ["#2e1065", "#c084fc"],
     },
   },
 };

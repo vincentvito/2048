@@ -1,9 +1,23 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 export default function HowToPlay(): React.ReactElement {
   const [open, setOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    // Detect mobile via touch capability and screen width
+    const checkMobile = () => {
+      const hasTouchScreen = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      const isSmallScreen = window.innerWidth <= 600;
+      setIsMobile(hasTouchScreen && isSmallScreen);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   return (
     <div className="how-to-play">
@@ -71,12 +85,7 @@ export default function HowToPlay(): React.ReactElement {
             <h4>Controls</h4>
             <div className="controls-grid">
               <div className="control-item">
-                <span className="control-badge">Desktop</span>
-                <span>Arrow keys</span>
-              </div>
-              <div className="control-item">
-                <span className="control-badge">Mobile</span>
-                <span>Swipe gestures</span>
+                <span>{isMobile ? 'Swipe gestures' : 'Arrow keys'}</span>
               </div>
             </div>
           </div>

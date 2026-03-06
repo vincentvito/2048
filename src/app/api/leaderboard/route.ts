@@ -5,8 +5,9 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const gridSize = Number(searchParams.get('gridSize') ?? 4);
   const tab = searchParams.get('tab') ?? 'today';
+  const tzOffset = searchParams.get('tz'); // Timezone offset in minutes (e.g., -330 for IST)
 
-  console.log(`[API /leaderboard] tab=${tab} gridSize=${gridSize}`);
+  console.log(`[API /leaderboard] tab=${tab} gridSize=${gridSize} tz=${tzOffset}`);
 
   const supabase = createAdminClient();
   if (!supabase) {
@@ -22,10 +23,27 @@ export async function GET(req: NextRequest) {
     .limit(20);
 
   if (tab === 'today') {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    console.log(`[API /leaderboard] Filtering to today since: ${today.toISOString()}`);
-    query = query.gte('created_at', today.toISOString());
+    // Calculate start of "today" in user's timezone
+    const now = new Date();
+    let todayStart: Date;
+
+    if (tzOffset !== null && !isNaN(Number(tzOffset))) {
+      // User provided timezone offset - calculate their local midnight in UTC
+      const offsetMinutes = Number(tzOffset);
+      // Get current time in user's timezone
+      const userLocalTime = new Date(now.getTime() - offsetMinutes * 60 * 1000);
+      // Set to midnight in user's timezone
+      userLocalTime.setUTCHours(0, 0, 0, 0);
+      // Convert back to UTC
+      todayStart = new Date(userLocalTime.getTime() + offsetMinutes * 60 * 1000);
+    } else {
+      // Fallback to server timezone (UTC)
+      todayStart = new Date();
+      todayStart.setUTCHours(0, 0, 0, 0);
+    }
+
+    console.log(`[API /leaderboard] Filtering to today since: ${todayStart.toISOString()}`);
+    query = query.gte('created_at', todayStart.toISOString());
   }
 
   const { data, error } = await query;

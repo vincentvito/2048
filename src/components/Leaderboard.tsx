@@ -55,8 +55,10 @@ export default function Leaderboard({
     const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
     try {
+      // Pass user's timezone offset for accurate "today" filtering
+      const tzOffset = new Date().getTimezoneOffset();
       const res = await fetch(
-        `/api/leaderboard?gridSize=${gridSize}&tab=${tab}`,
+        `/api/leaderboard?gridSize=${gridSize}&tab=${tab}&tz=${tzOffset}`,
         { signal: controller.signal }
       );
 

@@ -32,7 +32,7 @@ interface GameState {
 const BOT_MIN_MOVE_INTERVAL = 200;
 const BOT_MAX_MOVE_INTERVAL = 800;
 // Occasionally slow down to simulate "thinking" (every 15-20 seconds)
-const BOT_SLOW_MOVE_INTERVAL = 1500;
+const BOT_SLOW_MOVE_INTERVAL = 1000;
 const BOT_SLOW_MOVE_MIN_GAP = 15000; // 15 seconds
 const BOT_SLOW_MOVE_MAX_GAP = 20000; // 20 seconds
 

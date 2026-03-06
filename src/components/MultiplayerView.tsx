@@ -690,7 +690,7 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
 
         <div className="mp-lobby-buttons">
           <button className="mp-find-btn" onClick={() => user?.id && startMatchmaking(user.id, myName, myElo)}>Play Online</button>
-          <button className="mp-friend-btn" onClick={() => setLobbyScreen('friend-menu')}>Room</button>
+          <button className="mp-friend-btn" onClick={() => setLobbyScreen('friend-menu')}>Play with a Friend</button>
         </div>
 
         {statsLoading && (

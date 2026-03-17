@@ -256,9 +256,9 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
 
   const handleLocalStateChange = useCallback((state: GameState) => {
     if (suppressStateRef.current) return;
-    sendGameState(state);
+    // Only update local result tracking — server gets state via sendMove (server-authoritative)
     setLocalGameResult({ won: state.won, score: state.score, gameOver: state.gameOver });
-  }, [sendGameState]);
+  }, []);
 
   const handleLocalMove = useCallback((direction: number) => {
     sendMove(direction);

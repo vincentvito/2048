@@ -788,12 +788,25 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
     container.addEventListener("touchend", onTouchEnd, { passive: false });
     container.addEventListener("touchcancel", onTouchCancel);
 
-    // Resize board on orientation change / window resize
+    // Resize board on orientation change / window resize (debounced)
+    let resizeTimer: ReturnType<typeof setTimeout> | null = null;
     function onResize() {
-      setSizeInternal(SIZE);
-      render(1);
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        setSizeInternal(SIZE);
+        render(1);
+      }, 150);
     }
     window.addEventListener("resize", onResize);
+
+    // Re-render canvas when page becomes visible again (fixes blank canvas after screen off)
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        // Small delay to ensure canvas context is ready
+        setTimeout(() => render(1), 50);
+      }
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     setSizeInternal(initialSize);
     if (!initialReadOnlyRef.current) {
@@ -903,6 +916,8 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
       container.removeEventListener("touchend", onTouchEnd);
       container.removeEventListener("touchcancel", onTouchCancel);
       window.removeEventListener("resize", onResize);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      if (resizeTimer) clearTimeout(resizeTimer);
       if (repeatTimeout) clearTimeout(repeatTimeout);
       if (popupAnimFrame) cancelAnimationFrame(popupAnimFrame);
     };

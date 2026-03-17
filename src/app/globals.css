@@ -1,8 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@400;600;700;800&display=swap');
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: "Nunito", system-ui, -apple-system, sans-serif;
+  --font-sans: var(--font-nunito), "Nunito", system-ui, -apple-system, sans-serif;
 }
 
 /* ========== Theme CSS Variables ========== */
@@ -253,7 +252,7 @@ body {
   margin: 0;
   padding: 0;
   background: var(--bg-page);
-  font-family: "Nunito", "Clear Sans", "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-nunito), "Nunito", "Clear Sans", "Helvetica Neue", Arial, sans-serif;
   color: var(--text-body);
   -webkit-font-smoothing: antialiased;
   /* Prevent iOS rubber-band overscroll from stealing touch sequences
@@ -311,7 +310,7 @@ body {
   }
 
   .sidebar-header-title {
-    font-family: "Fredoka", "Nunito", sans-serif;
+    font-family: var(--font-fredoka), "Fredoka", sans-serif;
     font-size: 1.2rem;
     font-weight: 700;
     color: var(--text-primary);
@@ -363,7 +362,7 @@ body {
   border-radius: 50%;
   background: var(--accent);
   color: #fff;
-  font-family: "Fredoka", sans-serif;
+  font-family: var(--font-fredoka), "Fredoka", sans-serif;
   font-size: 1rem;
   font-weight: 700;
   display: flex;
@@ -429,7 +428,7 @@ body {
 }
 
 .sidebar-section-title {
-  font-family: "Fredoka", "Nunito", sans-serif;
+  font-family: var(--font-fredoka), "Fredoka", sans-serif;
   font-size: 1rem;
   font-weight: 700;
   color: var(--text-secondary);
@@ -495,7 +494,7 @@ body {
 }
 
 .game-title {
-  font-family: "Fredoka", "Nunito", sans-serif;
+  font-family: var(--font-fredoka), "Fredoka", sans-serif;
   font-size: 4.5rem;
   font-weight: 700;
   line-height: 1;
@@ -1902,6 +1901,49 @@ body {
   }
 }
 
+/* ========== Accessibility: Reduced Motion ========== */
+@media (prefers-reduced-motion: reduce) {
+  .confetti-piece,
+  .confetti-container {
+    animation: none !important;
+    display: none !important;
+  }
+  .swipe-hint-hand,
+  .swipe-arrow {
+    animation: none !important;
+  }
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* ========== Accessibility: Focus Visible ========== */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+button:focus-visible,
+.ui-btn:focus-visible,
+.game-btn:focus-visible,
+.grid-size-option:focus-visible,
+.modal-btn-play-again:focus-visible,
+.mp-result-btn-primary:focus-visible,
+.mp-result-btn-secondary:focus-visible,
+.mp-find-btn:focus-visible,
+.mp-friend-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--accent-glow);
+}
+
+/* ========== Safe Area (notched devices) ========== */
+.page-layout {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
 /* ==========================================================
    MOBILE: max 520px
    ========================================================== */
@@ -2447,7 +2489,7 @@ body {
 }
 
 .mp-lobby-title {
-  font-family: "Fredoka", "Nunito", sans-serif;
+  font-family: var(--font-fredoka), "Fredoka", sans-serif;
   font-size: 2.2rem;
   font-weight: 700;
   color: var(--text-primary);
@@ -2515,7 +2557,7 @@ body {
   border: 2px solid var(--accent);
   background: transparent;
   color: var(--accent);
-  font-family: "Fredoka", "Nunito", sans-serif;
+  font-family: var(--font-fredoka), "Fredoka", sans-serif;
   font-weight: 600;
   font-size: 16px;
   cursor: pointer;
@@ -2542,7 +2584,7 @@ body {
   background: none;
   border: none;
   color: var(--text-secondary);
-  font-family: "Fredoka", "Nunito", sans-serif;
+  font-family: var(--font-fredoka), "Fredoka", sans-serif;
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
@@ -2586,7 +2628,7 @@ body {
   border: 1.5px solid var(--bg-card-border);
   background: var(--bg-card);
   color: var(--text-primary);
-  font-family: "Fredoka", "Nunito", sans-serif;
+  font-family: var(--font-fredoka), "Fredoka", sans-serif;
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
@@ -2663,7 +2705,7 @@ body {
 }
 
 .mp-stats-elo-number {
-  font-family: "Fredoka", "Nunito", sans-serif;
+  font-family: var(--font-fredoka), "Fredoka", sans-serif;
   font-size: 2rem;
   font-weight: 700;
   color: var(--text-primary);
@@ -2890,7 +2932,7 @@ body {
 }
 
 .mp-hud-score {
-  font-family: "Fredoka", "Nunito", sans-serif;
+  font-family: var(--font-fredoka), "Fredoka", sans-serif;
   font-size: 1.6rem;
   font-weight: 700;
   color: var(--accent);
@@ -2926,7 +2968,7 @@ body {
 }
 
 .mp-hud-timer-display {
-  font-family: "Fredoka", "Nunito", sans-serif;
+  font-family: var(--font-fredoka), "Fredoka", sans-serif;
   font-size: 2.6rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -3023,7 +3065,7 @@ body {
 }
 
 .mp-board-label-score {
-  font-family: "Fredoka", "Nunito", sans-serif;
+  font-family: var(--font-fredoka), "Fredoka", sans-serif;
   font-size: 1.1rem;
   font-weight: 700;
   color: var(--accent);
@@ -3152,7 +3194,7 @@ body {
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  font-family: "Fredoka", "Nunito", sans-serif;
+  font-family: var(--font-fredoka), "Fredoka", sans-serif;
   font-weight: 700;
   aspect-ratio: 1;
   transition: background 0.1s ease;
@@ -3647,7 +3689,7 @@ body {
 }
 
 .mp-score-value {
-  font-family: "Fredoka", "Nunito", sans-serif;
+  font-family: var(--font-fredoka), "Fredoka", sans-serif;
   font-size: 2.8rem;
   font-weight: 700;
   color: var(--text-primary);
@@ -4231,7 +4273,7 @@ body.mobile-no-scroll {
 }
 
 .mobile-menu-title {
-  font-family: "Fredoka", "Nunito", sans-serif;
+  font-family: var(--font-fredoka), "Fredoka", sans-serif;
   font-size: 1.2rem;
   font-weight: 700;
   color: var(--text-primary);
@@ -4285,7 +4327,7 @@ body.mobile-no-scroll {
   border-radius: 50%;
   background: var(--accent);
   color: #fff;
-  font-family: "Fredoka", sans-serif;
+  font-family: var(--font-fredoka), "Fredoka", sans-serif;
   font-size: 1rem;
   font-weight: 700;
   display: flex;
@@ -4426,7 +4468,7 @@ body.mobile-no-scroll {
 }
 
 .mobile-menu-section-title {
-  font-family: "Fredoka", "Nunito", sans-serif;
+  font-family: var(--font-fredoka), "Fredoka", sans-serif;
   font-size: 1rem;
   font-weight: 700;
   color: var(--text-secondary);

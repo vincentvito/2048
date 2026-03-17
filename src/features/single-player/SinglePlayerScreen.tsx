@@ -3,9 +3,9 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import Game2048, { type Game2048Handle } from "@/components/Game2048";
 import GameOverModal from "@/components/GameOverModal";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase-client";
+import { saveScore } from "@/lib/score-service";
 import { useTheme } from "@/features/theme/ThemeProvider";
-import { type AppUser, getDisplayName } from "@/features/auth/types";
+import { type AppUser } from "@/features/auth/types";
 import { LeaderboardEntry } from "@/components/Leaderboard";
 
 function generateConfettiPieces(count: number) {
@@ -74,20 +74,9 @@ export default function SinglePlayerScreen({
   }, []);
 
   const saveScoreToSupabase = useCallback(async (score: number, gridSize: number) => {
-    const supabase = createClient();
-    if (!supabase || !user) return;
-    const username = getDisplayName(user);
-    try {
-      const { error } = await supabase.from("scores").insert({
-        user_id: user.id,
-        username,
-        score,
-        grid_size: gridSize,
-      });
-      if (!error) onRefresh();
-    } catch {
-      // best-effort
-    }
+    if (!user) return;
+    const success = await saveScore(user, score, gridSize);
+    if (success) onRefresh();
   }, [user, onRefresh]);
 
   const captureBoardScreenshot = useCallback((): string | undefined => {

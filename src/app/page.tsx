@@ -6,11 +6,11 @@ import MultiplayerView from "@/components/MultiplayerView";
 import DesktopSidebar from "@/components/DesktopSidebar";
 import MobileMenu from "@/components/MobileMenu";
 import UsernamePrompt from "@/components/UsernamePrompt";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase-client";
-import { getPendingScore, clearPendingScore } from "@/lib/guest-scores";
+import { isSupabaseConfigured } from "@/lib/supabase-client";
+import { submitPendingScore } from "@/lib/score-service";
 import { useTheme } from "@/features/theme/ThemeProvider";
 import { useSession, signOut } from "@/lib/auth-client";
-import { type AppUser, getDisplayName } from "@/features/auth/types";
+import { type AppUser } from "@/features/auth/types";
 import { LeaderboardEntry } from "@/components/Leaderboard";
 import { getMultiplayerSession, clearMultiplayerSession } from "@/lib/multiplayer-session";
 import Modal from "@/components/ui/Modal";
@@ -44,33 +44,14 @@ export default function Home(): React.ReactElement {
 
   // Submit pending score when user signs in
   useEffect(() => {
-    if (!user || !isSupabaseConfigured()) return;
+    if (!user) return;
 
-    async function submitPendingScore() {
-      const pending = getPendingScore();
-      if (!pending) return;
-
-      const supabase = createClient();
-      if (!supabase || !user) return;
-
-      const username = getDisplayName(user);
-      try {
-        const { error } = await supabase.from("scores").insert({
-          user_id: user.id,
-          username,
-          score: pending.score,
-          grid_size: pending.gridSize,
-        });
-        if (!error) {
-          clearPendingScore();
-          setRefreshTrigger((n) => n + 1);
-        }
-      } catch {
-        // best-effort
-      }
+    async function handlePendingScore() {
+      const submitted = await submitPendingScore(user!);
+      if (submitted) setRefreshTrigger((n) => n + 1);
     }
 
-    submitPendingScore();
+    handlePendingScore();
   }, [user]);
 
   // Disable body scroll on mobile

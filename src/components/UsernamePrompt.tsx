@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { useSession, BetterAuthUser } from "@/lib/auth-client";
+import { useSession } from "@/lib/auth-client";
+import { type AppUser } from "@/features/auth/types";
 
 /**
  * Global overlay that prompts for a username after sign-in
@@ -9,7 +10,7 @@ import { useSession, BetterAuthUser } from "@/lib/auth-client";
  */
 export default function UsernamePrompt(): React.ReactElement | null {
   const { data: sessionData, isPending, refetch } = useSession();
-  const user = (sessionData?.user as BetterAuthUser | undefined) ?? null;
+  const user = (sessionData?.user as AppUser | undefined) ?? null;
 
   const [show, setShow] = useState(false);
   const [username, setUsername] = useState("");

@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase-admin';
+import { getAuthenticatedUser } from '@/lib/api-auth';
 
 const DEFAULT_ELO = 1200;
 
-// GET /api/player-stats?userId=xxx
-export async function GET(req: NextRequest) {
-  const userId = req.nextUrl.searchParams.get('userId');
-
-  if (!userId) {
-    return NextResponse.json({ error: 'userId required' }, { status: 400 });
+// GET /api/player-stats — get stats for the authenticated user
+export async function GET() {
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
   try {
@@ -16,46 +16,44 @@ export async function GET(req: NextRequest) {
     if (!supabase) {
       return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
     }
+
     const { data, error } = await supabase
       .from('player_stats')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', user.id)
       .single();
 
     if (error && error.code !== 'PGRST116') {
-      console.error('[API /player-stats GET] Error:', error.message);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to fetch stats' }, { status: 500 });
     }
 
     return NextResponse.json({ data: data || null });
-  } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unknown error';
-    console.error('[API /player-stats GET] Exception:', message);
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-// POST /api/player-stats - Create or get player stats
+// POST /api/player-stats — create or get player stats for the authenticated user
 export async function POST(req: NextRequest) {
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  }
+
   try {
     const body = await req.json();
-    const { userId, username } = body;
-
-    if (!userId || !username) {
-      return NextResponse.json({ error: 'userId and username required' }, { status: 400 });
-    }
+    const username = typeof body.username === 'string' ? body.username.trim() : user.username || user.email;
 
     const supabase = createAdminClient();
     if (!supabase) {
       return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
     }
 
-    // Upsert default row
     await supabase
       .from('player_stats')
       .upsert(
         {
-          user_id: userId,
+          user_id: user.id,
           username,
           elo: DEFAULT_ELO,
           best_score: 0,
@@ -68,34 +66,35 @@ export async function POST(req: NextRequest) {
         { onConflict: 'user_id', ignoreDuplicates: true }
       );
 
-    // Fetch canonical row
     const { data, error } = await supabase
       .from('player_stats')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', user.id)
       .single();
 
     if (error) {
-      console.error('[API /player-stats POST] Error:', error.message);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to create stats' }, { status: 500 });
     }
 
     return NextResponse.json({ data });
-  } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unknown error';
-    console.error('[API /player-stats POST] Exception:', message);
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-// PATCH /api/player-stats - Update stats after game
+// PATCH /api/player-stats — update stats after game for the authenticated user
 export async function PATCH(req: NextRequest) {
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  }
+
   try {
     const body = await req.json();
-    const { userId, won, tied, score, newElo } = body;
+    const { won, tied, score, newElo } = body;
 
-    if (!userId) {
-      return NextResponse.json({ error: 'userId required' }, { status: 400 });
+    if (typeof won !== 'boolean' || typeof tied !== 'boolean' || typeof score !== 'number' || typeof newElo !== 'number') {
+      return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 });
     }
 
     const supabase = createAdminClient();
@@ -103,15 +102,13 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
     }
 
-    // Get current stats
     const { data: current, error: fetchError } = await supabase
       .from('player_stats')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', user.id)
       .single();
 
     if (fetchError || !current) {
-      console.error('[API /player-stats PATCH] No existing row:', fetchError?.message);
       return NextResponse.json({ error: 'No stats found for user' }, { status: 404 });
     }
 
@@ -133,19 +130,16 @@ export async function PATCH(req: NextRequest) {
     const { data, error } = await supabase
       .from('player_stats')
       .update(updates)
-      .eq('user_id', userId)
+      .eq('user_id', user.id)
       .select('*')
       .single();
 
     if (error) {
-      console.error('[API /player-stats PATCH] Error:', error.message);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to update stats' }, { status: 500 });
     }
 
     return NextResponse.json({ data });
-  } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unknown error';
-    console.error('[API /player-stats PATCH] Exception:', message);
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

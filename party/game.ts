@@ -1,16 +1,19 @@
 import type * as Party from "partykit/server";
 import { createInitialBotState, botMakeMove, BotGameState, generateBotName, generateBotElo } from "./bot-game";
+import { createInitialState, applyMove, type EngineState } from "../src/lib/game-engine";
 
-// Player state in a game room
+const isDev = process.env.NODE_ENV !== 'production';
+const log = (...args: unknown[]) => { if (isDev) console.log(...args); };
+
+const GAME_SIZE = 4;
+
 interface Player {
   userId: string;
   username: string;
   elo: number;
   connectionId: string;
-  grid: number[];
-  score: number;
-  gameOver: boolean;
-  won: boolean;
+  /** Server-authoritative game state for this player */
+  engineState: EngineState;
   wantsRematch: boolean;
   forfeited: boolean;
   lastSeen: number;
@@ -25,22 +28,18 @@ interface GameState {
   mode: 'ranked' | 'friendly';
   botState?: BotGameState;
   botMoveInterval?: ReturnType<typeof setInterval>;
-  nextSlowMoveAt?: number; // Timestamp for next "thinking" pause
+  nextSlowMoveAt?: number;
 }
 
-// Bot move interval - make a move every 0.2-0.8 seconds (random)
 const BOT_MIN_MOVE_INTERVAL = 200;
 const BOT_MAX_MOVE_INTERVAL = 800;
-// Occasionally slow down to simulate "thinking" (every 15-20 seconds)
 const BOT_SLOW_MOVE_INTERVAL = 1000;
-const BOT_SLOW_MOVE_MIN_GAP = 15000; // 15 seconds
-const BOT_SLOW_MOVE_MAX_GAP = 20000; // 20 seconds
+const BOT_SLOW_MOVE_MIN_GAP = 15000;
+const BOT_SLOW_MOVE_MAX_GAP = 20000;
 
-const RANKED_DURATION = 5 * 60;    // 5 minutes
-const FRIENDLY_DURATION = 5 * 60;  // 5 minutes (room code valid for 1 hour)
-
-// Timeout before considering player disconnected
-const DISCONNECT_TIMEOUT = 15000; // 15 seconds
+const RANKED_DURATION = 5 * 60;
+const FRIENDLY_DURATION = 5 * 60;
+const DISCONNECT_TIMEOUT = 15000;
 
 export default class GameServer implements Party.Server {
   private state: GameState = {
@@ -53,9 +52,7 @@ export default class GameServer implements Party.Server {
 
   constructor(readonly room: Party.Room) {}
 
-  // Load state on startup
   async onStart() {
-    console.log(`[Game ${this.room.id}] onStart called`);
     const stored = await this.room.storage.get<{
       players: [string, Player][];
       gameStarted: boolean;
@@ -64,8 +61,6 @@ export default class GameServer implements Party.Server {
       mode?: 'ranked' | 'friendly';
       botState?: BotGameState;
     }>("gameState");
-
-    console.log(`[Game ${this.room.id}] Stored state:`, stored ? 'found' : 'none');
 
     if (stored) {
       this.state = {
@@ -77,24 +72,18 @@ export default class GameServer implements Party.Server {
         botState: stored.botState,
       };
 
-      // If this is a bot game, restart bot moves
       const isBotGame = this.room.id.startsWith('bot_');
-      console.log(`[Game ${this.room.id}] isBotGame: ${isBotGame}, hasBotState: ${!!this.state.botState}, resultSent: ${this.state.resultSent}`);
       if (isBotGame && this.state.botState && !this.state.resultSent) {
-        console.log(`[Game ${this.room.id}] Restarting bot moves...`);
         this.scheduleBotMove();
       }
     }
   }
 
-  // Handle new connection
   async onConnect(connection: Party.Connection) {
-    // Send current game state to reconnecting player
     const players = Array.from(this.state.players.values());
 
     if (players.length > 0) {
       const duration = this.state.mode === 'friendly' ? FRIENDLY_DURATION : RANKED_DURATION;
-      // Compute remaining time if game is already in progress
       let timeRemaining: number | undefined;
       if (this.state.gameStartedAt) {
         const elapsed = Math.floor((Date.now() - this.state.gameStartedAt) / 1000);
@@ -112,16 +101,16 @@ export default class GameServer implements Party.Server {
         mode: this.state.mode,
       }));
 
-      // Send opponent state if exists
+      // Send opponent state from server-authoritative source
       for (const player of players) {
         if (player.connectionId !== connection.id) {
           connection.send(JSON.stringify({
             type: 'opponent_state',
             state: {
-              grid: player.grid,
-              score: player.score,
-              gameOver: player.gameOver,
-              won: player.won,
+              grid: player.engineState.grid,
+              score: player.engineState.score,
+              gameOver: player.engineState.gameOver,
+              won: player.engineState.won,
             },
             username: player.username,
             elo: player.elo,
@@ -131,7 +120,6 @@ export default class GameServer implements Party.Server {
     }
   }
 
-  // Handle messages
   async onMessage(message: string, sender: Party.Connection) {
     try {
       const data = JSON.parse(message);
@@ -140,8 +128,12 @@ export default class GameServer implements Party.Server {
         case 'join':
           await this.handleJoin(data, sender);
           break;
+        case 'move':
+          await this.handleMove(data, sender);
+          break;
         case 'state_update':
-          await this.handleStateUpdate(data, sender);
+          // Legacy: accept state_update but don't trust it for scoring
+          await this.handleLegacyStateUpdate(data, sender);
           break;
         case 'request_rematch':
           await this.handleRematchRequest(sender);
@@ -171,48 +163,43 @@ export default class GameServer implements Party.Server {
   ) {
     const { userId, username, elo } = data;
 
-    // First player to join sets the game mode
     if (this.state.players.size === 0 && data.mode) {
       this.state.mode = data.mode;
     }
 
-    // Check if player already exists (reconnection)
     const existing = this.state.players.get(userId);
 
     if (existing) {
-      // Update connection ID for reconnected player
       existing.connectionId = sender.id;
       existing.lastSeen = Date.now();
 
-      // Notify opponent of reconnection
       this.broadcastToOthers(sender.id, {
         type: 'opponent_connected',
         connected: true,
       });
 
-      // Send the player's own saved state back so they can restore their board
-      if (existing.grid.length > 0) {
+      // Send the player's server-authoritative state back for reconnection
+      if (existing.engineState.grid.some(v => v !== 0)) {
         sender.send(JSON.stringify({
           type: 'your_state',
           state: {
-            grid: existing.grid,
-            score: existing.score,
-            gameOver: existing.gameOver,
-            won: existing.won,
+            grid: existing.engineState.grid,
+            score: existing.engineState.score,
+            gameOver: existing.engineState.gameOver,
+            won: existing.engineState.won,
           },
         }));
       }
     } else {
-      // New player joining
+      // Create server-authoritative initial board for this player
+      const initialState = createInitialState(GAME_SIZE);
+
       const player: Player = {
-        userId: userId,
+        userId,
         username,
         elo,
         connectionId: sender.id,
-        grid: [],
-        score: 0,
-        gameOver: false,
-        won: false,
+        engineState: initialState,
         wantsRematch: false,
         forfeited: false,
         lastSeen: Date.now(),
@@ -222,18 +209,14 @@ export default class GameServer implements Party.Server {
       this.state.players.set(userId, player);
     }
 
-    // Check if this is a bot game (room ID starts with "bot_")
     const isBotGame = this.room.id.startsWith('bot_');
 
-    // If this is a bot game and we only have one human player, create the bot player
     if (isBotGame && this.state.players.size === 1) {
-      // Generate bot info - use provided info or generate new
       const botName = data.botOpponent?.username || generateBotName();
       const botElo = data.botOpponent?.elo || generateBotElo(elo);
       await this.createBotPlayer(botName, botElo);
     }
 
-    // Notify all players
     const players = Array.from(this.state.players.values());
     const playerCount = players.length;
 
@@ -246,7 +229,6 @@ export default class GameServer implements Party.Server {
       isBot: false,
     }));
 
-    // Start game when 2 players are connected
     if (playerCount === 2 && !this.state.gameStarted) {
       this.state.gameStarted = true;
       this.state.gameStartedAt = Date.now();
@@ -264,9 +246,26 @@ export default class GameServer implements Party.Server {
         mode: this.state.mode,
       }));
 
-      console.log(`[Game ${this.room.id}] Game started with ${players.map(p => p.username + (p.isBot ? ' (BOT)' : '')).join(' vs ')}`);
+      // Send each player their server-generated initial board
+      for (const player of players) {
+        if (!player.isBot) {
+          const conn = this.room.getConnection(player.connectionId);
+          if (conn) {
+            conn.send(JSON.stringify({
+              type: 'your_initial_state',
+              state: {
+                grid: player.engineState.grid,
+                score: player.engineState.score,
+                gameOver: player.engineState.gameOver,
+                won: player.engineState.won,
+              },
+            }));
+          }
+        }
+      }
 
-      // Start bot moves if this is a bot game
+      log(`[Game ${this.room.id}] Started: ${players.map(p => p.username + (p.isBot ? ' (BOT)' : '')).join(' vs ')}`);
+
       if (isBotGame) {
         this.startBotMoves();
       }
@@ -277,19 +276,20 @@ export default class GameServer implements Party.Server {
 
   private async createBotPlayer(botName: string, botElo: number) {
     const botUserId = `bot_${Date.now()}`;
-
-    // Initialize bot game state with ELO (affects difficulty)
     this.state.botState = createInitialBotState(botElo);
 
     const botPlayer: Player = {
       userId: botUserId,
       username: botName,
       elo: botElo,
-      connectionId: 'bot', // Special connection ID for bot
-      grid: this.state.botState.grid,
-      score: this.state.botState.score,
-      gameOver: this.state.botState.gameOver,
-      won: this.state.botState.won,
+      connectionId: 'bot',
+      engineState: {
+        grid: [...this.state.botState.grid],
+        score: this.state.botState.score,
+        gameOver: this.state.botState.gameOver,
+        won: this.state.botState.won,
+        size: GAME_SIZE,
+      },
       wantsRematch: false,
       forfeited: false,
       lastSeen: Date.now(),
@@ -298,7 +298,6 @@ export default class GameServer implements Party.Server {
 
     this.state.players.set(botUserId, botPlayer);
 
-    // Notify the human player about the bot joining
     this.room.broadcast(JSON.stringify({
       type: 'player_joined',
       playerId: botUserId,
@@ -308,59 +307,41 @@ export default class GameServer implements Party.Server {
       isBot: true,
     }));
 
-    console.log(`[Game ${this.room.id}] Bot player created: ${botName} (ELO: ${botElo})`);
+    log(`[Game ${this.room.id}] Bot created: ${botName} (ELO: ${botElo})`);
   }
 
   private startBotMoves() {
-    // Initialize first "thinking" pause at 15-20 seconds from now
     const firstSlowGap = BOT_SLOW_MOVE_MIN_GAP + Math.random() * (BOT_SLOW_MOVE_MAX_GAP - BOT_SLOW_MOVE_MIN_GAP);
     this.state.nextSlowMoveAt = Date.now() + firstSlowGap;
-    // Schedule periodic bot moves using alarm
     this.scheduleBotMove();
   }
 
   private async scheduleBotMove() {
-    if (this.state.resultSent) {
-      console.log(`[Bot] scheduleBotMove: skipping, resultSent=true`);
-      return;
-    }
+    if (this.state.resultSent) return;
 
     const now = Date.now();
     let delay: number;
-    let moveType: string;
 
-    // Check if it's time for a "thinking" pause
     if (this.state.nextSlowMoveAt && now >= this.state.nextSlowMoveAt) {
       delay = BOT_SLOW_MOVE_INTERVAL;
-      moveType = 'SLOW';
-      // Schedule next slow move in 15-20 seconds
       const nextGap = BOT_SLOW_MOVE_MIN_GAP + Math.random() * (BOT_SLOW_MOVE_MAX_GAP - BOT_SLOW_MOVE_MIN_GAP);
       this.state.nextSlowMoveAt = now + nextGap;
     } else {
-      // Normal speed move
       delay = BOT_MIN_MOVE_INTERVAL + Math.random() * (BOT_MAX_MOVE_INTERVAL - BOT_MIN_MOVE_INTERVAL);
-      moveType = 'NORMAL';
     }
 
-    console.log(`[Bot] scheduleBotMove: ${moveType} delay=${delay.toFixed(0)}ms, alarmAt=${now + delay}`);
     await this.room.storage.setAlarm(now + delay);
   }
 
   private lastAlarmTime = 0;
   async onAlarm() {
     const now = Date.now();
-    const timeSinceLastAlarm = this.lastAlarmTime ? now - this.lastAlarmTime : 0;
-    console.log(`[Game] Alarm fired! timeSinceLastAlarm=${timeSinceLastAlarm}ms`);
     this.lastAlarmTime = now;
-    // Check if this is a bot move alarm or a disconnect timeout
 
-    // First, handle disconnected players (existing logic)
     const playersToRemove: string[] = [];
 
     for (const [id, player] of this.state.players) {
-      if (player.isBot) continue; // Skip bots for disconnect check
-
-      // Check if connection is still active
+      if (player.isBot) continue;
       const connection = this.room.getConnection(player.connectionId);
       if (!connection && now - player.lastSeen > DISCONNECT_TIMEOUT) {
         playersToRemove.push(id);
@@ -371,17 +352,14 @@ export default class GameServer implements Party.Server {
       const player = this.state.players.get(id);
       if (player) {
         this.state.players.delete(id);
-
         this.room.broadcast(JSON.stringify({
           type: 'player_left',
           playerId: id,
         }));
-
-        console.log(`[Game] ${player.username} removed (timeout)`);
+        log(`[Game] ${player.username} removed (timeout)`);
       }
     }
 
-    // Now handle bot moves
     if (this.state.botState && !this.state.resultSent && this.state.gameStarted) {
       await this.performBotMove();
     }
@@ -390,13 +368,10 @@ export default class GameServer implements Party.Server {
   }
 
   private async performBotMove() {
-    console.log(`[Bot] performBotMove called - checking state...`);
     if (!this.state.botState || this.state.botState.gameOver || this.state.botState.won) {
-      console.log(`[Bot] Skipping move - botState: ${!!this.state.botState}, gameOver: ${this.state.botState?.gameOver}, won: ${this.state.botState?.won}`);
       return;
     }
 
-    // Find the bot player
     let botPlayer: Player | undefined;
     for (const player of this.state.players.values()) {
       if (player.isBot) {
@@ -407,59 +382,48 @@ export default class GameServer implements Party.Server {
 
     if (!botPlayer) return;
 
-    // Log state before move
-    const beforeGrid = [...this.state.botState.grid];
-    const beforeScore = this.state.botState.score;
-
-    // Make a bot move
     this.state.botState = botMakeMove(this.state.botState);
 
-    // Update bot player state
-    botPlayer.grid = this.state.botState.grid;
-    botPlayer.score = this.state.botState.score;
-    botPlayer.gameOver = this.state.botState.gameOver;
-    botPlayer.won = this.state.botState.won;
-
-    // Log the move with grid visualization
-    const formatGrid = (g: number[]) => {
-      const rows = [];
-      for (let r = 0; r < 4; r++) {
-        rows.push(g.slice(r * 4, r * 4 + 4).map(v => v.toString().padStart(4)).join(' '));
-      }
-      return rows.join('\n');
+    // Sync bot's engine state
+    botPlayer.engineState = {
+      grid: [...this.state.botState.grid],
+      score: this.state.botState.score,
+      gameOver: this.state.botState.gameOver,
+      won: this.state.botState.won,
+      size: GAME_SIZE,
     };
 
-    console.log(`[Bot] ELO: ${this.state.botState.elo} | Score: ${beforeScore} -> ${botPlayer.score} (+${botPlayer.score - beforeScore})`);
-    console.log(`[Bot] Grid:\n${formatGrid(botPlayer.grid)}`);
-
-    // Broadcast bot state to human player
     this.room.broadcast(JSON.stringify({
       type: 'opponent_state',
       state: {
-        grid: botPlayer.grid,
-        score: botPlayer.score,
-        gameOver: botPlayer.gameOver,
-        won: botPlayer.won,
+        grid: botPlayer.engineState.grid,
+        score: botPlayer.engineState.score,
+        gameOver: botPlayer.engineState.gameOver,
+        won: botPlayer.engineState.won,
       },
       username: botPlayer.username,
       elo: botPlayer.elo,
       isBot: true,
     }));
 
-    // Check if match should resolve
-    await this.tryResolveMatch(botPlayer.won ? '2048' : 'score');
+    await this.tryResolveMatch(botPlayer.engineState.won ? '2048' : 'score');
 
-    // Schedule next bot move if game is not over
     if (!this.state.resultSent && !this.state.botState.gameOver && !this.state.botState.won) {
       await this.scheduleBotMove();
     }
   }
 
-  private async handleStateUpdate(
-    data: { state: { grid: number[]; score: number; gameOver: boolean; won: boolean } },
+  /**
+   * Server-authoritative move handler.
+   * Client sends only the direction; server computes the new state.
+   */
+  private async handleMove(
+    data: { direction: number },
     sender: Party.Connection
   ) {
-    // Find player by connection ID
+    const direction = data.direction;
+    if (typeof direction !== 'number' || direction < 0 || direction > 3) return;
+
     let player: Player | undefined;
     for (const p of this.state.players.values()) {
       if (p.connectionId === sender.id) {
@@ -468,34 +432,70 @@ export default class GameServer implements Party.Server {
       }
     }
 
-    if (!player) {
-      console.log(`[Game ${this.room.id}] state_update from unknown connection ${sender.id}`);
-      console.log(`[Game ${this.room.id}] Known players:`, Array.from(this.state.players.values()).map(p => ({ id: p.userId, connId: p.connectionId })));
-      return;
-    }
+    if (!player || player.engineState.gameOver || player.engineState.won) return;
 
-    console.log(`[Game ${this.room.id}] ${player.username} score: ${data.state.score}`);
+    // Compute new state server-side
+    const newState = applyMove(player.engineState, direction);
+    if (newState === player.engineState) return; // Move didn't change anything
 
-    // Update player state
-    player.grid = data.state.grid;
-    player.score = data.state.score;
-    player.gameOver = data.state.gameOver;
-    player.won = data.state.won;
+    player.engineState = newState;
     player.lastSeen = Date.now();
 
+    // Send authoritative state back to the mover
+    sender.send(JSON.stringify({
+      type: 'your_game_state',
+      state: {
+        grid: newState.grid,
+        score: newState.score,
+        gameOver: newState.gameOver,
+        won: newState.won,
+      },
+    }));
+
     // Broadcast to opponent
+    this.broadcastToOthers(sender.id, {
+      type: 'opponent_state',
+      state: {
+        grid: newState.grid,
+        score: newState.score,
+        gameOver: newState.gameOver,
+        won: newState.won,
+      },
+      username: player.username,
+      elo: player.elo,
+    });
+
+    await this.tryResolveMatch(newState.won ? '2048' : 'score');
+    await this.saveState();
+  }
+
+  /**
+   * Legacy state_update handler — kept for backward compatibility during transition.
+   * Does NOT update the server-authoritative engine state.
+   * Only relays to opponent for display purposes.
+   */
+  private async handleLegacyStateUpdate(
+    data: { state: { grid: number[]; score: number; gameOver: boolean; won: boolean } },
+    sender: Party.Connection
+  ) {
+    let player: Player | undefined;
+    for (const p of this.state.players.values()) {
+      if (p.connectionId === sender.id) {
+        player = p;
+        break;
+      }
+    }
+
+    if (!player) return;
+    player.lastSeen = Date.now();
+
+    // Relay to opponent for display, but don't update server state
     this.broadcastToOthers(sender.id, {
       type: 'opponent_state',
       state: data.state,
       username: player.username,
       elo: player.elo,
     });
-
-    // Check if match should resolve on every state update
-    // (active player may have overtaken a done player's score)
-    await this.tryResolveMatch(data.state.won ? '2048' : 'score');
-
-    await this.saveState();
   }
 
   private async tryResolveMatch(reason: 'score' | '2048' | 'timer') {
@@ -505,53 +505,35 @@ export default class GameServer implements Party.Server {
     if (players.length !== 2) return;
 
     const [p1, p2] = players;
-    const someoneWon2048 = p1.won || p2.won;
+    const someoneWon2048 = p1.engineState.won || p2.engineState.won;
+    const p1RanOutOfMoves = p1.engineState.gameOver && !p1.engineState.won;
+    const p2RanOutOfMoves = p2.engineState.gameOver && !p2.engineState.won;
 
-    // Running out of moves = instant loss (like running out of time in chess)
-    // gameOver means no more moves available (but didn't reach 2048)
-    const p1RanOutOfMoves = p1.gameOver && !p1.won;
-    const p2RanOutOfMoves = p2.gameOver && !p2.won;
-
-    console.log(`[Game] tryResolveMatch: reason=${reason}, p1RanOut=${p1RanOutOfMoves}, p2RanOut=${p2RanOutOfMoves}, p1.score=${p1.score}, p2.score=${p2.score}`);
-
-    // Match resolves when:
-    // - Someone reached 2048 (instant win)
-    // - Someone ran out of moves (instant loss for them)
-    // - Timer expired (compare scores)
     if (!someoneWon2048 && !p1RanOutOfMoves && !p2RanOutOfMoves && reason !== 'timer') return;
 
     this.state.resultSent = true;
 
-    // Determine winner
     let winnerId: string | null = null;
     let actualReason: 'score' | '2048' | 'timer' | 'no_moves' = reason;
 
     if (someoneWon2048) {
-      // 2048 = instant win
-      winnerId = p1.won ? p1.userId : p2.userId;
+      winnerId = p1.engineState.won ? p1.userId : p2.userId;
       actualReason = '2048';
     } else if (p1RanOutOfMoves && !p2RanOutOfMoves) {
-      // P1 ran out of moves first = P2 wins instantly
       winnerId = p2.userId;
       actualReason = 'no_moves';
     } else if (p2RanOutOfMoves && !p1RanOutOfMoves) {
-      // P2 ran out of moves first = P1 wins instantly
       winnerId = p1.userId;
       actualReason = 'no_moves';
     } else if (p1RanOutOfMoves && p2RanOutOfMoves) {
-      // Both ran out of moves at the same time = compare scores
-      if (p1.score > p2.score) winnerId = p1.userId;
-      else if (p2.score > p1.score) winnerId = p2.userId;
-      // else null = tie
+      if (p1.engineState.score > p2.engineState.score) winnerId = p1.userId;
+      else if (p2.engineState.score > p1.engineState.score) winnerId = p2.userId;
       actualReason = 'no_moves';
     } else {
-      // Timer expired = compare scores
-      if (p1.score > p2.score) winnerId = p1.userId;
-      else if (p2.score > p1.score) winnerId = p2.userId;
-      // else null = tie
+      if (p1.engineState.score > p2.engineState.score) winnerId = p1.userId;
+      else if (p2.engineState.score > p1.engineState.score) winnerId = p2.userId;
     }
 
-    // Send personalized result to each player
     for (const player of players) {
       const opponent = players.find(p => p.userId !== player.userId)!;
       const outcome: 'win' | 'loss' | 'tie' =
@@ -562,27 +544,23 @@ export default class GameServer implements Party.Server {
         conn.send(JSON.stringify({
           type: 'game_result',
           outcome,
-          yourScore: player.score,
-          opponentScore: opponent.score,
+          yourScore: player.engineState.score,
+          opponentScore: opponent.engineState.score,
           reason: actualReason,
         }));
       }
     }
 
-    console.log(`[Game] Match resolved: ${winnerId ? `winner=${winnerId}` : 'tie'} (${actualReason}) scores: ${p1.username}=${p1.score} vs ${p2.username}=${p2.score}`);
+    log(`[Game] Match resolved: ${winnerId ? `winner=${winnerId}` : 'tie'} (${actualReason}) ${p1.username}=${p1.engineState.score} vs ${p2.username}=${p2.engineState.score}`);
   }
 
   private async handleTimerExpired(sender: Party.Connection) {
-    // Only process if result hasn't been sent yet
     if (this.state.resultSent) return;
-
-    console.log(`[Game ${this.room.id}] Timer expired signal received`);
     await this.tryResolveMatch('timer');
     await this.saveState();
   }
 
   private async handleRematchRequest(sender: Party.Connection) {
-    // Find player
     let player: Player | undefined;
     for (const p of this.state.players.values()) {
       if (p.connectionId === sender.id) {
@@ -595,10 +573,8 @@ export default class GameServer implements Party.Server {
 
     player.wantsRematch = true;
 
-    // Check if this is a bot game - if so, auto-accept rematch
     const isBotGame = this.room.id.startsWith('bot_');
     if (isBotGame) {
-      // Find bot player and auto-accept
       for (const p of this.state.players.values()) {
         if (p.isBot) {
           p.wantsRematch = true;
@@ -606,25 +582,23 @@ export default class GameServer implements Party.Server {
       }
     }
 
-    // Check if both want rematch
     const players = Array.from(this.state.players.values());
     const allWantRematch = players.length === 2 && players.every(p => p.wantsRematch);
 
     if (allWantRematch) {
-      // Reset game state for both players
       for (const p of players) {
         if (p.isBot) {
-          // Reset bot state (preserve ELO for difficulty)
           this.state.botState = createInitialBotState(p.elo);
-          p.grid = this.state.botState.grid;
-          p.score = this.state.botState.score;
-          p.gameOver = this.state.botState.gameOver;
-          p.won = this.state.botState.won;
+          p.engineState = {
+            grid: [...this.state.botState.grid],
+            score: this.state.botState.score,
+            gameOver: this.state.botState.gameOver,
+            won: this.state.botState.won,
+            size: GAME_SIZE,
+          };
         } else {
-          p.grid = [];
-          p.score = 0;
-          p.gameOver = false;
-          p.won = false;
+          // Generate a fresh server-authoritative board
+          p.engineState = createInitialState(GAME_SIZE);
         }
         p.wantsRematch = false;
         p.forfeited = false;
@@ -632,10 +606,8 @@ export default class GameServer implements Party.Server {
       this.state.resultSent = false;
       this.state.gameStartedAt = Date.now();
 
-      // Send rematch_start to trigger UI reset
       this.room.broadcast(JSON.stringify({ type: 'rematch_start' }));
 
-      // Also send game_start to restart the timer
       const duration = this.state.mode === 'friendly' ? FRIENDLY_DURATION : RANKED_DURATION;
       this.room.broadcast(JSON.stringify({
         type: 'game_start',
@@ -649,14 +621,30 @@ export default class GameServer implements Party.Server {
         mode: this.state.mode,
       }));
 
-      console.log(`[Game ${this.room.id}] Rematch started`);
+      // Send fresh initial boards to human players
+      for (const p of players) {
+        if (!p.isBot) {
+          const conn = this.room.getConnection(p.connectionId);
+          if (conn) {
+            conn.send(JSON.stringify({
+              type: 'your_initial_state',
+              state: {
+                grid: p.engineState.grid,
+                score: p.engineState.score,
+                gameOver: p.engineState.gameOver,
+                won: p.engineState.won,
+              },
+            }));
+          }
+        }
+      }
 
-      // Restart bot moves for bot games
+      log(`[Game ${this.room.id}] Rematch started`);
+
       if (isBotGame) {
         this.startBotMoves();
       }
     } else {
-      // Notify opponent that rematch was requested
       this.broadcastToOthers(sender.id, {
         type: 'rematch_requested',
         by: 'opponent',
@@ -667,7 +655,6 @@ export default class GameServer implements Party.Server {
   }
 
   private async handleForfeit(sender: Party.Connection) {
-    // Find player
     let player: Player | undefined;
     for (const p of this.state.players.values()) {
       if (p.connectionId === sender.id) {
@@ -680,14 +667,12 @@ export default class GameServer implements Party.Server {
 
     player.forfeited = true;
 
-    // Notify opponent
     this.broadcastToOthers(sender.id, {
       type: 'opponent_forfeited',
     });
 
-    console.log(`[Game ${this.room.id}] ${player.username} forfeited`);
+    log(`[Game ${this.room.id}] ${player.username} forfeited`);
 
-    // Send game_result to both players (forfeiter loses)
     if (!this.state.resultSent) {
       this.state.resultSent = true;
       const players = Array.from(this.state.players.values());
@@ -702,20 +687,18 @@ export default class GameServer implements Party.Server {
           conn.send(JSON.stringify({
             type: 'game_result',
             outcome,
-            yourScore: p.score,
-            opponentScore: opponent?.score ?? 0,
+            yourScore: p.engineState.score,
+            opponentScore: opponent?.engineState.score ?? 0,
             reason: 'forfeit',
           }));
         }
       }
-      console.log(`[Game ${this.room.id}] Forfeit result sent - ${player.username} loses`);
     }
 
     await this.saveState();
   }
 
   private handleHeartbeat(sender: Party.Connection) {
-    // Update last seen for the player
     for (const p of this.state.players.values()) {
       if (p.connectionId === sender.id) {
         p.lastSeen = Date.now();
@@ -724,9 +707,7 @@ export default class GameServer implements Party.Server {
     }
   }
 
-  // Handle disconnection
   async onClose(connection: Party.Connection) {
-    // Find the player who disconnected
     let disconnectedPlayer: Player | undefined;
     for (const p of this.state.players.values()) {
       if (p.connectionId === connection.id) {
@@ -737,17 +718,14 @@ export default class GameServer implements Party.Server {
 
     if (!disconnectedPlayer) return;
 
-    // Notify opponent of disconnect
     this.broadcastToOthers(connection.id, {
       type: 'opponent_connected',
       connected: false,
     });
 
-    // Set alarm to clean up if they don't reconnect
     await this.room.storage.setAlarm(Date.now() + DISCONNECT_TIMEOUT);
   }
 
-  // Broadcast to all except sender
   private broadcastToOthers(senderId: string, message: object) {
     const msgStr = JSON.stringify(message);
     for (const conn of this.room.getConnections()) {
@@ -757,7 +735,6 @@ export default class GameServer implements Party.Server {
     }
   }
 
-  // Save state to storage
   private async saveState() {
     await this.room.storage.put("gameState", {
       players: Array.from(this.state.players.entries()),

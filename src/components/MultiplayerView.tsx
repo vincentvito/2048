@@ -2,17 +2,23 @@
 
 import React, { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import confetti from 'canvas-confetti';
-import Game2048, { GameState } from './Game2048';
+import Game2048, { GameState, type Game2048Handle } from './Game2048';
 import EmailSignIn from './EmailSignIn';
 import { isSupabaseConfigured } from '@/lib/supabase-client';
-import { useSession, BetterAuthUser } from '@/lib/auth-client';
+import { useSession } from '@/lib/auth-client';
+import { type AppUser, getDisplayName } from '@/features/auth/types';
 import { usePartyMatchmaking as useMatchmaking } from '../hooks/usePartyMatchmaking';
 import { usePartyGame as useMultiplayerGame } from '../hooks/usePartyGame';
 import { saveMultiplayerSession, clearMultiplayerSession } from '@/lib/multiplayer-session';
 import { calculateElo, getEloRank, DEFAULT_ELO } from '@/lib/elo';
 import { themes, ThemeName } from '@/lib/themes';
+import { useTheme } from '@/features/theme/ThemeProvider';
 import { getOrCreatePlayerStats, updateStatsAfterGame, PlayerStats } from '@/lib/player-stats';
 import type { GameMode } from '@/lib/party/messages';
+import MatchResultModal from '@/features/multiplayer/game/MatchResultModal';
+import LeaveWarningModal from '@/features/multiplayer/game/LeaveWarningModal';
+import MultiplayerHud from '@/features/multiplayer/game/MultiplayerHud';
+import OpponentPreview, { MiniGrid, ExpandedGrid } from '@/features/multiplayer/game/OpponentPreview';
 
 // Characters that avoid ambiguity (no 0/O, 1/I/l)
 const ROOM_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -27,74 +33,7 @@ function generateRoomCode(): string {
 
 type LobbyScreen = 'main' | 'friend-menu' | 'create-room' | 'join-room';
 
-/** Format seconds into MM:SS display */
-function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-}
-
-/** Get tile colors from theme */
-function getTileColors(value: number, theme: typeof themes.classic): [string, string] {
-  const tileValues = [0, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192];
-  let closest = 0;
-  for (const v of tileValues) {
-    if (v <= value) closest = v;
-  }
-  return theme.tiles[closest] || theme.tiles[0];
-}
-
-/** Mini grid component for opponent preview */
-function MiniGrid({ grid, themeName }: { grid: number[]; themeName: ThemeName }) {
-  const theme = themes[themeName];
-
-  return (
-    <div className="mini-grid" style={{ background: theme.bgGrid }}>
-      {grid.slice(0, 16).map((value, i) => (
-        <div
-          key={i}
-          className="mini-tile"
-          style={{ background: getTileColors(value, theme)[0] }}
-        />
-      ))}
-    </div>
-  );
-}
-
-/** Expanded grid component for full opponent board view */
-function ExpandedGrid({ grid, themeName }: { grid: number[]; themeName: ThemeName }) {
-  const theme = themes[themeName];
-
-  // Calculate font size based on number of digits
-  const getFontSize = (value: number): string => {
-    if (value === 0) return '0';
-    const digits = String(value).length;
-    if (digits <= 2) return '2rem';
-    if (digits === 3) return '1.6rem';
-    return '1.2rem';
-  };
-
-  return (
-    <div className="expanded-grid" style={{ background: theme.bgGrid }}>
-      {grid.slice(0, 16).map((value, i) => {
-        const [bg, text] = getTileColors(value, theme);
-        return (
-          <div
-            key={i}
-            className="expanded-tile"
-            style={{
-              background: bg,
-              color: text,
-              fontSize: getFontSize(value),
-            }}
-          >
-            {value > 0 ? value : ''}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
+// MiniGrid, ExpandedGrid imported from OpponentPreview
 
 interface MultiplayerViewProps {
   onMatchActiveChange?: (isActive: boolean) => void;
@@ -107,26 +46,11 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
   // Bot opponent info from matchmaking
   const [botOpponent, setBotOpponent] = useState<{ username: string; elo: number } | null>(null);
 
-  // Track current theme for canvas boards
-  const [themeName, setThemeName] = useState<ThemeName>(() => {
-    if (typeof document !== 'undefined') {
-      return (document.documentElement.getAttribute('data-theme') as ThemeName) || 'classic';
-    }
-    return 'classic';
-  });
-
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      const t = document.documentElement.getAttribute('data-theme') as ThemeName;
-      if (t) setThemeName(t);
-    });
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-    return () => observer.disconnect();
-  }, []);
+  const { theme: themeName } = useTheme();
 
   // Auth State - using Better Auth
   const { data: sessionData, isPending: sessionLoading } = useSession();
-  const user = (sessionData?.user as BetterAuthUser | undefined) ?? null;
+  const user = (sessionData?.user as AppUser | undefined) ?? null;
   const sessionLoaded = !sessionLoading;
   const [showSignIn, setShowSignIn] = useState(false);
 
@@ -140,14 +64,7 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
   const [localEloAfter, setLocalEloAfter] = useState<number | null>(null);
   const [eloProcessed, setEloProcessed] = useState(false);
 
-  // Read display name from user (set via UsernamePrompt)
-  const myName = useMemo(() => {
-    if (user?.username) return user.username;
-    if (user?.name) return user.name;
-    if (!user?.email) return 'You';
-    const local = user.email.split('@')[0];
-    return local.charAt(0).toUpperCase() + local.slice(1);
-  }, [user]);
+  const myName = useMemo(() => getDisplayName(user), [user]);
 
   // Fetch player stats when user is available
   useEffect(() => {
@@ -156,7 +73,7 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
       return;
     }
     setStatsLoading(true);
-    getOrCreatePlayerStats(user.id, myName)
+    getOrCreatePlayerStats(myName)
       .then((stats) => setPlayerStats(stats))
       .catch(() => setPlayerStats(null))
       .finally(() => setStatsLoading(false));
@@ -204,7 +121,7 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
   // Persist session whenever we have an active room
   useEffect(() => {
     if (effectiveRoomId && user?.id) {
-      saveMultiplayerSession(user.id, {
+      saveMultiplayerSession({
         roomId: effectiveRoomId,
         gameMode,
         friendRoomCode: gameMode === 'friendly' ? friendRoomCode : undefined,
@@ -218,8 +135,9 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
   }, [effectiveRoomId, onMatchActiveChange]);
 
   const {
-    opponentState, restoredLocalState, opponentConnected, opponentEverConnected, opponentName, opponentElo, opponentIsBot,
-    sendGameState, requestRematch, resetRematchState, declareForfeit,
+    opponentState, restoredLocalState, initialServerState, serverGameState,
+    opponentConnected, opponentEverConnected, opponentName, opponentElo, opponentIsBot,
+    sendMove, sendGameState, requestRematch, resetRematchState, declareForfeit,
     localWantsRematch, opponentWantsRematch, rematchReady, rematchStarted, clearRematchStarted,
     timeLeft, gameStarted, forfeitWin, serverResult,
   } = useMultiplayerGame(effectiveRoomId, myId, user?.id || null, myName, myElo, gameMode, botOpponent);
@@ -254,7 +172,7 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
     const timeout = setTimeout(() => {
       if (!gameStarted) {
         console.log('[MultiplayerView] Stale room detected, returning to lobby');
-        if (user?.id) clearMultiplayerSession(user.id);
+        if (user?.id) clearMultiplayerSession();
         cancelMatchmaking();
         setFriendRoomId(null);
         setFriendRoomCode('');
@@ -279,16 +197,15 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
   // Final fallback state for opponent
   const emptyOpponentState: GameState = { grid: Array(16).fill(0), score: 0, gameOver: false, won: false };
   const localBoardRef = useRef<HTMLDivElement>(null);
+  const localGameRef = useRef<Game2048Handle>(null);
   const suppressStateRef = useRef(!!reconnectSession);
 
   // Restore local board state when server sends it back on reconnect
   useEffect(() => {
     if (!restoredLocalState) return;
     const applyRestore = () => {
-      const container = localBoardRef.current?.querySelector('.game-container') as any;
-      const updateFn = container?._updateState;
-      if (updateFn) {
-        updateFn(restoredLocalState);
+      if (localGameRef.current) {
+        localGameRef.current.updateState(restoredLocalState);
         setLocalGameResult({
           won: restoredLocalState.won,
           score: restoredLocalState.score,
@@ -311,6 +228,24 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
     return () => clearInterval(interval);
   }, [restoredLocalState, sendGameState]);
 
+  // Load server-generated initial board when a new game starts
+  useEffect(() => {
+    if (!initialServerState) return;
+    const applyInitial = () => {
+      if (localGameRef.current) {
+        localGameRef.current.updateState(initialServerState);
+        return true;
+      }
+      return false;
+    };
+    if (applyInitial()) return;
+    let attempts = 0;
+    const interval = setInterval(() => {
+      if (applyInitial() || ++attempts >= 10) clearInterval(interval);
+    }, 100);
+    return () => clearInterval(interval);
+  }, [initialServerState]);
+
   const handleLocalGameOver = useCallback((score: number) => {
     setLocalGameResult({ won: false, score, gameOver: true });
   }, []);
@@ -324,6 +259,10 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
     sendGameState(state);
     setLocalGameResult({ won: state.won, score: state.score, gameOver: state.gameOver });
   }, [sendGameState]);
+
+  const handleLocalMove = useCallback((direction: number) => {
+    sendMove(direction);
+  }, [sendMove]);
 
   const handleResetReady = useCallback((resetFn: () => void) => {
     localGameResetRef.current = resetFn;
@@ -354,7 +293,7 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
         const result = calculateElo(myElo, oppElo, 'loss');
         console.log(`[Forfeit] ELO change: ${myElo} -> ${result.newPlayerElo} (${result.playerDelta})`);
 
-        await updateStatsAfterGame(user.id, {
+        await updateStatsAfterGame({
           won: false,
           tied: false,
           score: localGameResult?.score ?? 0,
@@ -369,7 +308,7 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
     if (gameStillLive) {
       declareForfeit();
     }
-    if (user?.id) clearMultiplayerSession(user.id);
+    if (user?.id) clearMultiplayerSession();
     cancelMatchmaking();
     setFriendRoomId(null);
     setFriendRoomCode('');
@@ -389,7 +328,7 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
   };
 
   const handleNewOpponent = () => {
-    if (user?.id) clearMultiplayerSession(user.id);
+    if (user?.id) clearMultiplayerSession();
     cancelMatchmaking();
     setLocalGameResult(null);
     setShowResultModal(false);
@@ -431,7 +370,7 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
   useEffect(() => {
     if (isMatchResolved && !showResultModal) {
       setShowResultModal(true);
-      if (user?.id) clearMultiplayerSession(user.id);
+      if (user?.id) clearMultiplayerSession();
     }
   }, [isMatchResolved, showResultModal, user?.id]);
 
@@ -460,14 +399,14 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
       // Update stats in Supabase
       if (user?.id) {
         try {
-          await updateStatsAfterGame(user.id, {
+          await updateStatsAfterGame({
             won: localWon,
             tied: isTie,
             score: localScore,
             newElo: result.newPlayerElo,
           });
           // Refresh local stats
-          const updated = await getOrCreatePlayerStats(user.id, myName);
+          const updated = await getOrCreatePlayerStats(myName);
           setPlayerStats(updated);
         } catch (err) {
           console.error('[MultiplayerView] Failed to update stats:', err);
@@ -482,7 +421,7 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
   useEffect(() => {
     if (isMatchResolved && localWon && !confettiFiredRef.current) {
       confettiFiredRef.current = true;
-      const currentTheme = (document.documentElement.getAttribute('data-theme') || 'classic') as ThemeName;
+      const currentTheme = themeName;
       const confettiColors = themes[currentTheme]?.confettiColors ?? themes.classic.confettiColors;
       const end = Date.now() + 2000;
       const frame = () => {
@@ -604,7 +543,7 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
     };
 
     const handleCancelFriend = () => {
-      if (user?.id) clearMultiplayerSession(user.id);
+      if (user?.id) clearMultiplayerSession();
       setFriendRoomId(null);
       setFriendRoomCode('');
       setJoinRoomInput('');
@@ -778,14 +717,6 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
 
   const displayOpponentName = opponentName || 'Opponent';
 
-  // Timer classes for new HUD
-  const timerWarning = timeLeft < 30;
-  const timerCritical = timeLeft < 10;
-  const hudTimerClass = [
-    'mp-hud-timer-display',
-    timerWarning ? 'warning' : '',
-    timerCritical ? 'critical' : '',
-  ].filter(Boolean).join(' ');
 
   // Result modal helpers
   const getResultTitle = (): string => {
@@ -813,98 +744,47 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
   };
 
   const localEloRank = localEloAfter ? getEloRank(localEloAfter) : (playerStats ? getEloRank(playerStats.elo) : null);
-  const eloChangeClass = isTie ? 'mp-elo-change mp-elo-change-neutral' : localWon ? 'mp-elo-change mp-elo-change-positive' : 'mp-elo-change mp-elo-change-negative';
-
-  const connectionStatusClass = opponentConnected ? 'connected' : opponentEverConnected ? 'disconnected' : 'connecting';
-  const connectionLabel = opponentConnected ? 'Connected' : opponentEverConnected ? 'Disconnected' : 'Connecting...';
 
   return (
     <div className="multiplayer-boards-container">
 
       <div className="mp-boards-wrapper">
 
-      {/* In-game HUD */}
-      <div className="mp-hud">
-        {/* Local player */}
-        <div className="mp-hud-player">
-          <span className="mp-hud-name">{myName}</span>
-          <span className="mp-hud-score">{(localGameResult?.score || 0).toLocaleString()}</span>
-        </div>
+      <MultiplayerHud
+        myName={myName}
+        myScore={localGameResult?.score || 0}
+        opponentName={displayOpponentName}
+        opponentScore={opponentState?.score || 0}
+        timeLeft={timeLeft}
+        gameStarted={gameStarted}
+        opponentConnected={opponentConnected}
+        opponentEverConnected={opponentEverConnected}
+        statusText={statusText}
+      />
 
-        {/* Centre: timer */}
-        <div className="mp-hud-timer">
-          {gameStarted ? (
-            <>
-              <div className={hudTimerClass}>{formatTime(timeLeft)}</div>
-              <div className="mp-hud-timer-label">remaining</div>
-            </>
-          ) : (
-            <div className="mp-hud-timer-display">—</div>
-          )}
-        </div>
-
-        {/* Opponent */}
-        <div className="mp-hud-opponent">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'flex-end', width: '100%' }}>
-            <span className={`mp-hud-status ${connectionStatusClass}`} title={connectionLabel}>
-              <span className="blob" />
-            </span>
-            <span className="mp-hud-name" style={{ maxWidth: 'none', flexShrink: 1 }}>{displayOpponentName}</span>
-          </div>
-          <span className="mp-hud-score">{(opponentState?.score || 0).toLocaleString()}</span>
-        </div>
-
-      </div>
-      {statusText && <div className="mp-status-bar">{statusText}</div>}
-
-      {/* Mobile: Mini opponent preview (floating button on left) */}
-      <div
-        className="mp-opponent-mini-preview"
-        onClick={() => setShowOpponentExpanded(true)}
-        role="button"
-        tabIndex={0}
-        aria-label="View opponent board"
-      >
-        <div className="mp-mini-preview-inner">
-          <MiniGrid grid={opponentState?.grid || emptyOpponentState.grid} themeName={themeName} />
-          {!opponentConnected && (
-            <div className="mp-mini-preview-offline" />
-          )}
-        </div>
-        <span className="mp-mini-preview-label">{displayOpponentName}</span>
-      </div>
-
-      {/* Mobile: Expanded opponent view modal */}
-      {showOpponentExpanded && (
-        <div className="mp-opponent-expanded-backdrop" onClick={() => setShowOpponentExpanded(false)}>
-          <div className="mp-opponent-expanded-modal" onClick={e => e.stopPropagation()}>
-            <div className="mp-opponent-expanded-header">
-              <span className="mp-opponent-expanded-name">{displayOpponentName}</span>
-              <span className="mp-opponent-expanded-score">{(opponentState?.score || 0).toLocaleString()}</span>
-              <button className="mp-opponent-expanded-close" onClick={() => setShowOpponentExpanded(false)}>
-                &times;
-              </button>
-            </div>
-            <div className={`mp-opponent-expanded-board ${opponentDone || timerExpired || hasForfeit ? 'dimmed' : ''}`}>
-              {!opponentConnected && (
-                <div className="expanded-offline-overlay">
-                  {opponentEverConnected ? 'Opponent disconnected...' : 'Connecting...'}
-                </div>
-              )}
-              <ExpandedGrid grid={opponentState?.grid || emptyOpponentState.grid} themeName={themeName} />
-            </div>
-          </div>
-        </div>
-      )}
+      <OpponentPreview
+        opponentState={opponentState}
+        opponentName={displayOpponentName}
+        opponentConnected={opponentConnected}
+        opponentEverConnected={opponentEverConnected}
+        opponentDone={opponentDone}
+        timerExpired={timerExpired}
+        hasForfeit={hasForfeit}
+        themeName={themeName}
+        showExpanded={showOpponentExpanded}
+        onToggleExpanded={setShowOpponentExpanded}
+      />
 
       <div className="boards-split">
         {/* Local board */}
         <div ref={localBoardRef} className={`mp-board-slot ${localDone || timerExpired || hasForfeit ? 'dimmed' : ''}`}>
           <Game2048
+            ref={localGameRef}
             onGameOver={handleLocalGameOver}
             onGameWon={handleLocalGameWon}
             onResetReady={handleResetReady}
             onStateChange={handleLocalStateChange}
+            onMove={handleLocalMove}
             disableInputs={disableLocalInputs}
             onDevEndGameReady={isDev ? handleDevEndGameReady : undefined}
             hideScore
@@ -939,109 +819,34 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
       )}
       </div>
 
-      {/* Leave Match Warning Modal */}
-      {showLeaveWarning && (
-        <div className="mp-result-backdrop" role="dialog" aria-modal="true">
-          <div className="mp-result-card" style={{ textAlign: 'center', padding: '28px 24px' }}>
-            <h2 style={{ margin: '0 0 12px', fontSize: '1.4rem', color: 'var(--text-primary)' }}>Leave Match?</h2>
-            <p style={{ margin: '0 0 8px', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-              Leaving now will count as a forfeit.
-            </p>
-            <p style={{ margin: '0 0 20px', color: '#dc2626', fontSize: '0.9rem', fontWeight: 500 }}>
-              Your ELO rating will decrease.
-            </p>
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-              <button
-                className="mp-result-btn-secondary"
-                onClick={() => setShowLeaveWarning(false)}
-              >
-                Keep Playing
-              </button>
-              <button
-                className="mp-result-btn-primary"
-                style={{ background: '#dc2626' }}
-                onClick={confirmLeaveMatch}
-              >
-                Leave & Forfeit
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <LeaveWarningModal
+        show={showLeaveWarning}
+        onCancel={() => setShowLeaveWarning(false)}
+        onConfirm={confirmLeaveMatch}
+      />
 
-      {/* Match Result Overlay Modal */}
-      {showResultModal && isMatchResolved && (
-        <div className="mp-result-backdrop" role="dialog" aria-modal="true">
-          <div className="mp-result-card">
-            <div className={`mp-result-banner ${getResultBannerClass()}`}>
-              <h2 className="mp-result-title">{getResultTitle()}</h2>
-              {getResultSubtitle() && (
-                <p className={`mp-result-subtitle ${hasForfeit ? 'mp-result-forfeit-text' : ''}`}>
-                  {getResultSubtitle()}
-                </p>
-              )}
-            </div>
-
-            <div className="mp-result-scores">
-              <div className={`mp-score-column ${localWon && !isTie ? 'mp-score-winner' : ''}`}>
-                <span className="mp-score-name">{myName}</span>
-                <span className="mp-score-value">{(serverResult?.yourScore ?? localGameResult?.score ?? 0).toLocaleString()}</span>
-                {localWon && !isTie && <span className="mp-score-badge">Winner</span>}
-              </div>
-              <div className="mp-score-vs">VS</div>
-              <div className={`mp-score-column ${!localWon && !isTie ? 'mp-score-winner' : ''}`}>
-                <span className="mp-score-name">{displayOpponentName}</span>
-                <span className="mp-score-value">{(serverResult?.opponentScore ?? opponentState?.score ?? 0).toLocaleString()}</span>
-                {!localWon && !isTie && <span className="mp-score-badge">Winner</span>}
-              </div>
-            </div>
-
-            {/* ELO change — prominent pill (hidden for friendly games) */}
-            {gameMode === 'ranked' && localEloDelta !== null && (
-              <div className="mp-elo-section">
-                <span className={eloChangeClass}>
-                  {localEloDelta >= 0 ? '+' : ''}{localEloDelta} ELO
-                </span>
-                {localEloRank && localEloAfter !== null && (
-                  <div className="mp-elo-rank-row" style={{ padding: 0 }}>
-                    <span className={`elo-rank-badge elo-rank-${localEloRank.name.toLowerCase()}`}>
-                      {localEloRank.name}
-                    </span>
-                    <span className="mp-elo-rating">{localEloAfter} ELO</span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {gameMode === 'friendly' && (
-              <p className="mp-friendly-label">Friendly Match — no ELO change</p>
-            )}
-
-            {opponentWantsRematch && !localWantsRematch && (
-              <p className="mp-rematch-hint">{displayOpponentName} wants a rematch!</p>
-            )}
-
-            <div className="mp-result-actions-stack">
-              <button
-                className="mp-result-btn-primary"
-                onClick={requestRematch}
-                disabled={localWantsRematch}
-                style={localWantsRematch ? { opacity: 0.6, cursor: 'default' } : {}}
-              >
-                {localWantsRematch
-                  ? opponentWantsRematch ? 'Starting...' : 'Waiting for opponent...'
-                  : 'Rematch'}
-              </button>
-              <div className="mp-result-actions-row">
-                {gameMode === 'ranked' && (
-                  <button className="mp-result-btn-secondary" onClick={handleNewOpponent}>New Opponent</button>
-                )}
-                <button className="mp-result-btn-secondary" onClick={handleLeaveMatch}>Menu</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <MatchResultModal
+        show={showResultModal && isMatchResolved}
+        resultTitle={getResultTitle()}
+        resultSubtitle={getResultSubtitle()}
+        resultBannerClass={getResultBannerClass()}
+        myName={myName}
+        opponentName={displayOpponentName}
+        myScore={serverResult?.yourScore ?? localGameResult?.score ?? 0}
+        opponentScore={serverResult?.opponentScore ?? opponentState?.score ?? 0}
+        localWon={localWon}
+        isTie={isTie}
+        hasForfeit={hasForfeit}
+        gameMode={gameMode}
+        localEloDelta={localEloDelta}
+        localEloAfter={localEloAfter}
+        localEloRank={localEloRank}
+        localWantsRematch={localWantsRematch}
+        opponentWantsRematch={opponentWantsRematch}
+        onRequestRematch={requestRematch}
+        onNewOpponent={handleNewOpponent}
+        onLeave={handleLeaveMatch}
+      />
     </div>
   );
 }

@@ -1,36 +1,85 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 2048
+
+A web-based 2048 game with real-time multiplayer, leaderboards, and themes.
+
+## Features
+
+- **Single-player** — Classic 2048 gameplay on 4x4 and 8x8 grids with local save/resume
+- **Multiplayer** — Real-time ranked and friendly matches via PartyKit with ELO ratings
+- **Leaderboard** — Global and daily high scores
+- **Themes** — Classic, Ocean, Forest, and Midnight
+- **Auth** — Email OTP sign-in via Better Auth
+- **Mobile** — Touch/swipe support with responsive layout
+
+## Stack
+
+- **Framework** — [Next.js](https://nextjs.org) (App Router)
+- **Language** — TypeScript
+- **Styling** — Tailwind CSS v4
+- **Database** — [Supabase](https://supabase.com) (Postgres)
+- **Auth** — [Better Auth](https://www.better-auth.com) + Supabase
+- **Multiplayer** — [PartyKit](https://partykit.io) (WebSocket rooms)
+- **Email** — [Resend](https://resend.com)
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 18+
+- A Supabase project (cloud or [local](https://supabase.com/docs/guides/cli/getting-started))
+
+### Setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Install dependencies
+npm install
+
+# Copy env file and fill in your values
+cp .env.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+See `.env.example` for all required variables. You'll need your Supabase URL, anon key, service role key, and a Postgres connection string at minimum.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Database
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Apply the migrations in `supabase/migrations/` to set up the required tables:
 
-## Learn More
+- `001_player_stats.sql`
+- `002_matchmaking_queue.sql`
+- `002_scores_rls.sql`
+- `003_game_state.sql`
+- `004_active_match.sql`
 
-To learn more about Next.js, take a look at the following resources:
+If running Supabase locally, `supabase start` will apply these automatically.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Run
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+# Next.js + PartyKit together
+npm run dev:all
 
-## Deploy on Vercel
+# Or separately
+npm run dev         # Next.js on :3000
+npm run dev:party   # PartyKit on :1999
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Single-player works with just `npm run dev`, but multiplayer requires PartyKit running as well.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Deploy
+
+```bash
+npm run build           # Build Next.js
+npm run party:deploy    # Deploy PartyKit server
+```
+
+## Project Structure
+
+```
+src/
+  app/          # Next.js pages and API routes
+  components/   # React components
+  hooks/        # Custom React hooks
+  lib/          # Utilities, auth, database clients
+party/          # PartyKit server (game rooms + lobby)
+supabase/       # Migrations, config, edge functions, email templates
+```

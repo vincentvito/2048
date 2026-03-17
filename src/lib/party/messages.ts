@@ -1,16 +1,13 @@
 // Shared message types for PartyKit communication
 
-// Game mode
 export type GameMode = 'ranked' | 'friendly';
 
-// Player info
 export interface PlayerInfo {
   userId: string;
   username: string;
   elo: number;
 }
 
-// Game state as sent over WebSocket
 export interface GameStateMessage {
   grid: number[];
   score: number;
@@ -35,6 +32,7 @@ export type LobbyServerMessage =
 
 export type GameClientMessage =
   | { type: 'join'; userId: string; username: string; elo: number; mode?: GameMode }
+  | { type: 'move'; direction: number }
   | { type: 'state_update'; state: GameStateMessage }
   | { type: 'request_rematch' }
   | { type: 'forfeit' }
@@ -47,8 +45,10 @@ export type GameServerMessage =
   | { type: 'player_joined'; playerId: string; username: string; elo: number; playerCount: number; isBot?: boolean }
   | { type: 'player_left'; playerId: string }
   | { type: 'game_start'; players: Array<{ id: string; username: string; elo: number; isBot?: boolean }>; duration: number; timeRemaining?: number; mode: GameMode }
-  | { type: 'opponent_state'; state: GameStateMessage; username: string; elo: number; isBot?: boolean }
+  | { type: 'your_initial_state'; state: GameStateMessage }
+  | { type: 'your_game_state'; state: GameStateMessage }
   | { type: 'your_state'; state: GameStateMessage }
+  | { type: 'opponent_state'; state: GameStateMessage; username: string; elo: number; isBot?: boolean }
   | { type: 'opponent_connected'; connected: boolean }
   | { type: 'rematch_requested'; by: 'local' | 'opponent' }
   | { type: 'rematch_start' }

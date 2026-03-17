@@ -5,16 +5,20 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const gridSize = Number(searchParams.get('gridSize') ?? 4);
   const tab = searchParams.get('tab') ?? 'today';
-  const tzOffset = searchParams.get('tz'); // Timezone offset in minutes (e.g., -330 for IST)
+  const tzOffset = searchParams.get('tz');
 
-  console.log(`[API /leaderboard] tab=${tab} gridSize=${gridSize} tz=${tzOffset}`);
+  if (![4, 8].includes(gridSize)) {
+    return NextResponse.json({ error: 'Invalid grid size' }, { status: 400 });
+  }
+  if (!['today', 'all'].includes(tab)) {
+    return NextResponse.json({ error: 'Invalid tab' }, { status: 400 });
+  }
 
   const supabase = createAdminClient();
   if (!supabase) {
     return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
   }
 
-  // Query scores directly (username is denormalized in scores table)
   let query = supabase
     .from('scores')
     .select('id, username, score, grid_size, created_at, user_id')
@@ -23,37 +27,29 @@ export async function GET(req: NextRequest) {
     .limit(20);
 
   if (tab === 'today') {
-    // Calculate start of "today" in user's timezone
     const now = new Date();
     let todayStart: Date;
 
     if (tzOffset !== null && !isNaN(Number(tzOffset))) {
-      // User provided timezone offset - calculate their local midnight in UTC
       const offsetMinutes = Number(tzOffset);
-      // Get current time in user's timezone
       const userLocalTime = new Date(now.getTime() - offsetMinutes * 60 * 1000);
-      // Set to midnight in user's timezone
       userLocalTime.setUTCHours(0, 0, 0, 0);
-      // Convert back to UTC
       todayStart = new Date(userLocalTime.getTime() + offsetMinutes * 60 * 1000);
     } else {
-      // Fallback to server timezone (UTC)
       todayStart = new Date();
       todayStart.setUTCHours(0, 0, 0, 0);
     }
 
-    console.log(`[API /leaderboard] Filtering to today since: ${todayStart.toISOString()}`);
     query = query.gte('created_at', todayStart.toISOString());
   }
 
   const { data, error } = await query;
 
   if (error) {
-    console.error('[API /leaderboard] Supabase error:', error.code, error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch leaderboard' }, { status: 500 });
   }
 
-  const scores = (data ?? []).map((row: any) => ({
+  const scores = (data ?? []).map((row: Record<string, unknown>) => ({
     id: row.id,
     username: row.username,
     score: row.score,
@@ -61,6 +57,5 @@ export async function GET(req: NextRequest) {
     created_at: row.created_at,
   }));
 
-  console.log(`[API /leaderboard] Returning ${scores.length} scores`);
   return NextResponse.json({ scores });
 }

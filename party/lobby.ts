@@ -1,10 +1,11 @@
 import type * as Party from "partykit/server";
 import { generateBotName, generateBotElo } from "./bot-game";
 
-// How long to wait for a human opponent before matching with a bot
-const BOT_MATCH_TIMEOUT = 15000; // 15 seconds
+const isDev = process.env.NODE_ENV !== 'production';
+const log = (...args: unknown[]) => { if (isDev) console.log(...args); };
 
-// Waiting player in queue
+const BOT_MATCH_TIMEOUT = 15000;
+
 interface WaitingPlayer {
   userId: string;
   username: string;
@@ -14,39 +15,28 @@ interface WaitingPlayer {
   botMatchScheduled?: boolean;
 }
 
-// Note: "userId" matches the field name sent from client as "userId"
-
 export default class LobbyServer implements Party.Server {
   private waitingPlayers: WaitingPlayer[] = [];
 
   constructor(readonly room: Party.Room) {}
 
-  // Load queue from storage on startup
   async onStart() {
-    console.log(`[Lobby] onStart called for room: ${this.room.id}`);
     const stored = await this.room.storage.get<WaitingPlayer[]>("queue");
-    console.log(`[Lobby] Loaded from storage:`, stored);
     if (stored && stored.length > 0) {
-      // Filter out stale entries (older than 5 minutes)
       const now = Date.now();
       this.waitingPlayers = stored.filter(p => now - p.joinedAt < 300000);
-      console.log(`[Lobby] After filtering stale: ${this.waitingPlayers.length} players`);
       await this.saveQueue();
     }
-    console.log(`[Lobby] Ready with ${this.waitingPlayers.length} players in queue`);
+    log(`[Lobby] Ready with ${this.waitingPlayers.length} players in queue`);
   }
 
-  // Handle new connection
-  async onConnect(connection: Party.Connection) {
-    console.log(`[Lobby] New connection: ${connection.id}`);
-    // Don't send position here - wait for join_queue message
+  async onConnect(_connection: Party.Connection) {
+    // Wait for join_queue message
   }
 
-  // Handle incoming messages
   async onMessage(message: string, sender: Party.Connection) {
     try {
       const data = JSON.parse(message);
-      console.log(`[Lobby] Message from ${sender.id}: ${data.type}`);
 
       switch (data.type) {
         case 'join_queue':
@@ -57,7 +47,7 @@ export default class LobbyServer implements Party.Server {
           break;
       }
     } catch (e) {
-      console.error(`[Lobby] Error processing message:`, e);
+      console.error('[Lobby] Message error:', e);
       sender.send(JSON.stringify({
         type: 'error',
         message: 'Invalid message format',
@@ -70,23 +60,16 @@ export default class LobbyServer implements Party.Server {
     sender: Party.Connection
   ) {
     const { userId, username, elo } = data;
-    console.log(`[Lobby] handleJoinQueue called`);
-    console.log(`[Lobby] Player: ${username} (${userId})`);
-    console.log(`[Lobby] Current queue size: ${this.waitingPlayers.length}`);
-    console.log(`[Lobby] Current queue:`, this.waitingPlayers.map(p => p.username));
 
     // Remove if already in queue (reconnection)
     this.waitingPlayers = this.waitingPlayers.filter(p => p.userId !== userId);
 
-    // Check if there's someone waiting
     if (this.waitingPlayers.length > 0) {
-      // Match with first waiting player
       const opponent = this.waitingPlayers.shift()!;
       const roomId = `game_${Date.now()}_${userId.slice(0, 8)}`;
 
-      console.log(`[Lobby] Match found! ${username} vs ${opponent.username} -> ${roomId}`);
+      log(`[Lobby] Match: ${username} vs ${opponent.username} -> ${roomId}`);
 
-      // Notify the opponent
       const oppConnection = this.room.getConnection(opponent.connectionId);
       if (oppConnection) {
         oppConnection.send(JSON.stringify({
@@ -96,7 +79,6 @@ export default class LobbyServer implements Party.Server {
         }));
       }
 
-      // Notify the current player
       sender.send(JSON.stringify({
         type: 'matched',
         roomId,
@@ -105,7 +87,6 @@ export default class LobbyServer implements Party.Server {
 
       await this.saveQueue();
     } else {
-      // Add to waiting queue
       const player: WaitingPlayer = {
         userId,
         username,
@@ -116,78 +97,47 @@ export default class LobbyServer implements Party.Server {
       };
       this.waitingPlayers.push(player);
 
-      console.log(`[Lobby] ${username} added to queue. New size: ${this.waitingPlayers.length}`);
-
       sender.send(JSON.stringify({
         type: 'waiting',
         position: 1,
       }));
 
-      // Schedule bot match after 15 seconds if no human opponent found
-      const alarmTime = Date.now() + BOT_MATCH_TIMEOUT;
-      console.log(`[Lobby] Scheduling bot match alarm for ${new Date(alarmTime).toISOString()} (in ${BOT_MATCH_TIMEOUT}ms)`);
-      await this.room.storage.setAlarm(alarmTime);
+      await this.room.storage.setAlarm(Date.now() + BOT_MATCH_TIMEOUT);
       player.botMatchScheduled = true;
-      console.log(`[Lobby] Alarm scheduled, botMatchScheduled=${player.botMatchScheduled}`);
 
       await this.saveQueue();
     }
   }
 
-  // Handle alarm - match waiting player with a bot
   async onAlarm() {
     const now = Date.now();
-    console.log(`[Lobby] Alarm fired at ${new Date(now).toISOString()}`);
-    console.log(`[Lobby] Waiting players: ${this.waitingPlayers.length}`);
-    console.log(`[Lobby] Players:`, this.waitingPlayers.map(p => ({
-      username: p.username,
-      joinedAt: new Date(p.joinedAt).toISOString(),
-      waitTime: now - p.joinedAt,
-      shouldMatch: (now - p.joinedAt) >= BOT_MATCH_TIMEOUT
-    })));
 
-    // Process any players who have been waiting too long
     const playersToMatch: WaitingPlayer[] = [];
-
     for (const player of this.waitingPlayers) {
-      const waitTime = now - player.joinedAt;
-      console.log(`[Lobby] Checking ${player.username}: waited ${waitTime}ms, threshold ${BOT_MATCH_TIMEOUT}ms`);
-      if (waitTime >= BOT_MATCH_TIMEOUT) {
+      if (now - player.joinedAt >= BOT_MATCH_TIMEOUT) {
         playersToMatch.push(player);
       }
     }
 
-    console.log(`[Lobby] Players to match with bot: ${playersToMatch.length}`);
-
     for (const player of playersToMatch) {
-      // Remove from waiting list
       this.waitingPlayers = this.waitingPlayers.filter(p => p.userId !== player.userId);
 
-      // Generate bot opponent
       const botName = generateBotName();
       const botElo = generateBotElo(player.elo);
       const roomId = `bot_${Date.now()}_${player.userId.slice(0, 8)}`;
 
-      console.log(`[Lobby] Bot match: ${player.username} vs ${botName} (ELO: ${botElo}) -> ${roomId}`);
+      log(`[Lobby] Bot match: ${player.username} vs ${botName} (ELO: ${botElo})`);
 
-      // Notify the player
       const conn = this.room.getConnection(player.connectionId);
-      console.log(`[Lobby] Connection for ${player.username}: ${conn ? 'found' : 'NOT FOUND'} (id: ${player.connectionId})`);
       if (conn) {
-        const matchMsg = {
+        conn.send(JSON.stringify({
           type: 'matched',
           roomId,
           opponent: { username: botName, elo: botElo, isBot: true },
-        };
-        console.log(`[Lobby] Sending bot match message:`, matchMsg);
-        conn.send(JSON.stringify(matchMsg));
-        console.log(`[Lobby] Bot match message sent to ${player.username}`);
-      } else {
-        console.log(`[Lobby] WARNING: Could not send bot match to ${player.username} - connection lost`);
+        }));
       }
     }
 
-    // If there are still players waiting, schedule another alarm
     if (this.waitingPlayers.length > 0) {
       const oldestPlayer = this.waitingPlayers.reduce((oldest, p) =>
         p.joinedAt < oldest.joinedAt ? p : oldest
@@ -196,7 +146,6 @@ export default class LobbyServer implements Party.Server {
       if (timeUntilBotMatch > 0) {
         await this.room.storage.setAlarm(now + timeUntilBotMatch);
       } else {
-        // Immediate alarm for overdue players
         await this.room.storage.setAlarm(now + 100);
       }
     }
@@ -211,18 +160,15 @@ export default class LobbyServer implements Party.Server {
     );
 
     if (this.waitingPlayers.length < before) {
-      console.log(`[Lobby] Player left queue. New size: ${this.waitingPlayers.length}`);
+      log(`[Lobby] Player left queue. Size: ${this.waitingPlayers.length}`);
       await this.saveQueue();
     }
   }
 
-  // Handle disconnection
   async onClose(connection: Party.Connection) {
-    console.log(`[Lobby] Connection closed: ${connection.id}`);
     await this.handleLeaveQueue(connection);
   }
 
-  // Persist queue to storage
   private async saveQueue() {
     await this.room.storage.put("queue", this.waitingPlayers);
   }

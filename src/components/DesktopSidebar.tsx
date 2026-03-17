@@ -6,20 +6,10 @@ import HowToPlay from "./HowToPlay";
 import EmailSignIn from "./EmailSignIn";
 import ThemeSwitcher from "./ThemeSwitcher";
 import { ThemeName } from "@/lib/themes";
-
-interface BetterAuthUser {
-  id: string;
-  email: string;
-  username?: string | null;
-  name?: string | null;
-  image?: string | null;
-  emailVerified: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
+import { type AppUser, getDisplayName } from "@/features/auth/types";
 
 interface DesktopSidebarProps {
-  user: BetterAuthUser | null;
+  user: AppUser | null;
   currentScore: number;
   activeGridSize: number;
   refreshTrigger: number;
@@ -41,9 +31,7 @@ export default function DesktopSidebar({
 }: DesktopSidebarProps): React.ReactElement {
   const [showSignIn, setShowSignIn] = useState(false);
 
-  const displayName = user
-    ? (user.username || user.name || user.email?.split("@")[0] || "Player")
-    : null;
+  const displayName = user ? getDisplayName(user) : null;
 
   return (
     <>

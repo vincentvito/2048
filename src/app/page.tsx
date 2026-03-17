@@ -1,83 +1,46 @@
 "use client";
 
-import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import Game2048 from "@/components/Game2048";
+import React, { useState, useCallback, useRef, useEffect } from "react";
+import SinglePlayerScreen from "@/features/single-player/SinglePlayerScreen";
 import MultiplayerView from "@/components/MultiplayerView";
-import GameOverModal from "@/components/GameOverModal";
 import DesktopSidebar from "@/components/DesktopSidebar";
 import MobileMenu from "@/components/MobileMenu";
 import UsernamePrompt from "@/components/UsernamePrompt";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase-client";
 import { getPendingScore, clearPendingScore } from "@/lib/guest-scores";
-import { ThemeName } from "@/lib/themes";
-import { useSession, signOut, authClient, BetterAuthUser } from "@/lib/auth-client";
+import { useTheme } from "@/features/theme/ThemeProvider";
+import { useSession, signOut } from "@/lib/auth-client";
+import { type AppUser, getDisplayName } from "@/features/auth/types";
 import { LeaderboardEntry } from "@/components/Leaderboard";
 import { getMultiplayerSession, clearMultiplayerSession } from "@/lib/multiplayer-session";
-
-// Generate confetti pieces with random properties (memoized outside component)
-function generateConfettiPieces(count: number) {
-  const colors = ["#edc22e", "#f2b179", "#f67c5f", "#e8d4b0", "#8f7a66"];
-  return Array.from({ length: count }, (_, i) => ({
-    id: i,
-    left: Math.random() * 100,
-    color: colors[Math.floor(Math.random() * colors.length)],
-    size: 6 + Math.random() * 6,
-    rotation: Math.random() * 360,
-    delay: Math.random() * 1.5,
-    drift: -30 + Math.random() * 60,
-    duration: 2 + Math.random() * 1,
-  }));
-}
+import Modal from "@/components/ui/Modal";
+import Button from "@/components/ui/Button";
 
 export default function Home(): React.ReactElement {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [gameResult, setGameResult] = useState<{
-    open: boolean;
-    won: boolean;
-    score: number;
-    gridSize: number;
-    boardScreenshot?: string;
-  } | null>(null);
-  const gameResetRef = useRef<(() => void) | null>(null);
-  const devEndGameRef = useRef<(() => void) | null>(null);
-  const isDev = process.env.NODE_ENV === 'development';
   const [leaderboardScores, setLeaderboardScores] = useState<LeaderboardEntry[]>([]);
-  const [currentScore, setCurrentScore] = useState<number>(0);
-  const [activeGridSize, setActiveGridSize] = useState<number>(4);
-  const [gameMode, setGameMode] = useState<'single' | 'multi'>('single');
+  const [currentScore, setCurrentScore] = useState(0);
+  const [activeGridSize, setActiveGridSize] = useState(4);
+  const [gameMode, setGameMode] = useState<"single" | "multi">("single");
   const [matchActive, setMatchActive] = useState(false);
-  const [pendingSession, setPendingSession] = useState<{ roomId: string; gameMode: 'ranked' | 'friendly'; friendRoomCode?: string } | null>(null);
-  const [showConfetti, setShowConfetti] = useState(false);
-  const [showSwipeHint, setShowSwipeHint] = useState(false);
+  const [pendingSession, setPendingSession] = useState<{ roomId: string; gameMode: "ranked" | "friendly"; friendRoomCode?: string } | null>(null);
   const [showSignInModal, setShowSignInModal] = useState(false);
-  const [theme, setTheme] = useState<ThemeName>("classic");
+  const { theme, setTheme } = useTheme();
 
-  // Better Auth session
-  const { data: sessionData, isPending: sessionLoading } = useSession();
-  const session = sessionData?.session ?? null;
-  const user = (sessionData?.user as BetterAuthUser | undefined) ?? null;
+  // Ref to access SinglePlayerScreen's Game2048 for size toggling
+  const singlePlayerGameRef = useRef<{ getSize: () => number; toggleSize: (s: number) => void } | null>(null);
 
-  // Check for an active multiplayer session when user is loaded
+  // Auth session
+  const { data: sessionData } = useSession();
+  const user = (sessionData?.user as AppUser | undefined) ?? null;
+
+  // Check for active multiplayer session on load
   useEffect(() => {
     if (!user?.id) return;
-    getMultiplayerSession(user.id).then((saved) => {
+    getMultiplayerSession().then((saved) => {
       if (saved) setPendingSession(saved);
     });
   }, [user?.id]);
-
-  // Read persisted theme on mount, then apply/persist on every change
-  useEffect(() => {
-    const saved = localStorage.getItem("2048_theme") as ThemeName | null;
-    if (saved && saved !== theme) {
-      setTheme(saved);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("2048_theme", theme);
-  }, [theme]);
 
   // Submit pending score when user signs in
   useEffect(() => {
@@ -90,7 +53,7 @@ export default function Home(): React.ReactElement {
       const supabase = createClient();
       if (!supabase || !user) return;
 
-      const username = user.username || user.email?.split("@")[0] || "Player";
+      const username = getDisplayName(user);
       try {
         const { error } = await supabase.from("scores").insert({
           user_id: user.id,
@@ -101,39 +64,16 @@ export default function Home(): React.ReactElement {
         if (!error) {
           clearPendingScore();
           setRefreshTrigger((n) => n + 1);
-        } else {
-          console.error("[page] Failed to submit pending score:", error.message);
         }
-      } catch (err) {
-        console.error("[page] Error submitting pending score:", err);
+      } catch {
+        // best-effort
       }
     }
 
     submitPendingScore();
   }, [user]);
 
-  const handleSignOut = useCallback(async () => {
-    try {
-      await signOut();
-    } catch {
-      // Ignore errors
-    }
-  }, []);
-
-  // Show swipe hint on first mobile visit
-  useEffect(() => {
-    const isTouchDevice = "ontouchstart" in window || navigator.maxTouchPoints > 0;
-    const hasSeenHint = localStorage.getItem("2048_swipe_hint_seen");
-    if (isTouchDevice && !hasSeenHint) {
-      setShowSwipeHint(true);
-      localStorage.setItem("2048_swipe_hint_seen", "1");
-      const timer = setTimeout(() => setShowSwipeHint(false), 3500);
-      return () => clearTimeout(timer);
-    }
-  }, []);
-
-  // Disable body scroll on mobile so the page never scrolls —
-  // secondary content lives in the mobile menu drawer instead.
+  // Disable body scroll on mobile
   useEffect(() => {
     const isTouchDevice = "ontouchstart" in window || navigator.maxTouchPoints > 0;
     if (!isTouchDevice) return;
@@ -141,109 +81,34 @@ export default function Home(): React.ReactElement {
     return () => document.body.classList.remove("mobile-no-scroll");
   }, []);
 
-  const confettiPieces = useMemo(() => generateConfettiPieces(35), [showConfetti]);
-
-  const handleResetReady = useCallback((resetFn: () => void) => {
-    gameResetRef.current = resetFn;
-  }, []);
-
-  // Save score to Supabase for signed-in users
-  const saveScoreToSupabase = useCallback(async (score: number, gridSize: number) => {
-    const supabase = createClient();
-    if (!supabase || !user) return;
-    const username = user.username || user.email?.split("@")[0] || "Player";
-    try {
-      const { error } = await supabase.from("scores").insert({
-        user_id: user.id,
-        username,
-        score,
-        grid_size: gridSize,
-      });
-      if (error) {
-        console.error("[page] Failed to save score:", error.message);
-      } else {
-        setRefreshTrigger((n) => n + 1);
-      }
-    } catch (err) {
-      console.error("[page] Error saving score:", err);
-    }
-  }, [user]);
-
-  // Capture the game board canvas as a screenshot
-  const captureBoardScreenshot = useCallback((): string | undefined => {
-    const canvas = document.querySelector('.game-canvas') as HTMLCanvasElement | null;
-    if (!canvas) return undefined;
-    try {
-      return canvas.toDataURL('image/png');
-    } catch {
-      return undefined;
-    }
-  }, []);
-
-  const handleGameOver = useCallback((score: number, gridSize: number) => {
-    const boardScreenshot = captureBoardScreenshot();
-    setCurrentScore(score);
-    setGameResult({ open: true, won: false, score, gridSize, boardScreenshot });
-    saveScoreToSupabase(score, gridSize);
-  }, [saveScoreToSupabase, captureBoardScreenshot]);
-
-  const handleGameWon = useCallback((score: number, gridSize: number) => {
-    const boardScreenshot = captureBoardScreenshot();
-    setCurrentScore(score);
-    setGameResult({ open: true, won: true, score, gridSize, boardScreenshot });
-    setShowConfetti(true);
-    saveScoreToSupabase(score, gridSize);
-  }, [saveScoreToSupabase, captureBoardScreenshot]);
-
-  // Auto-hide confetti after animation completes
-  useEffect(() => {
-    if (!showConfetti) return;
-    const timer = setTimeout(() => setShowConfetti(false), 3500);
-    return () => clearTimeout(timer);
-  }, [showConfetti]);
-
-  const handleClose = useCallback(() => {
-    setGameResult(null);
-  }, []);
-
-  const handlePlayAgain = useCallback(() => {
-    setGameResult(null);
-    gameResetRef.current?.();
-  }, []);
-
-  const handleKeepPlaying = useCallback(() => {
-    setGameResult(null);
-  }, []);
-
-  const handleScoresLoaded = useCallback((scores: LeaderboardEntry[]) => {
-    setLeaderboardScores(scores);
+  const handleSignOut = useCallback(async () => {
+    try { await signOut(); } catch { /* ignore */ }
   }, []);
 
   const handleGridSizeChange = useCallback((newSize: number) => {
-    const wasSingle = gameMode === 'single';
+    const wasSingle = gameMode === "single";
     setActiveGridSize(newSize);
-    setGameMode('single');
+    setGameMode("single");
     setMatchActive(false);
 
     if (wasSingle) {
-      // Already in single-player mode — only toggle size if it actually changed
-      const gameContainer = document.querySelector(".game-container") as HTMLElement | null;
-      if (gameContainer) {
-        const getSize = (gameContainer as unknown as Record<string, () => number>)._getSize;
-        const currentSize = getSize?.() ?? 4;
+      // Access the game ref via the static property set by SinglePlayerScreen
+      const gameRef = (SinglePlayerScreen as any)._gameRef?.current;
+      if (gameRef) {
+        const currentSize = gameRef.getSize();
         if (currentSize !== newSize) {
-          const toggleSize = (gameContainer as unknown as Record<string, (s: number) => void>)._toggleSize;
-          toggleSize?.(newSize);
+          gameRef.toggleSize(newSize);
         }
       }
     }
-    // When switching from multi → single, Game2048 will mount fresh
-    // and use the initialSize prop (set via activeGridSize)
   }, [gameMode]);
+
+  const handleRefresh = useCallback(() => {
+    setRefreshTrigger((n) => n + 1);
+  }, []);
 
   return (
     <div className="page-layout">
-      {/* Desktop sidebar — hidden on mobile */}
       <DesktopSidebar
         user={user}
         currentScore={currentScore}
@@ -252,34 +117,11 @@ export default function Home(): React.ReactElement {
         onSignOut={handleSignOut}
         theme={theme}
         onThemeChange={setTheme}
-        onScoresLoaded={handleScoresLoaded}
+        onScoresLoaded={setLeaderboardScores}
       />
 
-      <div className={`container${gameMode === 'single' && activeGridSize === 8 ? ' container-wide' : ''}`}>
-        {/* Confetti overlay */}
-        {showConfetti && (
-          <div className="confetti-container">
-            {confettiPieces.map((piece) => (
-              <div
-                key={piece.id}
-                className="confetti-piece"
-                style={{
-                  left: `${piece.left}%`,
-                  width: `${piece.size}px`,
-                  height: `${piece.size * 1.5}px`,
-                  backgroundColor: piece.color,
-                  transform: `rotate(${piece.rotation}deg)`,
-                  animationDelay: `${piece.delay}s`,
-                  animationDuration: `${piece.duration}s`,
-                  // @ts-expect-error CSS custom property for drift
-                  "--confetti-drift": `${piece.drift}px`,
-                }}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Title - hidden when match is active to save space */}
+      <div className={`container${gameMode === "single" && activeGridSize === 8 ? " container-wide" : ""}`}>
+        {/* Title - hidden during active match */}
         {!matchActive && (
           <div className="title-section">
             <h1 className="game-title">2048</h1>
@@ -287,20 +129,20 @@ export default function Home(): React.ReactElement {
           </div>
         )}
 
-        {/* Game Mode / Grid Controls - hidden during active match */}
+        {/* Mode toggle - hidden during active match */}
         {!matchActive && (
           <div className="below-board-controls" style={{ marginBottom: "20px" }}>
-            <div className="grid-size-control" style={{ display: 'flex', gap: '8px' }}>
+            <div className="grid-size-control" style={{ display: "flex", gap: "8px" }}>
               <button
-                className={`grid-size-option${gameMode === 'single' ? " grid-size-active" : ""}`}
+                className={`grid-size-option${gameMode === "single" ? " grid-size-active" : ""}`}
                 onClick={() => handleGridSizeChange(4)}
               >
                 Single Player
               </button>
               {isSupabaseConfigured() && (
                 <button
-                  className={`grid-size-option${gameMode === 'multi' ? " grid-size-active" : ""}`}
-                  onClick={() => { setActiveGridSize(4); setGameMode('multi'); }}
+                  className={`grid-size-option${gameMode === "multi" ? " grid-size-active" : ""}`}
+                  onClick={() => { setActiveGridSize(4); setGameMode("multi"); }}
                 >
                   Multiplayer
                 </button>
@@ -309,44 +151,15 @@ export default function Home(): React.ReactElement {
           </div>
         )}
 
-        {gameMode === 'single' ? (
-          <>
-            <div style={{ position: "relative", touchAction: "none", display: "flex", justifyContent: "center" }}>
-              <Game2048 onGameOver={handleGameOver} onGameWon={handleGameWon} onResetReady={handleResetReady} initialSize={activeGridSize} themeName={theme} onDevEndGameReady={isDev ? (fn) => { devEndGameRef.current = fn; } : undefined} />
-
-              {showSwipeHint && (
-                <div className="swipe-hint-overlay" onClick={() => setShowSwipeHint(false)}>
-                  <div className="swipe-hint-content">
-                    <div className="swipe-hint-hand">
-                      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M12 1a4 4 0 0 0-4 4v6.5" />
-                        <path d="M8 11.5V18a4 4 0 0 0 4 4h1a5 5 0 0 0 5-5v-5" />
-                        <path d="M12 1a4 4 0 0 1 4 4v8" />
-                      </svg>
-                    </div>
-                    <div className="swipe-hint-arrows">
-                      <span className="swipe-arrow swipe-arrow-left">&larr;</span>
-                      <span className="swipe-arrow swipe-arrow-right">&rarr;</span>
-                      <span className="swipe-arrow swipe-arrow-up">&uarr;</span>
-                      <span className="swipe-arrow swipe-arrow-down">&darr;</span>
-                    </div>
-                    <p className="swipe-hint-text">Swipe to move tiles</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="below-board-controls">
-              <button className="header-new-game-btn" onClick={() => gameResetRef.current?.()}>
-                New Game
-              </button>
-              {isDev && (
-                <button className="header-new-game-btn" style={{ background: '#dc2626' }} onClick={() => devEndGameRef.current?.()}>
-                  DEV: End Game
-                </button>
-              )}
-            </div>
-          </>
+        {gameMode === "single" ? (
+          <SinglePlayerScreen
+            user={user}
+            activeGridSize={activeGridSize}
+            refreshTrigger={refreshTrigger}
+            onRefresh={handleRefresh}
+            onScoreChange={setCurrentScore}
+            leaderboardScores={leaderboardScores}
+          />
         ) : (
           <MultiplayerView onMatchActiveChange={setMatchActive} reconnectSession={pendingSession} />
         )}
@@ -355,7 +168,6 @@ export default function Home(): React.ReactElement {
           Use your <strong>arrow keys</strong> to move the tiles.
         </p>
 
-        {/* Mobile menu — hamburger + drawer with leaderboard, auth, how to play */}
         <MobileMenu
           user={user}
           currentScore={currentScore}
@@ -370,59 +182,31 @@ export default function Home(): React.ReactElement {
         <UsernamePrompt />
 
         {/* Rejoin multiplayer match modal */}
-        {pendingSession && gameMode === 'single' && (
-          <div className="mp-result-backdrop" role="dialog" aria-modal="true">
-            <div className="mp-result-card" style={{ textAlign: 'center', padding: '28px 24px' }}>
-              <h2 style={{ margin: '0 0 12px', fontSize: '1.4rem' }}>Match In Progress</h2>
-              <p style={{ margin: '0 0 8px', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-                You have an active {pendingSession.gameMode === 'friendly' ? 'friendly' : 'ranked'} match
+        <Modal
+          open={!!pendingSession && gameMode === "single"}
+          onClose={() => { if (user?.id) clearMultiplayerSession(); setPendingSession(null); }}
+          labelledBy="rejoin-title"
+        >
+          <div style={{ textAlign: "center", padding: "4px 0" }}>
+            <h2 id="rejoin-title" style={{ margin: "0 0 12px", fontSize: "1.4rem" }}>Match In Progress</h2>
+            <p style={{ margin: "0 0 8px", color: "var(--text-secondary)", fontSize: "0.95rem" }}>
+              You have an active {pendingSession?.gameMode === "friendly" ? "friendly" : "ranked"} match
+            </p>
+            {pendingSession?.friendRoomCode && (
+              <p style={{ margin: "0 0 4px", fontFamily: "monospace", fontSize: "1.1rem", fontWeight: 600 }}>
+                Room: {pendingSession.friendRoomCode}
               </p>
-              {pendingSession.friendRoomCode && (
-                <p style={{ margin: '0 0 4px', fontFamily: 'monospace', fontSize: '1.1rem', fontWeight: 600 }}>
-                  Room: {pendingSession.friendRoomCode}
-                </p>
-              )}
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '24px' }}>
-                <button
-                  className="mp-result-btn-primary"
-                  onClick={() => {
-                    setActiveGridSize(4);
-                    setGameMode('multi');
-                    // Don't clear pendingSession here — it's passed as reconnectSession prop
-                    // to MultiplayerView. The modal hides because gameMode !== 'single'.
-                  }}
-                >
-                  Rejoin
-                </button>
-                <button
-                  className="mp-result-btn-secondary"
-                  onClick={() => {
-                    if (user?.id) clearMultiplayerSession(user.id);
-                    setPendingSession(null);
-                  }}
-                >
-                  Leave
-                </button>
-              </div>
+            )}
+            <div style={{ display: "flex", gap: "12px", justifyContent: "center", marginTop: "24px" }}>
+              <Button variant="primary" onClick={() => { setActiveGridSize(4); setGameMode("multi"); }}>
+                Rejoin
+              </Button>
+              <Button variant="secondary" onClick={() => { if (user?.id) clearMultiplayerSession(); setPendingSession(null); }}>
+                Leave
+              </Button>
             </div>
           </div>
-        )}
-
-        {gameResult && (
-          <GameOverModal
-            open={gameResult.open}
-            won={gameResult.won}
-            score={gameResult.score}
-            gridSize={gameResult.gridSize}
-            onClose={handleClose}
-            onPlayAgain={handlePlayAgain}
-            onKeepPlaying={gameResult.won ? handleKeepPlaying : undefined}
-            leaderboardScores={leaderboardScores}
-            isSignedIn={!!user}
-            boardScreenshot={gameResult.boardScreenshot}
-            currentUsername={user?.username || user?.email?.split("@")[0]}
-          />
-        )}
+        </Modal>
       </div>
     </div>
   );

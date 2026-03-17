@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect, useCallback, useState } from "react";
+import React, { useRef, useEffect, useCallback, useState, forwardRef, useImperativeHandle } from "react";
 import { ThemeColors, themes } from "@/lib/themes";
 
 const GAP = 12;
@@ -37,12 +37,24 @@ export interface GameState {
   won: boolean;
 }
 
+/** Typed imperative handle for Game2048 — replaces DOM-private methods. */
+export interface Game2048Handle {
+  init: () => void;
+  updateState: (state: GameState) => void;
+  keepPlaying: () => void;
+  toggleSize: (newSize: number) => void;
+  getSize: () => number;
+  rerender: () => void;
+  getCanvasDataURL: () => string | null;
+}
+
 interface Game2048Props {
   onGameOver?: (score: number, gridSize: number) => void;
   onGameWon?: (score: number, gridSize: number) => void;
   onResetReady?: (resetFn: () => void) => void;
   readOnlyState?: GameState | null;
   onStateChange?: (state: GameState) => void;
+  onMove?: (direction: number) => void;
   disableInputs?: boolean;
   onDevEndGameReady?: (fn: () => void) => void;
   hideScore?: boolean;
@@ -52,16 +64,35 @@ interface Game2048Props {
   miniMode?: boolean;
 }
 
-export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnlyState, onStateChange, disableInputs, onDevEndGameReady, hideScore, initialSize = 4, themeName = "classic", miniMode = false, disableSave = false }: Game2048Props): React.ReactElement {
+const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ onGameOver, onGameWon, onResetReady, readOnlyState, onStateChange, onMove, disableInputs, onDevEndGameReady, hideScore, initialSize = 4, themeName = "classic", miniMode = false, disableSave = false }, ref) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const scoreElRef = useRef<HTMLElement>(null);
   const bestElRef = useRef<HTMLElement>(null);
+
+  // Refs for closure functions exposed via imperative handle
+  const initFnRef = useRef<() => void>(() => {});
+  const updateStateFnRef = useRef<(state: GameState) => void>(() => {});
+  const keepPlayingFnRef = useRef<() => void>(() => {});
+  const toggleSizeFnRef = useRef<(newSize: number) => void>(() => {});
+  const getSizeFnRef = useRef<() => number>(() => 4);
+  const rerenderFnRef = useRef<() => void>(() => {});
+
+  useImperativeHandle(ref, () => ({
+    init: () => initFnRef.current(),
+    updateState: (state: GameState) => updateStateFnRef.current(state),
+    keepPlaying: () => keepPlayingFnRef.current(),
+    toggleSize: (newSize: number) => toggleSizeFnRef.current(newSize),
+    getSize: () => getSizeFnRef.current(),
+    rerender: () => rerenderFnRef.current(),
+    getCanvasDataURL: () => canvasRef.current?.toDataURL("image/png") ?? null,
+  }), []);
   const announcementRef = useRef<HTMLDivElement>(null);
   const onGameOverRef = useRef(onGameOver);
   const onGameWonRef = useRef(onGameWon);
   const onResetReadyRef = useRef(onResetReady);
   const onStateChangeRef = useRef(onStateChange);
+  const onMoveRef = useRef(onMove);
   const disableInputsRef = useRef(disableInputs);
   const onDevEndGameReadyRef = useRef(onDevEndGameReady);
   const initialReadOnlyRef = useRef(!!readOnlyState);
@@ -86,6 +117,10 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
   }, [onStateChange]);
 
   useEffect(() => {
+    onMoveRef.current = onMove;
+  }, [onMove]);
+
+  useEffect(() => {
     disableInputsRef.current = disableInputs;
   }, [disableInputs]);
 
@@ -100,18 +135,13 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
   // Update theme ref and re-render canvas when theme changes
   useEffect(() => {
     themeRef.current = themes[(themeName as keyof typeof themes)] || themes.classic;
-    const container = containerRef.current;
-    if (container) {
-      const renderFn = (container as unknown as Record<string, () => void>)._rerender;
-      renderFn?.();
-    }
+    rerenderFnRef.current();
   }, [themeName]);
 
   // Hook to handle readOnlyState changes
   useEffect(() => {
-    if (readOnlyState && containerRef.current) {
-      const updateFn = (containerRef.current as any)._updateState;
-      if (updateFn) updateFn(readOnlyState);
+    if (readOnlyState) {
+      updateStateFnRef.current(readOnlyState);
     }
   }, [readOnlyState]);
 
@@ -446,6 +476,8 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
 
     function move(dir: number) {
       if (gameOver || animating) return false;
+      // Notify parent of move direction (for server-authoritative multiplayer)
+      onMoveRef.current?.(dir);
 
       tiles.length = 0;
       let moved = false;
@@ -559,7 +591,7 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
     // React buttons can't access the useEffect closure, so we attach game functions to the container DOM node
     let prevGrid = new Uint16Array(SIZE * SIZE);
     let prevScore = 0;
-    (container as unknown as Record<string, (state: GameState) => void>)._updateState = (state: GameState) => {
+    const updateStateImpl = (state: GameState) => {
       const oldScore = prevScore;
       const scoreDiff = state.score - oldScore;
 
@@ -629,20 +661,31 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
         popupAnimFrame = requestAnimationFrame(popupLoop);
       }
     };
+    updateStateFnRef.current = updateStateImpl;
+    // Legacy DOM-private method (kept during migration)
+    (container as unknown as Record<string, (state: GameState) => void>)._updateState = updateStateImpl;
 
-    (container as unknown as Record<string, () => void>)._rerender = () => render(1);
-    (container as unknown as Record<string, () => void>)._init = init;
-    (container as unknown as Record<string, () => void>)._keepPlaying = () => {
+    // Expose closure functions via refs for useImperativeHandle
+    rerenderFnRef.current = () => render(1);
+    initFnRef.current = init;
+    keepPlayingFnRef.current = () => {
       keepPlaying = true;
       won = false;
       render();
       saveState();
     };
-    (container as unknown as Record<string, (s: number) => void>)._toggleSize = (newSize: number) => {
+    toggleSizeFnRef.current = (newSize: number) => {
       setSizeInternal(newSize);
       init();
     };
-    (container as unknown as Record<string, () => number>)._getSize = () => SIZE;
+    getSizeFnRef.current = () => SIZE;
+
+    // Legacy DOM-private methods (kept for backward compat during migration)
+    (container as unknown as Record<string, () => void>)._rerender = rerenderFnRef.current;
+    (container as unknown as Record<string, () => void>)._init = init;
+    (container as unknown as Record<string, () => void>)._keepPlaying = keepPlayingFnRef.current;
+    (container as unknown as Record<string, (s: number) => void>)._toggleSize = toggleSizeFnRef.current;
+    (container as unknown as Record<string, () => number>)._getSize = getSizeFnRef.current;
 
     const keys = new Set<string>();
     let lastMove = 0;
@@ -845,11 +888,6 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
       onStateChangeRef.current?.({ grid: Array.from(grid), score, gameOver, won });
     }
 
-    // Only expose dev functions for the local (non-read-only) board
-    if (typeof window !== 'undefined' && !initialReadOnlyRef.current) {
-      (window as any).__devPreviewTiles = devPreviewTiles;
-      (window as any).__devAlmostGameOver = devAlmostGameOver;
-    }
     onDevEndGameReadyRef.current?.(devEndGame);
 
     // Expose reset function to parent via callback
@@ -872,22 +910,17 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
   }, []);
 
   const handleInit = useCallback(() => {
-    const container = containerRef.current;
-    if (container) (container as unknown as Record<string, () => void>)._init?.();
+    initFnRef.current();
   }, []);
 
   const handleKeepPlaying = useCallback(() => {
-    const container = containerRef.current;
-    if (container) (container as unknown as Record<string, () => void>)._keepPlaying?.();
+    keepPlayingFnRef.current();
   }, []);
 
   const handleSizeToggle = useCallback(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const getSize = (container as unknown as Record<string, () => number>)._getSize;
-    const currentSize = getSize?.() ?? 4;
+    const currentSize = getSizeFnRef.current();
     const newSize = currentSize === 4 ? 8 : 4;
-    (container as unknown as Record<string, (s: number) => void>)._toggleSize?.(newSize);
+    toggleSizeFnRef.current(newSize);
   }, []);
 
   return (
@@ -950,4 +983,6 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
       </div>
     </div>
   );
-}
+});
+
+export default Game2048;

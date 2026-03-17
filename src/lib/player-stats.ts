@@ -15,41 +15,30 @@ export interface PlayerStats {
   updated_at: string;
 }
 
-export async function getPlayerStats(
-  userId: string
-): Promise<PlayerStats | null> {
+export async function getPlayerStats(): Promise<PlayerStats | null> {
   try {
-    const res = await fetch(`/api/player-stats?userId=${encodeURIComponent(userId)}`);
+    const res = await fetch('/api/player-stats');
     const { data, error } = await res.json();
-    if (error) {
-      console.error("Failed to fetch player stats:", error);
-      return null;
-    }
+    if (error) return null;
     return data as PlayerStats | null;
-  } catch (e) {
-    console.error("Failed to fetch player stats:", e);
+  } catch {
     return null;
   }
 }
 
 export async function getOrCreatePlayerStats(
-  userId: string,
   username: string
 ): Promise<PlayerStats | null> {
   try {
     const res = await fetch('/api/player-stats', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, username }),
+      body: JSON.stringify({ username }),
     });
     const { data, error } = await res.json();
-    if (error) {
-      console.error("Failed to get/create player stats:", error);
-      return null;
-    }
+    if (error) return null;
     return data as PlayerStats | null;
-  } catch (e) {
-    console.error("Failed to get/create player stats:", e);
+  } catch {
     return null;
   }
 }
@@ -62,31 +51,18 @@ export interface UpdateStatsParams {
 }
 
 export async function updateStatsAfterGame(
-  userId: string,
   params: UpdateStatsParams
 ): Promise<PlayerStats | null> {
   try {
     const res = await fetch('/api/player-stats', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, ...params }),
+      body: JSON.stringify(params),
     });
     const { data, error } = await res.json();
-    if (error) {
-      console.error("Failed to update player stats:", error);
-      return null;
-    }
+    if (error) return null;
     return data as PlayerStats | null;
-  } catch (e) {
-    console.error("Failed to update player stats:", e);
+  } catch {
     return null;
   }
-}
-
-export async function getLeaderboardByElo(
-  limit: number = 25
-): Promise<PlayerStats[]> {
-  // This still needs a dedicated endpoint - for now return empty
-  // TODO: Add /api/player-stats/leaderboard endpoint
-  return [];
 }

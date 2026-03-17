@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase-admin';
+import { getAuthenticatedUser } from '@/lib/api-auth';
 
-// GET /api/active-match?userId=xxx — check if user has an active match
-export async function GET(req: NextRequest) {
-  const userId = req.nextUrl.searchParams.get('userId');
-  if (!userId) {
-    return NextResponse.json({ error: 'userId required' }, { status: 400 });
+// GET /api/active-match — check if authenticated user has an active match
+export async function GET() {
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
   try {
@@ -17,11 +18,11 @@ export async function GET(req: NextRequest) {
     const { data, error } = await supabase
       .from('player_stats')
       .select('active_room_id, active_game_mode, active_friend_code, updated_at')
-      .eq('user_id', userId)
+      .eq('user_id', user.id)
       .single();
 
     if (error && error.code !== 'PGRST116') {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to fetch match' }, { status: 500 });
     }
 
     if (!data?.active_room_id) {
@@ -31,11 +32,10 @@ export async function GET(req: NextRequest) {
     // Auto-expire entries older than 1 hour
     const age = Date.now() - new Date(data.updated_at).getTime();
     if (age > 60 * 60 * 1000) {
-      // Clear stale entry
       await supabase
         .from('player_stats')
         .update({ active_room_id: null, active_game_mode: null, active_friend_code: null })
-        .eq('user_id', userId);
+        .eq('user_id', user.id);
       return NextResponse.json({ data: null });
     }
 
@@ -46,18 +46,23 @@ export async function GET(req: NextRequest) {
         friendRoomCode: data.active_friend_code,
       },
     });
-  } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-// POST /api/active-match — save active match info
+// POST /api/active-match — save active match info for authenticated user
 export async function POST(req: NextRequest) {
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  }
+
   try {
-    const { userId, roomId, gameMode, friendRoomCode } = await req.json();
-    if (!userId || !roomId) {
-      return NextResponse.json({ error: 'userId and roomId required' }, { status: 400 });
+    const { roomId, gameMode, friendRoomCode } = await req.json();
+
+    if (!roomId || typeof roomId !== 'string') {
+      return NextResponse.json({ error: 'roomId required' }, { status: 400 });
     }
 
     const supabase = createAdminClient();
@@ -72,24 +77,23 @@ export async function POST(req: NextRequest) {
         active_game_mode: gameMode || 'ranked',
         active_friend_code: friendRoomCode || null,
       })
-      .eq('user_id', userId);
+      .eq('user_id', user.id);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to save match' }, { status: 500 });
     }
 
     return NextResponse.json({ ok: true });
-  } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-// DELETE /api/active-match — clear active match
-export async function DELETE(req: NextRequest) {
-  const userId = req.nextUrl.searchParams.get('userId');
-  if (!userId) {
-    return NextResponse.json({ error: 'userId required' }, { status: 400 });
+// DELETE /api/active-match — clear active match for authenticated user
+export async function DELETE() {
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
   try {
@@ -105,15 +109,14 @@ export async function DELETE(req: NextRequest) {
         active_game_mode: null,
         active_friend_code: null,
       })
-      .eq('user_id', userId);
+      .eq('user_id', user.id);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to clear match' }, { status: 500 });
     }
 
     return NextResponse.json({ ok: true });
-  } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

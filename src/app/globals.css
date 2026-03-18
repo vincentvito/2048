@@ -330,13 +330,10 @@ body {
     display: none; /* Chrome, Safari, Opera */
   }
 
-  /* Main content area offset by sidebar width and centered */
+  /* Main content area: fill space right of sidebar and center content within it */
   .page-layout {
     padding-left: 300px;
-  }
-
-  .page-layout .container {
-    margin: 0 auto;
+    justify-content: center;
   }
 }
 
@@ -1902,6 +1899,26 @@ body {
 }
 
 /* ========== Accessibility: Reduced Motion ========== */
+/* ── Settings toggle ── */
+.sidebar-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.sidebar-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent, #f59e0b);
+  cursor: pointer;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .confetti-piece,
   .confetti-container {
@@ -2345,7 +2362,8 @@ button:focus-visible,
   position: absolute;
   inset: 0;
   border-radius: 16px;
-  background: transparent;
+  background: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2359,64 +2377,32 @@ button:focus-visible,
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
 
-/* Animated finger icon */
 .swipe-hint-hand {
-  color: var(--text-primary);
-  animation: swipeHandMove 1.5s ease-in-out infinite;
-}
-
-/* Directional arrows around the hand */
-.swipe-hint-arrows {
   position: relative;
-  width: 120px;
-  height: 120px;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.swipe-arrow {
-  position: absolute;
-  font-size: 24px;
-  color: var(--text-primary);
-  font-weight: 700;
-  opacity: 0;
-}
-
-.swipe-arrow-left {
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  animation: swipeArrowLeft 1.5s ease-in-out infinite;
-}
-
-.swipe-arrow-right {
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  animation: swipeArrowRight 1.5s ease-in-out infinite;
-}
-
-.swipe-arrow-up {
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  animation: swipeArrowUp 1.5s ease-in-out 0.4s infinite;
-}
-
-.swipe-arrow-down {
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  animation: swipeArrowDown 1.5s ease-in-out 0.4s infinite;
+.swipe-hint-emoji {
+  font-size: 48px;
+  display: block;
+  animation: swipeGesture 3s ease-in-out infinite;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
 }
 
 .swipe-hint-text {
-  color: var(--text-primary);
+  color: #fff;
   font-size: 16px;
   font-weight: 700;
   margin: 0;
   letter-spacing: 0.02em;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
   animation: swipeHintFadeIn 0.6s ease 0.3s both;
 }
 
@@ -2426,35 +2412,17 @@ button:focus-visible,
   to   { opacity: 1; }
 }
 
-@keyframes swipeHandMove {
-  0%, 100% { transform: translateX(0); }
-  25%      { transform: translateX(20px); }
-  50%      { transform: translateX(0); }
-  75%      { transform: translateX(-20px); }
-}
-
-@keyframes swipeArrowLeft {
-  0%, 100% { opacity: 0; transform: translateY(-50%) translateX(0); }
-  60%, 80% { opacity: 1; }
-  75%      { transform: translateY(-50%) translateX(-12px); }
-}
-
-@keyframes swipeArrowRight {
-  0%, 100% { opacity: 0; transform: translateY(-50%) translateX(0); }
-  10%, 40% { opacity: 1; }
-  25%      { transform: translateY(-50%) translateX(12px); }
-}
-
-@keyframes swipeArrowUp {
-  0%, 100% { opacity: 0; transform: translateX(-50%) translateY(0); }
-  10%, 40% { opacity: 1; }
-  25%      { transform: translateX(-50%) translateY(-12px); }
-}
-
-@keyframes swipeArrowDown {
-  0%, 100% { opacity: 0; transform: translateX(-50%) translateY(0); }
-  60%, 80% { opacity: 1; }
-  75%      { transform: translateX(-50%) translateY(12px); }
+/* Swipe gesture: right → left → up → down cycle */
+@keyframes swipeGesture {
+  0%        { transform: translate(0, 0); }
+  8%        { transform: translate(28px, 0); }
+  16%, 25%  { transform: translate(0, 0); }
+  33%       { transform: translate(-28px, 0); }
+  41%, 50%  { transform: translate(0, 0); }
+  58%       { transform: translate(0, -28px); }
+  66%, 75%  { transform: translate(0, 0); }
+  83%       { transform: translate(0, 28px); }
+  91%, 100% { transform: translate(0, 0); }
 }
 
 @keyframes blobPulse {

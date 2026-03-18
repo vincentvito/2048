@@ -3,6 +3,7 @@ import { Fredoka, Nunito } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/features/theme/ThemeProvider";
 import { Toaster } from "sonner";
+import { ParticleProvider } from "@/components/EmojiParticles";
 
 const fredoka = Fredoka({
   subsets: ["latin"],
@@ -37,7 +38,9 @@ export default function RootLayout({
     <html lang="en" className={`${fredoka.variable} ${nunito.variable}`}>
       <body>
         <ThemeProvider>
-          {children}
+          <ParticleProvider>
+            {children}
+          </ParticleProvider>
           <Toaster position="top-right" richColors />
         </ThemeProvider>
       </body>

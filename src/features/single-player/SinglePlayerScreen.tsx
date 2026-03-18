@@ -7,6 +7,8 @@ import { saveScore } from "@/lib/score-service";
 import { useTheme } from "@/features/theme/ThemeProvider";
 import { type AppUser } from "@/features/auth/types";
 import { LeaderboardEntry } from "@/components/Leaderboard";
+import { useParticles } from "@/components/EmojiParticles";
+import { useWebHaptics } from "web-haptics/react";
 
 function generateConfettiPieces(count: number) {
   const colors = ["#edc22e", "#f2b179", "#f67c5f", "#e8d4b0", "#8f7a66"];
@@ -46,6 +48,8 @@ const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProp
   leaderboardScores,
 }, ref) {
   const { theme } = useTheme();
+  const { burst } = useParticles();
+  const haptic = useWebHaptics();
   const gameRef = useRef<Game2048Handle>(null);
   const gameResetRef = useRef<(() => void) | null>(null);
   const devEndGameRef = useRef<(() => void) | null>(null);
@@ -70,17 +74,17 @@ const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProp
   const [showConfetti, setShowConfetti] = useState(false);
   const [showSwipeHint, setShowSwipeHint] = useState(false);
 
-  // Show swipe hint on first mobile visit
+  // Show swipe hint on first mobile visit (always in dev for debugging)
   useEffect(() => {
     const isTouchDevice = "ontouchstart" in window || navigator.maxTouchPoints > 0;
     const hasSeenHint = localStorage.getItem("2048_swipe_hint_seen");
-    if (isTouchDevice && !hasSeenHint) {
+    if (isDev || (isTouchDevice && !hasSeenHint)) {
       setShowSwipeHint(true);
-      localStorage.setItem("2048_swipe_hint_seen", "1");
-      const timer = setTimeout(() => setShowSwipeHint(false), 3500);
+      if (!isDev) localStorage.setItem("2048_swipe_hint_seen", "1");
+      const timer = setTimeout(() => setShowSwipeHint(false), 5000);
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [isDev]);
 
   const confettiPieces = useMemo(() => generateConfettiPieces(35), [showConfetti]);
 
@@ -104,7 +108,17 @@ const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProp
     setGameResult({ open: true, won: false, score, gridSize, boardScreenshot });
     unsavedWinRef.current = null; // game ended naturally — save the final score
     saveScoreToSupabase(score, gridSize);
-  }, [saveScoreToSupabase, captureBoardScreenshot, onScoreChange]);
+
+    // Check if this score beats today's leaderboard best
+    const dailyBest = leaderboardScores.length > 0 ? leaderboardScores[0].score : 0;
+    if (score > dailyBest && dailyBest > 0) {
+      burst("dailyBest");
+      haptic.trigger("heavy");
+    } else {
+      burst("gameOver");
+      haptic.trigger("error");
+    }
+  }, [saveScoreToSupabase, captureBoardScreenshot, onScoreChange, leaderboardScores, burst, haptic]);
 
   const handleGameWon = useCallback((score: number, gridSize: number) => {
     const boardScreenshot = captureBoardScreenshot();
@@ -114,7 +128,10 @@ const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProp
     // Don't save yet — the player may keep playing and reach a higher score.
     // Track it so we can save if they reset without hitting game over.
     unsavedWinRef.current = { score, gridSize };
-  }, [captureBoardScreenshot, onScoreChange]);
+
+    burst("win");
+    haptic.trigger("success");
+  }, [captureBoardScreenshot, onScoreChange, burst, haptic]);
 
   /** Save the unsaved winning score (if any) before starting a new game. */
   const flushUnsavedWin = useCallback(() => {
@@ -173,17 +190,7 @@ const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProp
           <div className="swipe-hint-overlay" onClick={() => setShowSwipeHint(false)}>
             <div className="swipe-hint-content">
               <div className="swipe-hint-hand">
-                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 1a4 4 0 0 0-4 4v6.5" />
-                  <path d="M8 11.5V18a4 4 0 0 0 4 4h1a5 5 0 0 0 5-5v-5" />
-                  <path d="M12 1a4 4 0 0 1 4 4v8" />
-                </svg>
-              </div>
-              <div className="swipe-hint-arrows">
-                <span className="swipe-arrow swipe-arrow-left">&larr;</span>
-                <span className="swipe-arrow swipe-arrow-right">&rarr;</span>
-                <span className="swipe-arrow swipe-arrow-up">&uarr;</span>
-                <span className="swipe-arrow swipe-arrow-down">&darr;</span>
+                <span className="swipe-hint-emoji">👆</span>
               </div>
               <p className="swipe-hint-text">Swipe to move tiles</p>
             </div>

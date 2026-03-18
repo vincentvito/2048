@@ -70,6 +70,14 @@
 - Fixed grid going blank after resize or returning from a hidden tab — the `tiles` render array could desync from the `grid` source of truth. Both handlers now rebuild tiles from grid data and re-render. Separated `recalcCanvas()` (dimension-only) from `setSizeInternal()` (full grid reset) so resizing never destroys game state.
 - Fixed active-match API returning 500 for users without player stats — changed `.single()` to `.maybeSingle()` so missing rows return null instead of erroring
 - Fixed score insert failing silently for Better Auth users — `scores.user_id` is a UUID FK referencing Supabase `auth.users`, but Better Auth uses text IDs. Removed `user_id` from score inserts since the leaderboard only needs `username`.
+- Fixed game board not centered when desktop sidebar is visible — container now uses `flex: 1` to fill remaining space after sidebar offset
+
+### Features
+- Added emoji particle burst system (`EmojiParticles.tsx`) — canvas-based particle engine with physics (gravity, drag, rotation, scale easing) and pre-cached emoji rendering
+- Added haptic feedback via `web-haptics` — triggers on win, game over, and leaderboard achievements. Silently no-ops on unsupported platforms.
+- Emoji burst + haptic events: win (🎉🏆⭐ + success), beat daily leaderboard (👑🥇🏆 + heavy), game over (💀😵🫠 + error)
+- Added "Emoji Effects" toggle in both desktop sidebar and mobile menu — persisted to localStorage
+- Replaced broken SVG swipe hint with animated `👆` emoji that swipes in 4 directions with semi-transparent backdrop
 
 ### Local Development
 - Added local Supabase support — `npm run db:start`, `db:stop`, `db:reset`, `db:status` scripts
@@ -81,6 +89,8 @@
 
 ### Dependencies
 - Added `sonner` for toast notifications — error toasts shown on leaderboard fetch failures and timeouts
+- Added `web-haptics` for haptic feedback on mobile devices
+- Added `supabase` as dev dependency for local database management
 
 ### Documentation
 - Rewrote `README.md` with stack, setup instructions, architecture overview, multiplayer protocol, auth model, and project structure

@@ -7,6 +7,7 @@ import EmailSignIn from "./EmailSignIn";
 import ThemeSwitcher from "./ThemeSwitcher";
 import { ThemeName } from "@/lib/themes";
 import { type AppUser, getDisplayName } from "@/features/auth/types";
+import { useParticles } from "./EmojiParticles";
 
 interface DesktopSidebarProps {
   user: AppUser | null;
@@ -30,6 +31,7 @@ export default function DesktopSidebar({
   onScoresLoaded,
 }: DesktopSidebarProps): React.ReactElement {
   const [showSignIn, setShowSignIn] = useState(false);
+  const { enabled: particlesEnabled, setEnabled: setParticlesEnabled } = useParticles();
 
   const displayName = user ? getDisplayName(user) : null;
 
@@ -75,6 +77,14 @@ export default function DesktopSidebar({
           <div className="sidebar-section">
             <h3 className="sidebar-section-title">Theme</h3>
             <ThemeSwitcher current={theme} onChange={onThemeChange} />
+            <label className="sidebar-toggle">
+              <input
+                type="checkbox"
+                checked={particlesEnabled}
+                onChange={(e) => setParticlesEnabled(e.target.checked)}
+              />
+              <span>Emoji Effects</span>
+            </label>
           </div>
 
           <div className="sidebar-divider" />

@@ -1,5 +1,3 @@
-import { DEFAULT_ELO } from "./elo";
-
 export interface PlayerStats {
   id: string;
   user_id: string;

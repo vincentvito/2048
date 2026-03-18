@@ -9,7 +9,6 @@ import {
   canMove,
   checkWin,
   addRandomTile,
-  type EngineState,
 } from "../src/lib/game-engine";
 
 const SIZE = 4;

@@ -30,7 +30,7 @@ export default function Home(): React.ReactElement {
     gameMode: "ranked" | "friendly";
     friendRoomCode?: string;
   } | null>(null);
-  const [showSignInModal, setShowSignInModal] = useState(false);
+  const [, setShowSignInModal] = useState(false);
   const { theme, setTheme } = useTheme();
 
   const singlePlayerRef = useRef<SinglePlayerHandle>(null);

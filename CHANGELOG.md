@@ -106,6 +106,9 @@
 - Added `.editorconfig` for consistent editor settings across the team
 - Added `npm run format` and `npm run format:check` scripts
 - Formatted all 48 source files
+- Fixed 9 ESLint errors: recursive `useCallback` in EmojiParticles (switched to ref pattern), `let` → `const` for non-reassigned variable, `<a>` → `<Link>` for internal navigation
+- Cleaned up unused variables: `displaySize`, `handleSizeToggle`, `showSignInModal`, `EngineState`, `DEFAULT_ELO`, `sessionCookie`
+- Fixed `es-abstract` transitive dependency issue breaking ESLint
 
 ### Dependencies
 - Added `sonner` for toast notifications — error toasts shown on leaderboard fetch failures and timeouts

@@ -2017,7 +2017,7 @@ body {
 /* ========== Accessibility: Reduced Motion ========== */
 /* ── Settings toggle ── */
 .sidebar-toggle {
-  display: flex;
+  display: none;
   align-items: center;
   gap: 8px;
   margin-top: 10px;

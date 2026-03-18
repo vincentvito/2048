@@ -128,7 +128,6 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
   const onDevTriggerWinReadyRef = useRef(onDevTriggerWinReady);
   const initialReadOnlyRef = useRef(!!readOnlyState);
   const disableSaveRef = useRef(disableSave);
-  const [displaySize, setDisplaySize] = useState(4);
   const [canvasReady, setCanvasReady] = useState(false);
   const themeRef = useRef<ThemeColors>(themes[themeName as keyof typeof themes] || themes.classic);
 
@@ -217,7 +216,6 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
       SIZE = newSize;
       recalcCanvas();
       grid = new Uint16Array(SIZE * SIZE);
-      setDisplaySize(newSize);
     }
 
     function addTile() {
@@ -682,7 +680,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
     }
 
     // React buttons can't access the useEffect closure, so we attach game functions to the container DOM node
-    let prevGrid = new Uint16Array(SIZE * SIZE);
+    const prevGrid = new Uint16Array(SIZE * SIZE);
     let prevScore = 0;
     const updateStateImpl = (state: GameState) => {
       const oldScore = prevScore;
@@ -1102,12 +1100,6 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
 
   const handleKeepPlaying = useCallback(() => {
     keepPlayingFnRef.current();
-  }, []);
-
-  const handleSizeToggle = useCallback(() => {
-    const currentSize = getSizeFnRef.current();
-    const newSize = currentSize === 4 ? 8 : 4;
-    toggleSizeFnRef.current(newSize);
   }, []);
 
   return (

@@ -97,6 +97,7 @@ export function ParticleProvider({ children }: { children: React.ReactNode }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particlesRef = useRef<Particle[]>([]);
   const rafRef = useRef<number | null>(null);
+  const loopRef = useRef<() => void>(() => {});
   // Initialize from localStorage synchronously to avoid flash
   const [enabled, setEnabledState] = useState(getStoredEnabled);
 
@@ -110,7 +111,7 @@ export function ParticleProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Animation loop — syncs with external system (canvas), so useEffect is appropriate
-  const loop = useCallback(() => {
+  loopRef.current = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -172,11 +173,11 @@ export function ParticleProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (particles.length > 0) {
-      rafRef.current = requestAnimationFrame(loop);
+      rafRef.current = requestAnimationFrame(() => loopRef.current());
     } else {
       rafRef.current = null;
     }
-  }, []);
+  };
 
   const burst = useCallback(
     (preset: BurstPreset, x?: number, y?: number) => {
@@ -210,10 +211,10 @@ export function ParticleProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (!rafRef.current) {
-        rafRef.current = requestAnimationFrame(loop);
+        rafRef.current = requestAnimationFrame(() => loopRef.current());
       }
     },
-    [loop]
+    []
   );
 
   // Cleanup rAF on unmount — syncs with external system (rAF), effect is appropriate

@@ -19,9 +19,9 @@ export async function GET() {
       .from('player_stats')
       .select('active_room_id, active_game_mode, active_friend_code, updated_at')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
-    if (error && error.code !== 'PGRST116') {
+    if (error) {
       return NextResponse.json({ error: 'Failed to fetch match' }, { status: 500 });
     }
 

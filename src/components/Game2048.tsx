@@ -162,13 +162,12 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
       return r * SIZE + c;
     }
 
-    function setSizeInternal(newSize: number) {
-      SIZE = newSize;
-      // Use available viewport width (minus padding) capped at a max container width
-      const maxContainerWidth = newSize === 4 ? 480 : 640;
+    /** Recalculate canvas dimensions for the current SIZE without touching game state. */
+    function recalcCanvas() {
+      const maxContainerWidth = SIZE === 4 ? 480 : 640;
       const availableWidth = Math.min(window.innerWidth - 32, maxContainerWidth);
-      const maxCell = Math.floor((availableWidth - (newSize + 1) * GAP) / newSize);
-      const idealCell = newSize === 4 ? 100 : 64;
+      const maxCell = Math.floor((availableWidth - (SIZE + 1) * GAP) / SIZE);
+      const idealCell = SIZE === 4 ? 100 : 64;
       CELL = Math.min(idealCell, maxCell);
       GRID_SIZE = SIZE * CELL + (SIZE + 1) * GAP;
       canvas.width = GRID_SIZE * dpr;
@@ -177,6 +176,12 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
       canvas.style.height = GRID_SIZE + "px";
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.scale(dpr, dpr);
+    }
+
+    /** Change grid size — resets all game state. */
+    function setSizeInternal(newSize: number) {
+      SIZE = newSize;
+      recalcCanvas();
       grid = new Uint16Array(SIZE * SIZE);
       setDisplaySize(newSize);
     }
@@ -771,19 +776,48 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
 
     // Resize board on orientation change / window resize (debounced)
     let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+    function rebuildTilesFromGrid() {
+      tiles.length = 0;
+      for (let i = 0; i < SIZE * SIZE; i++) {
+        if (grid[i] !== 0) {
+          tiles.push({
+            value: grid[i],
+            r: (i / SIZE) | 0,
+            c: i % SIZE,
+            fromR: (i / SIZE) | 0,
+            fromC: i % SIZE,
+            scale: 1,
+            merged: false,
+          });
+        }
+      }
+    }
+
     function onResize() {
       if (resizeTimer) clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => {
-        setSizeInternal(SIZE);
+        // If an animation is in progress, cancel it cleanly
+        animating = false;
+        recalcCanvas();
+        rebuildTilesFromGrid();
+        updateScore();
         render(1);
+        saveState();
       }, 150);
     }
     window.addEventListener("resize", onResize);
 
-    // Re-render canvas when page becomes visible again (fixes blank canvas after screen off)
+    // Re-render canvas when page becomes visible again (fixes blank canvas after screen off/tab switch)
     function onVisibilityChange() {
       if (document.visibilityState === "visible") {
-        // Small delay to ensure canvas context is ready
+        // Cancel any in-flight animation — state may be stale after being hidden
+        animating = false;
+        // Recalculate canvas dimensions (viewport may have changed while hidden)
+        recalcCanvas();
+        // Rebuild tiles from grid in case they're out of sync
+        rebuildTilesFromGrid();
+        updateScore();
+        // Small delay to ensure canvas context is ready on mobile browsers
         setTimeout(() => render(1), 50);
       }
     }

@@ -18,7 +18,6 @@ export async function saveScore(
   const username = getDisplayName(user);
   try {
     const { error } = await supabase.from("scores").insert({
-      user_id: user.id,
       username,
       score,
       grid_size: gridSize,

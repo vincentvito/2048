@@ -66,6 +66,10 @@
 - Fixed score not recorded in leaderboard after continuing past 2048 — score is now saved when the game truly ends (game over, play again, or new game) instead of at the moment 2048 is reached
 - Fixed "All Time" leaderboard tab returning 400 — API now accepts `alltime` tab parameter
 - Fixed OTP email sending failing in local development — OTP code is logged to the console when no Resend API key is configured
+- Fixed game becoming unresponsive after browser resize or mobile tab switch — the `animating` flag could get stuck `true` when a resize interrupted a mid-move animation, causing `move()` to silently reject all input. Resize and visibility handlers now forcefully clear the animation lock.
+- Fixed grid going blank after resize or returning from a hidden tab — the `tiles` render array could desync from the `grid` source of truth. Both handlers now rebuild tiles from grid data and re-render. Separated `recalcCanvas()` (dimension-only) from `setSizeInternal()` (full grid reset) so resizing never destroys game state.
+- Fixed active-match API returning 500 for users without player stats — changed `.single()` to `.maybeSingle()` so missing rows return null instead of erroring
+- Fixed score insert failing silently for Better Auth users — `scores.user_id` is a UUID FK referencing Supabase `auth.users`, but Better Auth uses text IDs. Removed `user_id` from score inserts since the leaderboard only needs `username`.
 
 ### Local Development
 - Added local Supabase support — `npm run db:start`, `db:stop`, `db:reset`, `db:status` scripts

@@ -17,7 +17,7 @@ export interface PlayerStats {
 
 export async function getPlayerStats(): Promise<PlayerStats | null> {
   try {
-    const res = await fetch('/api/player-stats');
+    const res = await fetch("/api/player-stats");
     const { data, error } = await res.json();
     if (error) return null;
     return data as PlayerStats | null;
@@ -26,13 +26,11 @@ export async function getPlayerStats(): Promise<PlayerStats | null> {
   }
 }
 
-export async function getOrCreatePlayerStats(
-  username: string
-): Promise<PlayerStats | null> {
+export async function getOrCreatePlayerStats(username: string): Promise<PlayerStats | null> {
   try {
-    const res = await fetch('/api/player-stats', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const res = await fetch("/api/player-stats", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username }),
     });
     const { data, error } = await res.json();
@@ -50,13 +48,11 @@ export interface UpdateStatsParams {
   newElo: number;
 }
 
-export async function updateStatsAfterGame(
-  params: UpdateStatsParams
-): Promise<PlayerStats | null> {
+export async function updateStatsAfterGame(params: UpdateStatsParams): Promise<PlayerStats | null> {
   try {
-    const res = await fetch('/api/player-stats', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+    const res = await fetch("/api/player-stats", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(params),
     });
     const { data, error } = await res.json();

@@ -10,20 +10,54 @@ import {
   checkWin,
   addRandomTile,
   type EngineState,
-} from '../src/lib/game-engine';
+} from "../src/lib/game-engine";
 
 const SIZE = 4;
 
 const BOT_FIRST_NAMES = [
-  'Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon', 'Zeta', 'Theta',
-  'Magnus', 'Garry', 'Bobby', 'Mikhail', 'Anatoly', 'Vishy', 'Hikaru',
-  'Deep', 'Stockfish', 'Leela', 'Komodo', 'Fritz', 'Houdini',
-  'Pixel', 'Byte', 'Binary', 'Quantum', 'Neural', 'Matrix',
+  "Alpha",
+  "Beta",
+  "Gamma",
+  "Delta",
+  "Epsilon",
+  "Zeta",
+  "Theta",
+  "Magnus",
+  "Garry",
+  "Bobby",
+  "Mikhail",
+  "Anatoly",
+  "Vishy",
+  "Hikaru",
+  "Deep",
+  "Stockfish",
+  "Leela",
+  "Komodo",
+  "Fritz",
+  "Houdini",
+  "Pixel",
+  "Byte",
+  "Binary",
+  "Quantum",
+  "Neural",
+  "Matrix",
 ];
 
 const BOT_SUFFIXES = [
-  'Bot', 'AI', 'Engine', 'Mind', 'Genius', 'Master', 'Pro', 'X',
-  '2048', 'Player', 'Slider', 'Merger', 'Tiler', 'Champion',
+  "Bot",
+  "AI",
+  "Engine",
+  "Mind",
+  "Genius",
+  "Master",
+  "Pro",
+  "X",
+  "2048",
+  "Player",
+  "Slider",
+  "Merger",
+  "Tiler",
+  "Champion",
 ];
 
 export function generateBotName(): string {
@@ -50,7 +84,7 @@ function idx(r: number, c: number): number {
 }
 
 function countEmpty(grid: number[]): number {
-  return grid.filter(v => v === 0).length;
+  return grid.filter((v) => v === 0).length;
 }
 
 function getMaxTile(grid: number[]): number {
@@ -111,7 +145,11 @@ function findBestMove(grid: number[]): number {
 
         let bestFutureMove = -Infinity;
         for (const dir2 of directions) {
-          const { moved: moved2, scoreGained: score2, newGrid: grid2 } = simulateMove(testGrid, SIZE, dir2);
+          const {
+            moved: moved2,
+            scoreGained: score2,
+            newGrid: grid2,
+          } = simulateMove(testGrid, SIZE, dir2);
           if (moved2) {
             bestFutureMove = Math.max(bestFutureMove, score2 + evaluateGrid(grid2));
           }
@@ -120,7 +158,7 @@ function findBestMove(grid: number[]): number {
           futureScore += bestFutureMove;
         }
       }
-      avgScore += futureScore / sampleSize * 0.5;
+      avgScore += (futureScore / sampleSize) * 0.5;
     }
 
     if (avgScore > bestScore) {
@@ -140,12 +178,12 @@ function findBestMove(grid: number[]): number {
 }
 
 function getSmartMoveProbability(elo: number): number {
-  if (elo <= 1000) return 0.30;
+  if (elo <= 1000) return 0.3;
   if (elo <= 1100) return 0.45;
-  if (elo <= 1200) return 0.60;
+  if (elo <= 1200) return 0.6;
   if (elo <= 1300) return 0.75;
   if (elo <= 1400) return 0.85;
-  if (elo <= 1500) return 0.90;
+  if (elo <= 1500) return 0.9;
   return 0.95;
 }
 

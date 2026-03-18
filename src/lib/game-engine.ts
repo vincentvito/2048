@@ -56,7 +56,7 @@ export function canMove(grid: number[], size: number): boolean {
 
 /** Check if any tile has reached 2048. */
 export function checkWin(grid: number[]): boolean {
-  return grid.some(v => v >= 2048);
+  return grid.some((v) => v >= 2048);
 }
 
 /**
@@ -70,12 +70,32 @@ export function simulateMove(grid: number[], size: number, direction: number): M
   let scoreGained = 0;
   const mergedPositions: number[] = [];
 
-  let dr = 0, dc = 0, rStart = 0, rEnd = size, rStep = 1, cStart = 0, cEnd = size, cStep = 1;
+  let dr = 0,
+    dc = 0,
+    rStart = 0,
+    rEnd = size,
+    rStep = 1,
+    cStart = 0,
+    cEnd = size,
+    cStep = 1;
 
-  if (direction === 0) { dc = -1; cStart = 1; }
-  else if (direction === 1) { dc = 1; cStart = size - 2; cEnd = -1; cStep = -1; }
-  else if (direction === 2) { dr = -1; rStart = 1; }
-  else { dr = 1; rStart = size - 2; rEnd = -1; rStep = -1; }
+  if (direction === 0) {
+    dc = -1;
+    cStart = 1;
+  } else if (direction === 1) {
+    dc = 1;
+    cStart = size - 2;
+    cEnd = -1;
+    cStep = -1;
+  } else if (direction === 2) {
+    dr = -1;
+    rStart = 1;
+  } else {
+    dr = 1;
+    rStart = size - 2;
+    rEnd = -1;
+    rStep = -1;
+  }
 
   const merged = new Array(size * size).fill(false);
 
@@ -84,9 +104,11 @@ export function simulateMove(grid: number[], size: number, direction: number): M
       const i = idx(r, c, size);
       if (newGrid[i] === 0) continue;
 
-      let nr = r, nc = c;
+      let nr = r,
+        nc = c;
       while (true) {
-        const nextR = nr + dr, nextC = nc + dc;
+        const nextR = nr + dr,
+          nextC = nc + dc;
         if (nextR < 0 || nextR >= size || nextC < 0 || nextC >= size) break;
         const nextI = idx(nextR, nextC, size);
         if (newGrid[nextI] === 0) {

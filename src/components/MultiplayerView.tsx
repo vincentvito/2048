@@ -1,51 +1,71 @@
 "use client";
 
-import React, { useRef, useState, useCallback, useEffect, useMemo } from 'react';
-import confetti from 'canvas-confetti';
-import Game2048, { GameState, type Game2048Handle } from './Game2048';
-import EmailSignIn from './EmailSignIn';
-import { isSupabaseConfigured } from '@/lib/supabase-client';
-import { useSession } from '@/lib/auth-client';
-import { type AppUser, getDisplayName } from '@/features/auth/types';
-import { usePartyMatchmaking as useMatchmaking } from '../hooks/usePartyMatchmaking';
-import { usePartyGame as useMultiplayerGame } from '../hooks/usePartyGame';
-import { saveMultiplayerSession, clearMultiplayerSession } from '@/lib/multiplayer-session';
-import { calculateElo, getEloRank, DEFAULT_ELO } from '@/lib/elo';
-import { themes, ThemeName } from '@/lib/themes';
-import { useTheme } from '@/features/theme/ThemeProvider';
-import { getOrCreatePlayerStats, updateStatsAfterGame, PlayerStats } from '@/lib/player-stats';
-import type { GameMode } from '@/lib/party/messages';
-import MatchResultModal from '@/features/multiplayer/game/MatchResultModal';
-import LeaveWarningModal from '@/features/multiplayer/game/LeaveWarningModal';
-import MultiplayerHud from '@/features/multiplayer/game/MultiplayerHud';
-import OpponentPreview, { MiniGrid, ExpandedGrid } from '@/features/multiplayer/game/OpponentPreview';
+import React, { useRef, useState, useCallback, useEffect, useMemo } from "react";
+import confetti from "canvas-confetti";
+import Game2048, { GameState, type Game2048Handle } from "./Game2048";
+import EmailSignIn from "./EmailSignIn";
+import { isSupabaseConfigured } from "@/lib/supabase-client";
+import { useSession } from "@/lib/auth-client";
+import { type AppUser, getDisplayName } from "@/features/auth/types";
+import { usePartyMatchmaking as useMatchmaking } from "../hooks/usePartyMatchmaking";
+import { usePartyGame as useMultiplayerGame } from "../hooks/usePartyGame";
+import { saveMultiplayerSession, clearMultiplayerSession } from "@/lib/multiplayer-session";
+import { calculateElo, getEloRank, DEFAULT_ELO } from "@/lib/elo";
+import { themes, ThemeName } from "@/lib/themes";
+import { useTheme } from "@/features/theme/ThemeProvider";
+import { getOrCreatePlayerStats, updateStatsAfterGame, PlayerStats } from "@/lib/player-stats";
+import type { GameMode } from "@/lib/party/messages";
+import MatchResultModal from "@/features/multiplayer/game/MatchResultModal";
+import LeaveWarningModal from "@/features/multiplayer/game/LeaveWarningModal";
+import MultiplayerHud from "@/features/multiplayer/game/MultiplayerHud";
+import OpponentPreview, {
+  MiniGrid,
+  ExpandedGrid,
+} from "@/features/multiplayer/game/OpponentPreview";
 
 // Characters that avoid ambiguity (no 0/O, 1/I/l)
-const ROOM_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 function generateRoomCode(): string {
-  let code = '';
+  let code = "";
   for (let i = 0; i < 6; i++) {
     code += ROOM_CODE_CHARS[Math.floor(Math.random() * ROOM_CODE_CHARS.length)];
   }
   return code;
 }
 
-type LobbyScreen = 'main' | 'friend-menu' | 'create-room' | 'join-room';
+type LobbyScreen = "main" | "friend-menu" | "create-room" | "join-room";
 
 // MiniGrid, ExpandedGrid imported from OpponentPreview
 
 interface MultiplayerViewProps {
   onMatchActiveChange?: (isActive: boolean) => void;
-  reconnectSession?: { roomId: string; gameMode: 'ranked' | 'friendly'; friendRoomCode?: string } | null;
+  reconnectSession?: {
+    roomId: string;
+    gameMode: "ranked" | "friendly";
+    friendRoomCode?: string;
+  } | null;
 }
 
-export default function MultiplayerView({ onMatchActiveChange, reconnectSession }: MultiplayerViewProps) {
-  const { state: matchmakingState, setState: setMatchmakingState, roomId, setRoomId: setMatchmakingRoomId, opponentInfo, startMatchmaking, cancelMatchmaking, myId, searchTimeLeft } = useMatchmaking();
+export default function MultiplayerView({
+  onMatchActiveChange,
+  reconnectSession,
+}: MultiplayerViewProps) {
+  const {
+    state: matchmakingState,
+    setState: setMatchmakingState,
+    roomId,
+    setRoomId: setMatchmakingRoomId,
+    opponentInfo,
+    startMatchmaking,
+    cancelMatchmaking,
+    myId,
+    searchTimeLeft,
+  } = useMatchmaking();
 
   // Derive bot opponent info from matchmaking (no effect needed)
   const botOpponent = useMemo(
-    () => opponentInfo?.isBot ? { username: opponentInfo.username, elo: opponentInfo.elo } : null,
+    () => (opponentInfo?.isBot ? { username: opponentInfo.username, elo: opponentInfo.elo } : null),
     [opponentInfo]
   );
 
@@ -85,11 +105,11 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
   const myElo = playerStats?.elo ?? DEFAULT_ELO;
 
   // Friend mode state — restore from session on mount
-  const [lobbyScreen, setLobbyScreen] = useState<LobbyScreen>('main');
+  const [lobbyScreen, setLobbyScreen] = useState<LobbyScreen>("main");
   const [friendRoomId, setFriendRoomId] = useState<string | null>(null);
-  const [friendRoomCode, setFriendRoomCode] = useState<string>('');
-  const [joinRoomInput, setJoinRoomInput] = useState('');
-  const [gameMode, setGameMode] = useState<GameMode>('ranked');
+  const [friendRoomCode, setFriendRoomCode] = useState<string>("");
+  const [joinRoomInput, setJoinRoomInput] = useState("");
+  const [gameMode, setGameMode] = useState<GameMode>("ranked");
   const [codeCopied, setCodeCopied] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
 
@@ -97,20 +117,20 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
   useEffect(() => {
     if (!reconnectSession) return;
     setIsReconnecting(true);
-    if (reconnectSession.gameMode === 'friendly') {
+    if (reconnectSession.gameMode === "friendly") {
       setFriendRoomId(reconnectSession.roomId);
-      setFriendRoomCode(reconnectSession.friendRoomCode || '');
-      setGameMode('friendly');
+      setFriendRoomCode(reconnectSession.friendRoomCode || "");
+      setGameMode("friendly");
     } else {
       setMatchmakingRoomId(reconnectSession.roomId);
-      setMatchmakingState('matched');
-      setGameMode('ranked');
+      setMatchmakingState("matched");
+      setGameMode("ranked");
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Compute effective room ID — friend room takes priority when in friendly mode
-  const effectiveRoomId = gameMode === 'friendly' ? friendRoomId : roomId;
+  const effectiveRoomId = gameMode === "friendly" ? friendRoomId : roomId;
 
   // Persist session whenever we have an active room
   useEffect(() => {
@@ -118,7 +138,7 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
       saveMultiplayerSession({
         roomId: effectiveRoomId,
         gameMode,
-        friendRoomCode: gameMode === 'friendly' ? friendRoomCode : undefined,
+        friendRoomCode: gameMode === "friendly" ? friendRoomCode : undefined,
       });
     }
   }, [effectiveRoomId, gameMode, friendRoomCode, user?.id]);
@@ -129,12 +149,38 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
   }, [effectiveRoomId, onMatchActiveChange]);
 
   const {
-    opponentState, restoredLocalState, initialServerState, serverGameState,
-    opponentConnected, opponentEverConnected, opponentName, opponentElo, opponentIsBot,
-    sendMove, sendGameState, requestRematch, resetRematchState, declareForfeit,
-    localWantsRematch, opponentWantsRematch, rematchReady, rematchStarted, clearRematchStarted,
-    timeLeft, gameStarted, forfeitWin, serverResult,
-  } = useMultiplayerGame(effectiveRoomId, myId, user?.id || null, myName, myElo, gameMode, botOpponent);
+    opponentState,
+    restoredLocalState,
+    initialServerState,
+    serverGameState,
+    opponentConnected,
+    opponentEverConnected,
+    opponentName,
+    opponentElo,
+    opponentIsBot,
+    sendMove,
+    sendGameState,
+    requestRematch,
+    resetRematchState,
+    declareForfeit,
+    localWantsRematch,
+    opponentWantsRematch,
+    rematchReady,
+    rematchStarted,
+    clearRematchStarted,
+    timeLeft,
+    gameStarted,
+    forfeitWin,
+    serverResult,
+  } = useMultiplayerGame(
+    effectiveRoomId,
+    myId,
+    user?.id || null,
+    myName,
+    myElo,
+    gameMode,
+    botOpponent
+  );
 
   // Clear reconnecting flag once the game has started
   useEffect(() => {
@@ -165,31 +211,40 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
     if (!isReconnecting || !effectiveRoomId) return;
     const timeout = setTimeout(() => {
       if (!gameStarted) {
-        console.log('[MultiplayerView] Stale room detected, returning to lobby');
+        console.log("[MultiplayerView] Stale room detected, returning to lobby");
         if (user?.id) clearMultiplayerSession();
         cancelMatchmaking();
         setFriendRoomId(null);
-        setFriendRoomCode('');
-        setGameMode('ranked');
-        setLobbyScreen('main');
+        setFriendRoomCode("");
+        setGameMode("ranked");
+        setLobbyScreen("main");
         setIsReconnecting(false);
       }
     }, 5000);
     return () => clearTimeout(timeout);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isReconnecting, effectiveRoomId]);
 
-  const [localGameResult, setLocalGameResult] = useState<{ won: boolean; score: number; gameOver: boolean } | null>(null);
+  const [localGameResult, setLocalGameResult] = useState<{
+    won: boolean;
+    score: number;
+    gameOver: boolean;
+  } | null>(null);
   // showResultModal is derived from isMatchResolved (computed below)
   const [showOpponentExpanded, setShowOpponentExpanded] = useState(false);
   const [showLeaveWarning, setShowLeaveWarning] = useState(false);
   const localGameResetRef = useRef<(() => void) | null>(null);
   const devEndGameRef = useRef<(() => void) | null>(null);
   const confettiFiredRef = useRef(false);
-  const isDev = process.env.NODE_ENV === 'development';
+  const isDev = process.env.NODE_ENV === "development";
 
   // Final fallback state for opponent
-  const emptyOpponentState: GameState = { grid: Array(16).fill(0), score: 0, gameOver: false, won: false };
+  const emptyOpponentState: GameState = {
+    grid: Array(16).fill(0),
+    score: 0,
+    gameOver: false,
+    won: false,
+  };
   const localBoardRef = useRef<HTMLDivElement>(null);
   const localGameRef = useRef<Game2048Handle>(null);
   const suppressStateRef = useRef(!!reconnectSession);
@@ -254,9 +309,12 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
     setLocalGameResult({ won: state.won, score: state.score, gameOver: state.gameOver });
   }, []);
 
-  const handleLocalMove = useCallback((direction: number) => {
-    sendMove(direction);
-  }, [sendMove]);
+  const handleLocalMove = useCallback(
+    (direction: number) => {
+      sendMove(direction);
+    },
+    [sendMove]
+  );
 
   const handleResetReady = useCallback((resetFn: () => void) => {
     localGameResetRef.current = resetFn;
@@ -269,7 +327,7 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
   const handleLeaveMatch = () => {
     const gameStillLive = gameStarted && !serverResult && !hasForfeit;
     // Show warning modal for ranked games that are still live
-    if (gameStillLive && gameMode === 'ranked') {
+    if (gameStillLive && gameMode === "ranked") {
       setShowLeaveWarning(true);
       return;
     }
@@ -281,11 +339,13 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
     const gameStillLive = gameStarted && !serverResult && !hasForfeit;
 
     // Process ELO loss immediately for ranked forfeits before leaving
-    if (gameStillLive && gameMode === 'ranked' && user?.id) {
+    if (gameStillLive && gameMode === "ranked" && user?.id) {
       try {
         const oppElo = opponentElo ?? DEFAULT_ELO;
-        const result = calculateElo(myElo, oppElo, 'loss');
-        console.log(`[Forfeit] ELO change: ${myElo} -> ${result.newPlayerElo} (${result.playerDelta})`);
+        const result = calculateElo(myElo, oppElo, "loss");
+        console.log(
+          `[Forfeit] ELO change: ${myElo} -> ${result.newPlayerElo} (${result.playerDelta})`
+        );
 
         await updateStatsAfterGame({
           won: false,
@@ -293,9 +353,9 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
           score: localGameResult?.score ?? 0,
           newElo: result.newPlayerElo,
         });
-        console.log('[Forfeit] Stats updated in database');
+        console.log("[Forfeit] Stats updated in database");
       } catch (err) {
-        console.error('[Forfeit] Failed to update stats:', err);
+        console.error("[Forfeit] Failed to update stats:", err);
       }
     }
 
@@ -305,10 +365,10 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
     if (user?.id) clearMultiplayerSession();
     cancelMatchmaking();
     setFriendRoomId(null);
-    setFriendRoomCode('');
-    setJoinRoomInput('');
-    setGameMode('ranked');
-    setLobbyScreen('main');
+    setFriendRoomCode("");
+    setJoinRoomInput("");
+    setGameMode("ranked");
+    setLobbyScreen("main");
     setCodeCopied(false);
     setLocalGameResult(null);
 
@@ -349,16 +409,17 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
 
   // Use server result for outcome when available; fall back to client-side for forfeit
   const localWon = (() => {
-    if (forfeitWin === 'local') return true;
-    if (forfeitWin === 'opponent') return false;
-    if (serverResult) return serverResult.outcome === 'win';
+    if (forfeitWin === "local") return true;
+    if (forfeitWin === "opponent") return false;
+    if (serverResult) return serverResult.outcome === "win";
     return false;
   })();
 
-  const isTie = !hasForfeit && serverResult?.outcome === 'tie';
+  const isTie = !hasForfeit && serverResult?.outcome === "tie";
 
   // Disable local inputs when the local player is done or match is fully resolved
-  const disableLocalInputs = localDone || someoneWon2048 || timerExpired || hasForfeit || isMatchResolved;
+  const disableLocalInputs =
+    localDone || someoneWon2048 || timerExpired || hasForfeit || isMatchResolved;
 
   // Clear active match session when match resolves
   const matchClearedRef = useRef(false);
@@ -378,12 +439,12 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
       setEloProcessed(true);
 
       // Skip ELO updates for friendly games only (bot games still affect ELO)
-      if (gameMode === 'friendly') return;
+      if (gameMode === "friendly") return;
 
       const localScore = serverResult?.yourScore ?? localGameResult?.score ?? 0;
       const opponentScore = serverResult?.opponentScore ?? opponentState?.score ?? 0;
 
-      const outcome: 'win' | 'loss' | 'tie' = isTie ? 'tie' : localWon ? 'win' : 'loss';
+      const outcome: "win" | "loss" | "tie" = isTie ? "tie" : localWon ? "win" : "loss";
       const oppElo = opponentElo ?? DEFAULT_ELO;
 
       const result = calculateElo(myElo, oppElo, outcome);
@@ -405,13 +466,26 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
           const updated = await getOrCreatePlayerStats(myName);
           setPlayerStats(updated);
         } catch (err) {
-          console.error('[MultiplayerView] Failed to update stats:', err);
+          console.error("[MultiplayerView] Failed to update stats:", err);
         }
       }
     };
 
     processElo();
-  }, [isMatchResolved, eloProcessed, localGameResult, opponentState, localWon, isTie, myElo, opponentElo, user?.id, myName, serverResult, gameMode]);
+  }, [
+    isMatchResolved,
+    eloProcessed,
+    localGameResult,
+    opponentState,
+    localWon,
+    isTie,
+    myElo,
+    opponentElo,
+    user?.id,
+    myName,
+    serverResult,
+    gameMode,
+  ]);
 
   // Fire confetti when local player wins
   useEffect(() => {
@@ -446,7 +520,7 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
     if (rematchReady) {
       resetRematchState();
       setLocalGameResult(null);
-  
+
       confettiFiredRef.current = false;
       setLocalEloDelta(null);
       setOpponentEloDelta(null);
@@ -461,7 +535,7 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
     if (rematchStarted) {
       clearRematchStarted();
       setLocalGameResult(null);
-  
+
       confettiFiredRef.current = false;
       setLocalEloDelta(null);
       setOpponentEloDelta(null);
@@ -472,7 +546,10 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
     }
   }, [rematchStarted, clearRematchStarted]);
 
-  if (matchmakingState === 'idle' && !(gameMode === 'friendly' && friendRoomId && (gameStarted || isReconnecting))) {
+  if (
+    matchmakingState === "idle" &&
+    !(gameMode === "friendly" && friendRoomId && (gameStarted || isReconnecting))
+  ) {
     if (!sessionLoaded) {
       return (
         <div className="matchmaking-container">
@@ -487,16 +564,36 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
           <h2>Login to play Multiplayer</h2>
           <p>You need an account to be matched with online players.</p>
 
-          <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
+          <div
+            style={{
+              marginTop: "20px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "10px",
+              alignItems: "center",
+            }}
+          >
             {!showSignIn ? (
               <button
                 type="button"
                 className="modal-btn-leaderboard"
-                style={{ width: '100%', maxWidth: '300px' }}
+                style={{ width: "100%", maxWidth: "300px" }}
                 onClick={() => setShowSignIn(true)}
               >
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="modal-btn-icon">
-                  <path d="M4 12V10M8 12V8M12 12V6M2 4L8 2L14 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  className="modal-btn-icon"
+                >
+                  <path
+                    d="M4 12V10M8 12V8M12 12V6M2 4L8 2L14 4"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
                 Sign in with email
               </button>
@@ -518,8 +615,8 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
       const code = generateRoomCode();
       setFriendRoomCode(code);
       setFriendRoomId(`friend_${code}`);
-      setGameMode('friendly');
-      setLobbyScreen('create-room');
+      setGameMode("friendly");
+      setLobbyScreen("create-room");
     };
 
     const handleJoinRoom = () => {
@@ -527,7 +624,7 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
       if (code.length !== 6) return;
       setFriendRoomCode(code);
       setFriendRoomId(`friend_${code}`);
-      setGameMode('friendly');
+      setGameMode("friendly");
     };
 
     const handleCopyCode = async () => {
@@ -535,21 +632,23 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
         await navigator.clipboard.writeText(friendRoomCode);
         setCodeCopied(true);
         setTimeout(() => setCodeCopied(false), 2000);
-      } catch { /* clipboard not available */ }
+      } catch {
+        /* clipboard not available */
+      }
     };
 
     const handleCancelFriend = () => {
       if (user?.id) clearMultiplayerSession();
       setFriendRoomId(null);
-      setFriendRoomCode('');
-      setJoinRoomInput('');
-      setGameMode('ranked');
-      setLobbyScreen('main');
+      setFriendRoomCode("");
+      setJoinRoomInput("");
+      setGameMode("ranked");
+      setLobbyScreen("main");
       setCodeCopied(false);
     };
 
     // Friend mode: waiting for opponent after creating room
-    if (lobbyScreen === 'create-room' && friendRoomId && !gameStarted) {
+    if (lobbyScreen === "create-room" && friendRoomId && !gameStarted) {
       return (
         <div className="mp-lobby">
           <h2 className="mp-lobby-title">Waiting for Friend</h2>
@@ -558,19 +657,21 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
           <div className="mp-room-code-display">
             <span className="mp-room-code">{friendRoomCode}</span>
             <button className="mp-copy-btn" onClick={handleCopyCode}>
-              {codeCopied ? 'Copied!' : 'Copy'}
+              {codeCopied ? "Copied!" : "Copy"}
             </button>
           </div>
 
-          <div className="loader" style={{ margin: '20px auto' }}></div>
+          <div className="loader" style={{ margin: "20px auto" }}></div>
           <p className="hint">Waiting for friend to join...</p>
-          <button className="mp-back-btn" onClick={handleCancelFriend}>Cancel</button>
+          <button className="mp-back-btn" onClick={handleCancelFriend}>
+            Cancel
+          </button>
         </div>
       );
     }
 
     // Friend mode: join room screen (only show while game hasn't started)
-    if (lobbyScreen === 'join-room' && !gameStarted) {
+    if (lobbyScreen === "join-room" && !gameStarted) {
       return (
         <div className="mp-lobby">
           <h2 className="mp-lobby-title">Join a Friend</h2>
@@ -583,7 +684,9 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
               maxLength={6}
               placeholder="ABCDEF"
               value={joinRoomInput}
-              onChange={(e) => setJoinRoomInput(e.target.value.toUpperCase().replace(/[^A-Z2-9]/g, ''))}
+              onChange={(e) =>
+                setJoinRoomInput(e.target.value.toUpperCase().replace(/[^A-Z2-9]/g, ""))
+              }
               autoFocus
             />
           </div>
@@ -596,24 +699,38 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
           >
             Join Game
           </button>
-          <button className="mp-back-btn" onClick={() => { setJoinRoomInput(''); setLobbyScreen('friend-menu'); }}>Back</button>
+          <button
+            className="mp-back-btn"
+            onClick={() => {
+              setJoinRoomInput("");
+              setLobbyScreen("friend-menu");
+            }}
+          >
+            Back
+          </button>
         </div>
       );
     }
 
     // Friend mode: choose create or join
-    if (lobbyScreen === 'friend-menu') {
+    if (lobbyScreen === "friend-menu") {
       return (
         <div className="mp-lobby">
           <h2 className="mp-lobby-title">Multiplayer</h2>
           <p className="mp-lobby-subtitle">Create a room or join one with a code</p>
 
           <div className="mp-lobby-buttons">
-            <button className="mp-find-btn" onClick={handleCreateRoom}>Create Room</button>
-            <button className="mp-friend-btn" onClick={() => setLobbyScreen('join-room')}>Join Room</button>
+            <button className="mp-find-btn" onClick={handleCreateRoom}>
+              Create Room
+            </button>
+            <button className="mp-friend-btn" onClick={() => setLobbyScreen("join-room")}>
+              Join Room
+            </button>
           </div>
 
-          <button className="mp-back-btn" onClick={() => setLobbyScreen('main')}>Back</button>
+          <button className="mp-back-btn" onClick={() => setLobbyScreen("main")}>
+            Back
+          </button>
         </div>
       );
     }
@@ -624,13 +741,29 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
         <p className="mp-lobby-subtitle">Play against an online opponent in real-time!</p>
 
         <div className="mp-lobby-buttons">
-          <button className="mp-find-btn" onClick={() => user?.id && startMatchmaking(user.id, myName, myElo)}>Play Online</button>
-          <button className="mp-friend-btn" onClick={() => setLobbyScreen('friend-menu')}>Play with a Friend</button>
+          <button
+            className="mp-find-btn"
+            onClick={() => user?.id && startMatchmaking(user.id, myName, myElo)}
+          >
+            Play Online
+          </button>
+          <button className="mp-friend-btn" onClick={() => setLobbyScreen("friend-menu")}>
+            Play with a Friend
+          </button>
         </div>
 
         {statsLoading && (
           <div className="mp-stats-card" style={{ marginTop: 20 }}>
-            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '13px', textAlign: 'center' }}>Loading stats...</p>
+            <p
+              style={{
+                margin: 0,
+                color: "var(--text-secondary)",
+                fontSize: "13px",
+                textAlign: "center",
+              }}
+            >
+              Loading stats...
+            </p>
           </div>
         )}
 
@@ -666,11 +799,15 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
             <div className="mp-stats-bottom">
               <div className="mp-stats-bottom-item">
                 <span className="mp-stats-bottom-label">Best Score</span>
-                <span className="mp-stats-bottom-value">{playerStats.best_score.toLocaleString()}</span>
+                <span className="mp-stats-bottom-value">
+                  {playerStats.best_score.toLocaleString()}
+                </span>
               </div>
               <div className="mp-stats-bottom-item">
                 <span className="mp-stats-bottom-label">Total Points</span>
-                <span className="mp-stats-bottom-value">{playerStats.total_points.toLocaleString()}</span>
+                <span className="mp-stats-bottom-value">
+                  {playerStats.total_points.toLocaleString()}
+                </span>
               </div>
             </div>
           </div>
@@ -679,7 +816,7 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
     );
   }
 
-  if (matchmakingState === 'searching') {
+  if (matchmakingState === "searching") {
     const eloRank = playerStats ? getEloRank(playerStats.elo) : null;
     return (
       <div className="mp-searching">
@@ -691,13 +828,16 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
             </span>
           </div>
         )}
-        <div className="loader" style={{ margin: '20px auto' }}></div>
+        <div className="loader" style={{ margin: "20px auto" }}></div>
         <div className="mp-search-timer">
           <p className="mp-search-timer-text">
-            Looking for a human player... <span className="mp-search-timer-count">{searchTimeLeft}s</span>
+            Looking for a human player...{" "}
+            <span className="mp-search-timer-count">{searchTimeLeft}s</span>
           </p>
         </div>
-        <button className="game-btn match-btn secondary" onClick={cancelMatchmaking}>Cancel</button>
+        <button className="game-btn match-btn secondary" onClick={cancelMatchmaking}>
+          Cancel
+        </button>
       </div>
     );
   }
@@ -711,108 +851,125 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
     statusText = "Time's up!";
   }
 
-  const displayOpponentName = opponentName || 'Opponent';
-
+  const displayOpponentName = opponentName || "Opponent";
 
   // Result modal helpers
   const getResultTitle = (): string => {
-    if (forfeitWin === 'local') return 'Victory!';
-    if (forfeitWin === 'opponent') return 'Defeat';
-    if (localWon) return 'Victory!';
+    if (forfeitWin === "local") return "Victory!";
+    if (forfeitWin === "opponent") return "Defeat";
+    if (localWon) return "Victory!";
     if (isTie) return "It's a Tie!";
-    return 'Defeat';
+    return "Defeat";
   };
 
   const getResultSubtitle = (): string | null => {
-    if (forfeitWin === 'local') return 'Opponent Forfeited';
-    if (forfeitWin === 'opponent') return 'You Forfeited';
-    if (serverResult?.reason === '2048' || someoneWon2048) return localWon ? 'You reached 2048!' : `${displayOpponentName} reached 2048!`;
-    if (serverResult?.reason === 'no_moves') return localWon ? `${displayOpponentName} ran out of moves!` : 'You ran out of moves!';
-    if (serverResult?.reason === 'timer' || timerExpired) return "Time's up!";
+    if (forfeitWin === "local") return "Opponent Forfeited";
+    if (forfeitWin === "opponent") return "You Forfeited";
+    if (serverResult?.reason === "2048" || someoneWon2048)
+      return localWon ? "You reached 2048!" : `${displayOpponentName} reached 2048!`;
+    if (serverResult?.reason === "no_moves")
+      return localWon ? `${displayOpponentName} ran out of moves!` : "You ran out of moves!";
+    if (serverResult?.reason === "timer" || timerExpired) return "Time's up!";
     return null;
   };
 
   const getResultBannerClass = (): string => {
-    if (hasForfeit) return forfeitWin === 'local' ? 'mp-result-win mp-result-forfeit' : 'mp-result-lose mp-result-forfeit';
-    if (localWon) return 'mp-result-win';
-    if (isTie) return 'mp-result-tie';
-    return 'mp-result-lose';
+    if (hasForfeit)
+      return forfeitWin === "local"
+        ? "mp-result-win mp-result-forfeit"
+        : "mp-result-lose mp-result-forfeit";
+    if (localWon) return "mp-result-win";
+    if (isTie) return "mp-result-tie";
+    return "mp-result-lose";
   };
 
-  const localEloRank = localEloAfter ? getEloRank(localEloAfter) : (playerStats ? getEloRank(playerStats.elo) : null);
+  const localEloRank = localEloAfter
+    ? getEloRank(localEloAfter)
+    : playerStats
+      ? getEloRank(playerStats.elo)
+      : null;
 
   return (
     <div className="multiplayer-boards-container">
-
       <div className="mp-boards-wrapper">
+        <MultiplayerHud
+          myName={myName}
+          myScore={localGameResult?.score || 0}
+          opponentName={displayOpponentName}
+          opponentScore={opponentState?.score || 0}
+          timeLeft={timeLeft}
+          gameStarted={gameStarted}
+          opponentConnected={opponentConnected}
+          opponentEverConnected={opponentEverConnected}
+          statusText={statusText}
+        />
 
-      <MultiplayerHud
-        myName={myName}
-        myScore={localGameResult?.score || 0}
-        opponentName={displayOpponentName}
-        opponentScore={opponentState?.score || 0}
-        timeLeft={timeLeft}
-        gameStarted={gameStarted}
-        opponentConnected={opponentConnected}
-        opponentEverConnected={opponentEverConnected}
-        statusText={statusText}
-      />
+        <OpponentPreview
+          opponentState={opponentState}
+          opponentName={displayOpponentName}
+          opponentConnected={opponentConnected}
+          opponentEverConnected={opponentEverConnected}
+          opponentDone={opponentDone}
+          timerExpired={timerExpired}
+          hasForfeit={hasForfeit}
+          themeName={themeName}
+          showExpanded={showOpponentExpanded}
+          onToggleExpanded={setShowOpponentExpanded}
+        />
 
-      <OpponentPreview
-        opponentState={opponentState}
-        opponentName={displayOpponentName}
-        opponentConnected={opponentConnected}
-        opponentEverConnected={opponentEverConnected}
-        opponentDone={opponentDone}
-        timerExpired={timerExpired}
-        hasForfeit={hasForfeit}
-        themeName={themeName}
-        showExpanded={showOpponentExpanded}
-        onToggleExpanded={setShowOpponentExpanded}
-      />
-
-      <div className="boards-split">
-        {/* Local board */}
-        <div ref={localBoardRef} className={`mp-board-slot ${localDone || timerExpired || hasForfeit ? 'dimmed' : ''}`}>
-          <Game2048
-            ref={localGameRef}
-            onGameOver={handleLocalGameOver}
-            onGameWon={handleLocalGameWon}
-            onResetReady={handleResetReady}
-            onStateChange={handleLocalStateChange}
-            onMove={handleLocalMove}
-            disableInputs={disableLocalInputs}
-            onDevEndGameReady={isDev ? handleDevEndGameReady : undefined}
-            hideScore
-            themeName={themeName}
-            disableSave
-          />
-          {isDev && !localDone && (
-            <button className="dev-end-game-btn" onClick={() => devEndGameRef.current?.()}>
-              DEV: End Game
-            </button>
-          )}
-        </div>
-
-        {/* Opponent board (desktop only - hidden on mobile) */}
-        <div className={`mp-board-slot mp-opponent-desktop ${opponentDone || timerExpired || hasForfeit ? 'dimmed' : ''}`}>
-          <div className="opponent-game-container">
-            {!opponentConnected && (
-              <div className="offline-overlay">
-                {opponentEverConnected ? 'Opponent disconnected...' : 'Connecting...'}
-              </div>
+        <div className="boards-split">
+          {/* Local board */}
+          <div
+            ref={localBoardRef}
+            className={`mp-board-slot ${localDone || timerExpired || hasForfeit ? "dimmed" : ""}`}
+          >
+            <Game2048
+              ref={localGameRef}
+              onGameOver={handleLocalGameOver}
+              onGameWon={handleLocalGameWon}
+              onResetReady={handleResetReady}
+              onStateChange={handleLocalStateChange}
+              onMove={handleLocalMove}
+              disableInputs={disableLocalInputs}
+              onDevEndGameReady={isDev ? handleDevEndGameReady : undefined}
+              hideScore
+              themeName={themeName}
+              disableSave
+            />
+            {isDev && !localDone && (
+              <button className="dev-end-game-btn" onClick={() => devEndGameRef.current?.()}>
+                DEV: End Game
+              </button>
             )}
-            <Game2048 readOnlyState={opponentState || emptyOpponentState} disableInputs={true} hideScore themeName={themeName} disableSave />
+          </div>
+
+          {/* Opponent board (desktop only - hidden on mobile) */}
+          <div
+            className={`mp-board-slot mp-opponent-desktop ${opponentDone || timerExpired || hasForfeit ? "dimmed" : ""}`}
+          >
+            <div className="opponent-game-container">
+              {!opponentConnected && (
+                <div className="offline-overlay">
+                  {opponentEverConnected ? "Opponent disconnected..." : "Connecting..."}
+                </div>
+              )}
+              <Game2048
+                readOnlyState={opponentState || emptyOpponentState}
+                disableInputs={true}
+                hideScore
+                themeName={themeName}
+                disableSave
+              />
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Leave button at the bottom */}
-      {!isMatchResolved && (
-        <button className="mp-leave-bottom-btn" onClick={handleLeaveMatch}>
-          Leave Match
-        </button>
-      )}
+        {/* Leave button at the bottom */}
+        {!isMatchResolved && (
+          <button className="mp-leave-bottom-btn" onClick={handleLeaveMatch}>
+            Leave Match
+          </button>
+        )}
       </div>
 
       <LeaveWarningModal

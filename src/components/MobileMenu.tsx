@@ -45,13 +45,17 @@ export default function MobileMenu({
     } else {
       document.body.style.overflow = "";
     }
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [open]);
 
   // Close on Escape
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, close]);
@@ -61,27 +65,33 @@ export default function MobileMenu({
   return (
     <>
       {/* Hamburger trigger — mobile only */}
-      <button
-        className="mobile-menu-trigger"
-        onClick={() => setOpen(true)}
-        aria-label="Open menu"
-      >
-        <span /><span /><span />
+      <button className="mobile-menu-trigger" onClick={() => setOpen(true)} aria-label="Open menu">
+        <span />
+        <span />
+        <span />
       </button>
 
       {/* Backdrop */}
-      {open && (
-        <div className="mobile-menu-backdrop" onClick={close} aria-hidden="true" />
-      )}
+      {open && <div className="mobile-menu-backdrop" onClick={close} aria-hidden="true" />}
 
       {/* Drawer */}
-      <div className={`mobile-menu-drawer ${open ? "open" : ""}`} role="dialog" aria-modal="true" aria-label="Menu">
+      <div
+        className={`mobile-menu-drawer ${open ? "open" : ""}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Menu"
+      >
         {/* Header */}
         <div className="mobile-menu-header">
           <span className="mobile-menu-title">Menu</span>
           <button className="mobile-menu-close" onClick={close} aria-label="Close menu">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path d="M4 4L16 16M16 4L4 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              <path
+                d="M4 4L16 16M16 4L4 16"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
             </svg>
           </button>
         </div>
@@ -97,7 +107,13 @@ export default function MobileMenu({
                   </div>
                   <span className="mobile-menu-username">{displayName}</span>
                 </div>
-                <button className="mobile-menu-signout" onClick={() => { onSignOut(); close(); }}>
+                <button
+                  className="mobile-menu-signout"
+                  onClick={() => {
+                    onSignOut();
+                    close();
+                  }}
+                >
                   Sign Out
                 </button>
               </>

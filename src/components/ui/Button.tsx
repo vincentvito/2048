@@ -28,11 +28,7 @@ export default function Button({
   children,
   ...props
 }: ButtonProps) {
-  const classes = [
-    variantClasses[variant],
-    fullWidth ? "ui-btn-full" : "",
-    className || "",
-  ]
+  const classes = [variantClasses[variant], fullWidth ? "ui-btn-full" : "", className || ""]
     .filter(Boolean)
     .join(" ");
 

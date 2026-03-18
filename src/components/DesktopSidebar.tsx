@@ -49,9 +49,7 @@ export default function DesktopSidebar({
             {user ? (
               <>
                 <div className="sidebar-user">
-                  <div className="sidebar-avatar">
-                    {(displayName?.[0] ?? "P").toUpperCase()}
-                  </div>
+                  <div className="sidebar-avatar">{(displayName?.[0] ?? "P").toUpperCase()}</div>
                   <span className="sidebar-username">{displayName}</span>
                 </div>
                 <button className="sidebar-signout" onClick={onSignOut}>

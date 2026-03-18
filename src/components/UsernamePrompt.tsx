@@ -73,12 +73,24 @@ export default function UsernamePrompt(): React.ReactElement | null {
   if (!show) return null;
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="username-prompt-title">
+    <div
+      className="modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="username-prompt-title"
+    >
       <div className="modal-card" style={{ padding: "24px" }}>
         <h2 id="username-prompt-title" className="modal-result" style={{ marginBottom: "4px" }}>
           Choose a Username
         </h2>
-        <p style={{ color: "var(--text-secondary)", fontSize: "14px", margin: "0 0 16px", lineHeight: 1.5 }}>
+        <p
+          style={{
+            color: "var(--text-secondary)",
+            fontSize: "14px",
+            margin: "0 0 16px",
+            lineHeight: 1.5,
+          }}
+        >
           This is how you&apos;ll appear on the leaderboard and to opponents.
         </p>
 
@@ -95,7 +107,11 @@ export default function UsernamePrompt(): React.ReactElement | null {
           autoComplete="username"
         />
 
-        {error && <p className="modal-error" style={{ marginTop: "8px" }}>{error}</p>}
+        {error && (
+          <p className="modal-error" style={{ marginTop: "8px" }}>
+            {error}
+          </p>
+        )}
 
         <div className="modal-primary-actions" style={{ marginTop: "16px" }}>
           <button

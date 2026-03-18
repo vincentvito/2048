@@ -1,12 +1,12 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
-import PartySocket from 'partysocket';
-import type { GameState } from '../components/Game2048';
-import type { GameServerMessage, GameMode } from '@/lib/party/messages';
+import { useEffect, useState, useCallback, useRef } from "react";
+import PartySocket from "partysocket";
+import type { GameState } from "../components/Game2048";
+import type { GameServerMessage, GameMode } from "@/lib/party/messages";
 
 const GAME_DURATION = 5 * 60;
 const HEARTBEAT_INTERVAL = 5000;
 
-const PARTYKIT_HOST = process.env.NEXT_PUBLIC_PARTYKIT_HOST || 'localhost:1999';
+const PARTYKIT_HOST = process.env.NEXT_PUBLIC_PARTYKIT_HOST || "localhost:1999";
 
 export function usePartyGame(
   roomId: string | null,
@@ -14,7 +14,7 @@ export function usePartyGame(
   userId: string | null,
   myName?: string,
   myElo?: number,
-  gameMode: GameMode = 'ranked',
+  gameMode: GameMode = "ranked",
   botOpponent?: { username: string; elo: number } | null
 ) {
   const [opponentState, setOpponentState] = useState<GameState | null>(null);
@@ -28,12 +28,12 @@ export function usePartyGame(
   const [opponentIsBot, setOpponentIsBot] = useState(false);
   const [localWantsRematch, setLocalWantsRematch] = useState(false);
   const [opponentWantsRematch, setOpponentWantsRematch] = useState(false);
-  const [forfeitWin, setForfeitWin] = useState<'local' | 'opponent' | null>(null);
+  const [forfeitWin, setForfeitWin] = useState<"local" | "opponent" | null>(null);
   const [serverResult, setServerResult] = useState<{
-    outcome: 'win' | 'loss' | 'tie';
+    outcome: "win" | "loss" | "tie";
     yourScore: number;
     opponentScore: number;
-    reason: 'score' | '2048' | 'forfeit' | 'timer' | 'no_moves';
+    reason: "score" | "2048" | "forfeit" | "timer" | "no_moves";
   } | null>(null);
 
   const gameDurationRef = useRef(GAME_DURATION);
@@ -101,7 +101,7 @@ export function usePartyGame(
       socketReadyRef.current = true;
 
       const joinMessage: Record<string, unknown> = {
-        type: 'join',
+        type: "join",
         userId,
         username: myName,
         elo: myElo || 1200,
@@ -116,21 +116,23 @@ export function usePartyGame(
 
       // Send any pending state (legacy path for backward compat)
       if (pendingStateRef.current) {
-        socket.send(JSON.stringify({
-          type: 'state_update',
-          state: {
-            grid: pendingStateRef.current.grid,
-            score: pendingStateRef.current.score,
-            gameOver: pendingStateRef.current.gameOver,
-            won: pendingStateRef.current.won,
-          },
-        }));
+        socket.send(
+          JSON.stringify({
+            type: "state_update",
+            state: {
+              grid: pendingStateRef.current.grid,
+              score: pendingStateRef.current.score,
+              gameOver: pendingStateRef.current.gameOver,
+              won: pendingStateRef.current.won,
+            },
+          })
+        );
         pendingStateRef.current = null;
       }
 
       heartbeatIntervalRef.current = setInterval(() => {
         if (socket.readyState === WebSocket.OPEN) {
-          socket.send(JSON.stringify({ type: 'heartbeat' }));
+          socket.send(JSON.stringify({ type: "heartbeat" }));
         }
       }, HEARTBEAT_INTERVAL);
     };
@@ -140,7 +142,7 @@ export function usePartyGame(
         const message: GameServerMessage = JSON.parse(event.data);
 
         switch (message.type) {
-          case 'player_joined':
+          case "player_joined":
             if (message.playerId !== userId) {
               setOpponentName(message.username);
               setOpponentElo(message.elo);
@@ -150,14 +152,14 @@ export function usePartyGame(
             }
             break;
 
-          case 'player_left':
+          case "player_left":
             if (message.playerId !== userId) {
               setOpponentConnected(false);
             }
             break;
 
-          case 'game_start': {
-            const opp = message.players.find(p => p.id !== userId);
+          case "game_start": {
+            const opp = message.players.find((p) => p.id !== userId);
             if (opp) {
               setOpponentName(opp.username);
               setOpponentElo(opp.elo);
@@ -176,7 +178,7 @@ export function usePartyGame(
             break;
           }
 
-          case 'your_initial_state':
+          case "your_initial_state":
             // Server-generated initial board
             setInitialServerState({
               grid: message.state.grid || Array(16).fill(0),
@@ -186,7 +188,7 @@ export function usePartyGame(
             });
             break;
 
-          case 'your_game_state':
+          case "your_game_state":
             // Server-authoritative state after a move
             setServerGameState({
               grid: message.state.grid || Array(16).fill(0),
@@ -196,7 +198,7 @@ export function usePartyGame(
             });
             break;
 
-          case 'opponent_state':
+          case "opponent_state":
             setOpponentName(message.username);
             setOpponentElo(message.elo);
             if (message.isBot !== undefined) {
@@ -212,7 +214,7 @@ export function usePartyGame(
             });
             break;
 
-          case 'your_state':
+          case "your_state":
             setRestoredLocalState({
               grid: message.state.grid || Array(16).fill(0),
               score: message.state.score,
@@ -221,18 +223,18 @@ export function usePartyGame(
             });
             break;
 
-          case 'opponent_connected':
+          case "opponent_connected":
             setOpponentConnected(message.connected);
             if (message.connected) {
               setOpponentEverConnected(true);
             }
             break;
 
-          case 'rematch_requested':
+          case "rematch_requested":
             setOpponentWantsRematch(true);
             break;
 
-          case 'rematch_start':
+          case "rematch_start":
             setRematchStarted(true);
             setLocalWantsRematch(false);
             setOpponentWantsRematch(false);
@@ -243,11 +245,11 @@ export function usePartyGame(
             setInitialServerState(null);
             break;
 
-          case 'opponent_forfeited':
-            setForfeitWin('local');
+          case "opponent_forfeited":
+            setForfeitWin("local");
             break;
 
-          case 'game_result':
+          case "game_result":
             setServerResult({
               outcome: message.outcome,
               yourScore: message.yourScore,
@@ -256,12 +258,12 @@ export function usePartyGame(
             });
             break;
 
-          case 'error':
-            console.error('[usePartyGame] Error:', message.message);
+          case "error":
+            console.error("[usePartyGame] Error:", message.message);
             break;
         }
       } catch (e) {
-        console.error('[usePartyGame] Parse error:', e);
+        console.error("[usePartyGame] Parse error:", e);
       }
     };
 
@@ -270,7 +272,7 @@ export function usePartyGame(
     };
 
     socket.onerror = (e) => {
-      console.error('[usePartyGame] Socket error:', e);
+      console.error("[usePartyGame] Socket error:", e);
     };
 
     return () => {
@@ -288,7 +290,7 @@ export function usePartyGame(
     if (!gameStarted || timerIntervalRef.current) return;
 
     timerIntervalRef.current = setInterval(() => {
-      setTimeLeft(prev => {
+      setTimeLeft((prev) => {
         if (prev <= 1) {
           clearTimer();
           return 0;
@@ -305,7 +307,7 @@ export function usePartyGame(
     if (timeLeft === 0 && gameStarted && !timerExpiredSentRef.current) {
       timerExpiredSentRef.current = true;
       if (socketRef.current?.readyState === WebSocket.OPEN) {
-        socketRef.current.send(JSON.stringify({ type: 'timer_expired' }));
+        socketRef.current.send(JSON.stringify({ type: "timer_expired" }));
       }
     }
   }, [timeLeft, gameStarted]);
@@ -313,7 +315,7 @@ export function usePartyGame(
   /** Send a move direction to the server (server-authoritative path). */
   const sendMove = useCallback((direction: number) => {
     if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) return;
-    socketRef.current.send(JSON.stringify({ type: 'move', direction }));
+    socketRef.current.send(JSON.stringify({ type: "move", direction }));
   }, []);
 
   /** Send full game state (legacy path — kept for backward compat). */
@@ -323,21 +325,23 @@ export function usePartyGame(
       return;
     }
 
-    socketRef.current.send(JSON.stringify({
-      type: 'state_update',
-      state: {
-        grid: state.grid,
-        score: state.score,
-        gameOver: state.gameOver,
-        won: state.won,
-      },
-    }));
+    socketRef.current.send(
+      JSON.stringify({
+        type: "state_update",
+        state: {
+          grid: state.grid,
+          score: state.score,
+          gameOver: state.gameOver,
+          won: state.won,
+        },
+      })
+    );
   }, []);
 
   const requestRematch = useCallback(() => {
     if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) return;
     setLocalWantsRematch(true);
-    socketRef.current.send(JSON.stringify({ type: 'request_rematch' }));
+    socketRef.current.send(JSON.stringify({ type: "request_rematch" }));
   }, []);
 
   const resetRematchState = useCallback(() => {
@@ -356,7 +360,7 @@ export function usePartyGame(
   const declareForfeit = useCallback(() => {
     if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) return;
     clearTimer();
-    socketRef.current.send(JSON.stringify({ type: 'forfeit' }));
+    socketRef.current.send(JSON.stringify({ type: "forfeit" }));
   }, [clearTimer]);
 
   const rematchReady = localWantsRematch && opponentWantsRematch;

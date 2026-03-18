@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase-admin';
-import { getAuthenticatedUser } from '@/lib/api-auth';
+import { NextRequest, NextResponse } from "next/server";
+import { createAdminClient } from "@/lib/supabase-admin";
+import { getAuthenticatedUser } from "@/lib/api-auth";
 
 const DEFAULT_ELO = 1200;
 
@@ -8,28 +8,28 @@ const DEFAULT_ELO = 1200;
 export async function GET() {
   const user = await getAuthenticatedUser();
   if (!user) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
   try {
     const supabase = createAdminClient();
     if (!supabase) {
-      return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
+      return NextResponse.json({ error: "Database not configured" }, { status: 500 });
     }
 
     const { data, error } = await supabase
-      .from('player_stats')
-      .select('*')
-      .eq('user_id', user.id)
+      .from("player_stats")
+      .select("*")
+      .eq("user_id", user.id)
       .single();
 
-    if (error && error.code !== 'PGRST116') {
-      return NextResponse.json({ error: 'Failed to fetch stats' }, { status: 500 });
+    if (error && error.code !== "PGRST116") {
+      return NextResponse.json({ error: "Failed to fetch stats" }, { status: 500 });
     }
 
     return NextResponse.json({ data: data || null });
   } catch {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
@@ -37,48 +37,47 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const user = await getAuthenticatedUser();
   if (!user) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
   try {
     const body = await req.json();
-    const username = typeof body.username === 'string' ? body.username.trim() : user.username || user.email;
+    const username =
+      typeof body.username === "string" ? body.username.trim() : user.username || user.email;
 
     const supabase = createAdminClient();
     if (!supabase) {
-      return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
+      return NextResponse.json({ error: "Database not configured" }, { status: 500 });
     }
 
-    await supabase
-      .from('player_stats')
-      .upsert(
-        {
-          user_id: user.id,
-          username,
-          elo: DEFAULT_ELO,
-          best_score: 0,
-          total_points: 0,
-          games_played: 0,
-          wins: 0,
-          losses: 0,
-          ties: 0,
-        },
-        { onConflict: 'user_id', ignoreDuplicates: true }
-      );
+    await supabase.from("player_stats").upsert(
+      {
+        user_id: user.id,
+        username,
+        elo: DEFAULT_ELO,
+        best_score: 0,
+        total_points: 0,
+        games_played: 0,
+        wins: 0,
+        losses: 0,
+        ties: 0,
+      },
+      { onConflict: "user_id", ignoreDuplicates: true }
+    );
 
     const { data, error } = await supabase
-      .from('player_stats')
-      .select('*')
-      .eq('user_id', user.id)
+      .from("player_stats")
+      .select("*")
+      .eq("user_id", user.id)
       .single();
 
     if (error) {
-      return NextResponse.json({ error: 'Failed to create stats' }, { status: 500 });
+      return NextResponse.json({ error: "Failed to create stats" }, { status: 500 });
     }
 
     return NextResponse.json({ data });
   } catch {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
@@ -86,30 +85,35 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const user = await getAuthenticatedUser();
   if (!user) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
   try {
     const body = await req.json();
     const { won, tied, score, newElo } = body;
 
-    if (typeof won !== 'boolean' || typeof tied !== 'boolean' || typeof score !== 'number' || typeof newElo !== 'number') {
-      return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 });
+    if (
+      typeof won !== "boolean" ||
+      typeof tied !== "boolean" ||
+      typeof score !== "number" ||
+      typeof newElo !== "number"
+    ) {
+      return NextResponse.json({ error: "Invalid parameters" }, { status: 400 });
     }
 
     const supabase = createAdminClient();
     if (!supabase) {
-      return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
+      return NextResponse.json({ error: "Database not configured" }, { status: 500 });
     }
 
     const { data: current, error: fetchError } = await supabase
-      .from('player_stats')
-      .select('*')
-      .eq('user_id', user.id)
+      .from("player_stats")
+      .select("*")
+      .eq("user_id", user.id)
       .single();
 
     if (fetchError || !current) {
-      return NextResponse.json({ error: 'No stats found for user' }, { status: 404 });
+      return NextResponse.json({ error: "No stats found for user" }, { status: 404 });
     }
 
     const updates: Record<string, number> = {
@@ -128,18 +132,18 @@ export async function PATCH(req: NextRequest) {
     }
 
     const { data, error } = await supabase
-      .from('player_stats')
+      .from("player_stats")
       .update(updates)
-      .eq('user_id', user.id)
-      .select('*')
+      .eq("user_id", user.id)
+      .select("*")
       .single();
 
     if (error) {
-      return NextResponse.json({ error: 'Failed to update stats' }, { status: 500 });
+      return NextResponse.json({ error: "Failed to update stats" }, { status: 500 });
     }
 
     return NextResponse.json({ data });
   } catch {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

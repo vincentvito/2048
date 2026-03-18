@@ -35,9 +35,5 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("2048_theme", newTheme);
   }, []);
 
-  return (
-    <ThemeContext.Provider value={{ theme, setTheme }}>
-      {children}
-    </ThemeContext.Provider>
-  );
+  return <ThemeContext.Provider value={{ theme, setTheme }}>{children}</ThemeContext.Provider>;
 }

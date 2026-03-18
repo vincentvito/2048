@@ -4,9 +4,19 @@ import { createAdminClient } from "@/lib/supabase-admin";
 import { Pool } from "pg";
 
 const RESERVED_NAMES = new Set([
-  "admin", "system", "bot", "moderator", "mod",
-  "null", "undefined", "anonymous", "guest",
-  "support", "help", "staff", "official",
+  "admin",
+  "system",
+  "bot",
+  "moderator",
+  "mod",
+  "null",
+  "undefined",
+  "anonymous",
+  "guest",
+  "support",
+  "help",
+  "staff",
+  "official",
 ]);
 
 let pool: Pool | null = null;
@@ -33,13 +43,22 @@ export async function POST(req: NextRequest) {
 
     const trimmed = username.trim();
     if (trimmed.length < 2) {
-      return NextResponse.json({ error: "Username must be at least 2 characters" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Username must be at least 2 characters" },
+        { status: 400 }
+      );
     }
     if (trimmed.length > 20) {
-      return NextResponse.json({ error: "Username must be 20 characters or less" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Username must be 20 characters or less" },
+        { status: 400 }
+      );
     }
     if (!/^[a-zA-Z0-9_-]+$/.test(trimmed)) {
-      return NextResponse.json({ error: "Only letters, numbers, _ and - allowed" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Only letters, numbers, _ and - allowed" },
+        { status: 400 }
+      );
     }
     if (RESERVED_NAMES.has(trimmed.toLowerCase())) {
       return NextResponse.json({ error: "This username is reserved" }, { status: 400 });
@@ -56,18 +75,21 @@ export async function POST(req: NextRequest) {
     }
 
     // Update user table
-    await db.query(
-      'UPDATE "user" SET username = $1, "updatedAt" = NOW() WHERE id = $2',
-      [trimmed, user.id]
-    );
+    await db.query('UPDATE "user" SET username = $1, "updatedAt" = NOW() WHERE id = $2', [
+      trimmed,
+      user.id,
+    ]);
 
     // Sync to profiles table for leaderboard
     const supabase = createAdminClient();
     if (supabase) {
-      await supabase.from("profiles").upsert({
-        id: user.id,
-        username: trimmed,
-      }, { onConflict: "id" });
+      await supabase.from("profiles").upsert(
+        {
+          id: user.id,
+          username: trimmed,
+        },
+        { onConflict: "id" }
+      );
     }
 
     return NextResponse.json({ success: true, username: trimmed });

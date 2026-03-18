@@ -69,12 +69,12 @@ export default function GameOverModal({
         if (rank <= 20) {
           setLeaderboardRank(rank);
           const others = [...leaderboardScores]
-            .filter(s => !currentUsername || s.username !== currentUsername)
+            .filter((s) => !currentUsername || s.username !== currentUsername)
             .sort((a, b) => b.score - a.score);
-          const aboveEntries = others.filter(s => s.score > score);
+          const aboveEntries = others.filter((s) => s.score > score);
           setRankContext({
             above: aboveEntries.length > 0 ? aboveEntries[aboveEntries.length - 1] : null,
-            below: others.find(s => s.score <= score) || null,
+            below: others.find((s) => s.score <= score) || null,
           });
         } else {
           setLeaderboardRank(null);
@@ -102,7 +102,7 @@ export default function GameOverModal({
       try {
         const response = await fetch(boardScreenshot);
         const blob = await response.blob();
-        return new File([blob], '2048-board.png', { type: 'image/png' });
+        return new File([blob], "2048-board.png", { type: "image/png" });
       } catch {
         return null;
       }
@@ -146,10 +146,14 @@ export default function GameOverModal({
       describedBy="game-result-score"
     >
       <div className={`modal-result-banner ${won ? "modal-result-win" : "modal-result-lose"}`}>
-        <h2 id="game-result-title" className="modal-result">{won ? "You Win!" : "Game Over"}</h2>
+        <h2 id="game-result-title" className="modal-result">
+          {won ? "You Win!" : "Game Over"}
+        </h2>
       </div>
 
-      <div id="game-result-score" className="modal-score">{score.toLocaleString()}</div>
+      <div id="game-result-score" className="modal-score">
+        {score.toLocaleString()}
+      </div>
 
       <div className="modal-meta">
         <span className="modal-badge">
@@ -171,14 +175,24 @@ export default function GameOverModal({
           <div className="modal-rank-header">
             <span className="modal-rank-icon">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M8 1L10.09 5.26L14.75 5.94L11.375 9.23L12.18 13.87L8 11.67L3.82 13.87L4.625 9.23L1.25 5.94L5.91 5.26L8 1Z" fill="currentColor" />
+                <path
+                  d="M8 1L10.09 5.26L14.75 5.94L11.375 9.23L12.18 13.87L8 11.67L3.82 13.87L4.625 9.23L1.25 5.94L5.91 5.26L8 1Z"
+                  fill="currentColor"
+                />
               </svg>
             </span>
             <span className="modal-rank-text">
               {isSignedIn ? (
-                <><strong>{ordinal(leaderboardRank)}</strong>{" on today's board!"}</>
+                <>
+                  <strong>{ordinal(leaderboardRank)}</strong>
+                  {" on today's board!"}
+                </>
               ) : (
-                <>{"You'd be "}<strong>{ordinal(leaderboardRank)}</strong>{" on today's board!"}</>
+                <>
+                  {"You'd be "}
+                  <strong>{ordinal(leaderboardRank)}</strong>
+                  {" on today's board!"}
+                </>
               )}
             </span>
           </div>
@@ -188,7 +202,9 @@ export default function GameOverModal({
                 <div className="modal-rank-row modal-rank-row-other">
                   <span className="modal-rank-pos">{ordinal(leaderboardRank - 1)}</span>
                   <span className="modal-rank-name">{rankContext.above.username}</span>
-                  <span className="modal-rank-score">{rankContext.above.score.toLocaleString()}</span>
+                  <span className="modal-rank-score">
+                    {rankContext.above.score.toLocaleString()}
+                  </span>
                 </div>
               )}
               <div className="modal-rank-row modal-rank-row-you">
@@ -200,7 +216,9 @@ export default function GameOverModal({
                 <div className="modal-rank-row modal-rank-row-other">
                   <span className="modal-rank-pos">{ordinal(leaderboardRank + 1)}</span>
                   <span className="modal-rank-name">{rankContext.below.username}</span>
-                  <span className="modal-rank-score">{rankContext.below.score.toLocaleString()}</span>
+                  <span className="modal-rank-score">
+                    {rankContext.below.score.toLocaleString()}
+                  </span>
                 </div>
               )}
             </div>
@@ -221,17 +239,26 @@ export default function GameOverModal({
 
       <button
         type="button"
-        className={`modal-btn-share${shareCopied ? ' modal-btn-share-copied' : ''}`}
+        className={`modal-btn-share${shareCopied ? " modal-btn-share-copied" : ""}`}
         onClick={handleShare}
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="18" cy="5" r="3"/>
-          <circle cx="6" cy="12" r="3"/>
-          <circle cx="18" cy="19" r="3"/>
-          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
-          <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="18" cy="5" r="3" />
+          <circle cx="6" cy="12" r="3" />
+          <circle cx="18" cy="19" r="3" />
+          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+          <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
         </svg>
-        {shareCopied ? 'Copied!' : 'Share'}
+        {shareCopied ? "Copied!" : "Share"}
       </button>
 
       {configured && !isSignedIn && !showEmail && (
@@ -243,7 +270,13 @@ export default function GameOverModal({
             onClick={() => setShowEmail(true)}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="modal-btn-icon">
-              <path d="M4 12V10M8 12V8M12 12V6M2 4L8 2L14 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path
+                d="M4 12V10M8 12V8M12 12V6M2 4L8 2L14 4"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
             Sign in with email
           </button>

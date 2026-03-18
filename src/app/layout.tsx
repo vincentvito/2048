@@ -31,8 +31,7 @@ export const metadata: Metadata = {
   authors: [{ name: "The 2048 League" }],
   openGraph: {
     title: "The 2048 League",
-    description:
-      "Play 2048 — slide tiles, hit 2048, and compete on leaderboards.",
+    description: "Play 2048 — slide tiles, hit 2048, and compete on leaderboards.",
     url: "https://www.the2048league.com",
     siteName: "The 2048 League",
     images: [{ url: "/brand.png", width: 1024, height: 512 }],
@@ -41,8 +40,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "The 2048 League",
-    description:
-      "Play 2048 — slide tiles, hit 2048, and compete on leaderboards.",
+    description: "Play 2048 — slide tiles, hit 2048, and compete on leaderboards.",
     images: ["/brand.png"],
   },
   appleWebApp: {
@@ -74,9 +72,7 @@ export default function RootLayout({
     <html lang="en" className={`${fredoka.variable} ${nunito.variable}`}>
       <body>
         <ThemeProvider>
-          <ParticleProvider>
-            {children}
-          </ParticleProvider>
+          <ParticleProvider>{children}</ParticleProvider>
           <div className="landscape-blocker">
             <span className="landscape-blocker-icon">📱</span>
             <p className="landscape-blocker-text">Please rotate your device to portrait mode</p>

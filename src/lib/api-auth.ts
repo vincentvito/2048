@@ -24,7 +24,7 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
     return {
       id: session.user.id,
       email: session.user.email,
-      username: (session.user as Record<string, unknown>).username as string | null ?? null,
+      username: ((session.user as Record<string, unknown>).username as string | null) ?? null,
     };
   } catch {
     return null;

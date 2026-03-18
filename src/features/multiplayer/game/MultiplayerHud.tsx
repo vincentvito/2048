@@ -1,12 +1,12 @@
 "use client";
 
-import React from 'react';
+import React from "react";
 
 /** Format seconds into MM:SS display */
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
 interface MultiplayerHudProps {
@@ -35,21 +35,23 @@ export default function MultiplayerHud({
   const timerWarning = timeLeft < 30;
   const timerCritical = timeLeft < 10;
   const hudTimerClass = [
-    'mp-hud-timer-display',
-    timerWarning ? 'warning' : '',
-    timerCritical ? 'critical' : '',
-  ].filter(Boolean).join(' ');
+    "mp-hud-timer-display",
+    timerWarning ? "warning" : "",
+    timerCritical ? "critical" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   const connectionStatusClass = opponentConnected
-    ? 'connected'
+    ? "connected"
     : opponentEverConnected
-      ? 'disconnected'
-      : 'connecting';
+      ? "disconnected"
+      : "connecting";
   const connectionLabel = opponentConnected
-    ? 'Connected'
+    ? "Connected"
     : opponentEverConnected
-      ? 'Disconnected'
-      : 'Connecting...';
+      ? "Disconnected"
+      : "Connecting...";
 
   return (
     <>
@@ -74,11 +76,21 @@ export default function MultiplayerHud({
 
         {/* Opponent */}
         <div className="mp-hud-opponent">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'flex-end', width: '100%' }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              justifyContent: "flex-end",
+              width: "100%",
+            }}
+          >
             <span className={`mp-hud-status ${connectionStatusClass}`} title={connectionLabel}>
               <span className="blob" />
             </span>
-            <span className="mp-hud-name" style={{ maxWidth: 'none', flexShrink: 1 }}>{opponentName}</span>
+            <span className="mp-hud-name" style={{ maxWidth: "none", flexShrink: 1 }}>
+              {opponentName}
+            </span>
           </div>
           <span className="mp-hud-score">{opponentScore.toLocaleString()}</span>
         </div>

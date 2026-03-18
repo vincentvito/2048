@@ -32,9 +32,8 @@ export const auth = betterAuth({
         const { error } = await resend.emails.send({
           from: "2048 <noreply@auth.the2048league.com>",
           to: email,
-          subject: type === "sign-in"
-            ? `Your 2048 login code: ${otp}`
-            : `Your verification code: ${otp}`,
+          subject:
+            type === "sign-in" ? `Your 2048 login code: ${otp}` : `Your verification code: ${otp}`,
           html: `
             <h2>Your verification code</h2>
             <p style="font-size: 32px; font-weight: bold; letter-spacing: 4px;">${otp}</p>

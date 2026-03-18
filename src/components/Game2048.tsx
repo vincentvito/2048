@@ -1,6 +1,13 @@
 "use client";
 
-import React, { useRef, useEffect, useCallback, useState, forwardRef, useImperativeHandle } from "react";
+import React, {
+  useRef,
+  useEffect,
+  useCallback,
+  useState,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
 import { ThemeColors, themes } from "@/lib/themes";
 
 const GAP = 12;
@@ -65,7 +72,25 @@ interface Game2048Props {
   miniMode?: boolean;
 }
 
-const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ onGameOver, onGameWon, onResetReady, readOnlyState, onStateChange, onMove, disableInputs, onDevEndGameReady, onDevTriggerWinReady, hideScore, initialSize = 4, themeName = "classic", miniMode = false, disableSave = false }, ref) {
+const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
+  {
+    onGameOver,
+    onGameWon,
+    onResetReady,
+    readOnlyState,
+    onStateChange,
+    onMove,
+    disableInputs,
+    onDevEndGameReady,
+    onDevTriggerWinReady,
+    hideScore,
+    initialSize = 4,
+    themeName = "classic",
+    miniMode = false,
+    disableSave = false,
+  },
+  ref
+) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const scoreElRef = useRef<HTMLElement>(null);
@@ -79,15 +104,19 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
   const getSizeFnRef = useRef<() => number>(() => 4);
   const rerenderFnRef = useRef<() => void>(() => {});
 
-  useImperativeHandle(ref, () => ({
-    init: () => initFnRef.current(),
-    updateState: (state: GameState) => updateStateFnRef.current(state),
-    keepPlaying: () => keepPlayingFnRef.current(),
-    toggleSize: (newSize: number) => toggleSizeFnRef.current(newSize),
-    getSize: () => getSizeFnRef.current(),
-    rerender: () => rerenderFnRef.current(),
-    getCanvasDataURL: () => canvasRef.current?.toDataURL("image/png") ?? null,
-  }), []);
+  useImperativeHandle(
+    ref,
+    () => ({
+      init: () => initFnRef.current(),
+      updateState: (state: GameState) => updateStateFnRef.current(state),
+      keepPlaying: () => keepPlayingFnRef.current(),
+      toggleSize: (newSize: number) => toggleSizeFnRef.current(newSize),
+      getSize: () => getSizeFnRef.current(),
+      rerender: () => rerenderFnRef.current(),
+      getCanvasDataURL: () => canvasRef.current?.toDataURL("image/png") ?? null,
+    }),
+    []
+  );
   const announcementRef = useRef<HTMLDivElement>(null);
   const onGameOverRef = useRef(onGameOver);
   const onGameWonRef = useRef(onGameWon);
@@ -101,7 +130,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
   const disableSaveRef = useRef(disableSave);
   const [displaySize, setDisplaySize] = useState(4);
   const [canvasReady, setCanvasReady] = useState(false);
-  const themeRef = useRef<ThemeColors>(themes[(themeName as keyof typeof themes)] || themes.classic);
+  const themeRef = useRef<ThemeColors>(themes[themeName as keyof typeof themes] || themes.classic);
 
   // Sync callback refs during render (React-recommended pattern — no effects needed)
   onGameOverRef.current = onGameOver;
@@ -116,7 +145,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
 
   // Update theme ref and re-render canvas when theme changes
   useEffect(() => {
-    themeRef.current = themes[(themeName as keyof typeof themes)] || themes.classic;
+    themeRef.current = themes[themeName as keyof typeof themes] || themes.classic;
     rerenderFnRef.current();
   }, [themeName]);
 
@@ -143,7 +172,11 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
     let grid = new Uint16Array(16);
     let score = 0;
     let best = (() => {
-      try { return Number(localStorage.getItem("2048_best_overall")) || 0; } catch { return 0; }
+      try {
+        return Number(localStorage.getItem("2048_best_overall")) || 0;
+      } catch {
+        return 0;
+      }
     })();
     let gameOver = false;
     let won = false;
@@ -212,7 +245,11 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
       if (scoreEl) scoreEl.textContent = String(score);
       if (score > best) {
         best = score;
-        try { localStorage.setItem("2048_best_overall", String(best)); } catch { /* noop */ }
+        try {
+          localStorage.setItem("2048_best_overall", String(best));
+        } catch {
+          /* noop */
+        }
       }
       if (bestEl) bestEl.textContent = String(best);
     }
@@ -230,10 +267,19 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
     function saveState() {
       if (disableSaveRef.current) return; // Skip save in multiplayer mode
       try {
-        localStorage.setItem(SAVE_KEY + SIZE, JSON.stringify({
-          grid: Array.from(grid), score, gameOver, won, keepPlaying,
-        }));
-      } catch { /* noop */ }
+        localStorage.setItem(
+          SAVE_KEY + SIZE,
+          JSON.stringify({
+            grid: Array.from(grid),
+            score,
+            gameOver,
+            won,
+            keepPlaying,
+          })
+        );
+      } catch {
+        /* noop */
+      }
     }
 
     function restoreState(): boolean {
@@ -252,8 +298,13 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
         for (let i = 0; i < grid.length; i++) {
           if (grid[i] !== 0) {
             tiles.push({
-              value: grid[i], r: (i / SIZE) | 0, c: i % SIZE,
-              fromR: (i / SIZE) | 0, fromC: i % SIZE, scale: 1, merged: false,
+              value: grid[i],
+              r: (i / SIZE) | 0,
+              c: i % SIZE,
+              fromR: (i / SIZE) | 0,
+              fromC: i % SIZE,
+              scale: 1,
+              merged: false,
             });
           }
         }
@@ -261,7 +312,9 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
         render();
         onStateChangeRef.current?.({ grid: Array.from(grid), score, gameOver, won });
         return true;
-      } catch { return false; }
+      } catch {
+        return false;
+      }
     }
 
     function renderPopups() {
@@ -271,7 +324,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
       // popup launches fast and decelerates to a stop — feels snappy, not floaty.
       const POPUP_TOTAL = 800;
       const POPUP_FADE_START = 600; // ms before fade begins
-      const POPUP_TRAVEL = 44;     // total pixels to float upward
+      const POPUP_TRAVEL = 44; // total pixels to float upward
 
       for (let i = scorePopups.length - 1; i >= 0; i--) {
         const p = scorePopups[i];
@@ -405,9 +458,21 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
 
         ctx.fillStyle = colors[1];
         const digits = String(tile.value).length;
-        const fontSize = Math.max(10, Math.floor(
-          CELL * (digits <= 1 ? 0.42 : digits === 2 ? 0.36 : digits === 3 ? 0.28 : digits === 4 ? 0.22 : 0.18)
-        ));
+        const fontSize = Math.max(
+          10,
+          Math.floor(
+            CELL *
+              (digits <= 1
+                ? 0.42
+                : digits === 2
+                  ? 0.36
+                  : digits === 3
+                    ? 0.28
+                    : digits === 4
+                      ? 0.22
+                      : 0.18)
+          )
+        );
         ctx.font = `bold ${fontSize}px system-ui`;
         ctx.fillText(String(tile.value), 0, 2);
 
@@ -468,12 +533,32 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
 
       tiles.length = 0;
       let moved = false;
-      let dr = 0, dc = 0, rStart = 0, rEnd = SIZE, rStep = 1, cStart = 0, cEnd = SIZE, cStep = 1;
+      let dr = 0,
+        dc = 0,
+        rStart = 0,
+        rEnd = SIZE,
+        rStep = 1,
+        cStart = 0,
+        cEnd = SIZE,
+        cStep = 1;
 
-      if (dir === 0) { dc = -1; cStart = 1; }
-      else if (dir === 1) { dc = 1; cStart = SIZE - 2; cEnd = -1; cStep = -1; }
-      else if (dir === 2) { dr = -1; rStart = 1; }
-      else { dr = 1; rStart = SIZE - 2; rEnd = -1; rStep = -1; }
+      if (dir === 0) {
+        dc = -1;
+        cStart = 1;
+      } else if (dir === 1) {
+        dc = 1;
+        cStart = SIZE - 2;
+        cEnd = -1;
+        cStep = -1;
+      } else if (dir === 2) {
+        dr = -1;
+        rStart = 1;
+      } else {
+        dr = 1;
+        rStart = SIZE - 2;
+        rEnd = -1;
+        rStep = -1;
+      }
 
       const merged = new Uint8Array(SIZE * SIZE);
 
@@ -482,9 +567,11 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
           const i = idx(r, c);
           if (grid[i] === 0) continue;
 
-          let nr = r, nc = c;
+          let nr = r,
+            nc = c;
           while (true) {
-            const nextR = nr + dr, nextC = nc + dc;
+            const nextR = nr + dr,
+              nextC = nc + dc;
             if (nextR < 0 || nextR >= SIZE || nextC < 0 || nextC >= SIZE) break;
             const nextI = idx(nextR, nextC);
             if (grid[nextI] === 0) {
@@ -508,7 +595,15 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
                 won = true;
                 onGameWonRef.current?.(score, SIZE);
               }
-              tiles.push({ value: grid[ni], r: nr, c: nc, fromR: r, fromC: c, scale: 1, merged: true });
+              tiles.push({
+                value: grid[ni],
+                r: nr,
+                c: nc,
+                fromR: r,
+                fromC: c,
+                scale: 1,
+                merged: true,
+              });
               // Add floating score popup at the merge destination
               scorePopups.push({
                 value: grid[ni],
@@ -520,7 +615,15 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
               });
             } else {
               grid[ni] = grid[i];
-              tiles.push({ value: grid[i], r: nr, c: nc, fromR: r, fromC: c, scale: 1, merged: false });
+              tiles.push({
+                value: grid[i],
+                r: nr,
+                c: nc,
+                fromR: r,
+                fromC: c,
+                scale: 1,
+                merged: false,
+              });
             }
             grid[i] = 0;
           } else {
@@ -568,7 +671,10 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
       keepPlaying = false;
       addTile();
       addTile();
-      if (SIZE === 8) { addTile(); addTile(); }
+      if (SIZE === 8) {
+        addTile();
+        addTile();
+      }
       updateScore();
       render();
       onStateChangeRef.current?.({ grid: Array.from(grid), score, gameOver, won });
@@ -650,7 +756,8 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
     };
     updateStateFnRef.current = updateStateImpl;
     // Legacy DOM-private method (kept during migration)
-    (container as unknown as Record<string, (state: GameState) => void>)._updateState = updateStateImpl;
+    (container as unknown as Record<string, (state: GameState) => void>)._updateState =
+      updateStateImpl;
 
     // Expose closure functions via refs for useImperativeHandle
     rerenderFnRef.current = () => render(1);
@@ -671,7 +778,8 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
     (container as unknown as Record<string, () => void>)._rerender = rerenderFnRef.current;
     (container as unknown as Record<string, () => void>)._init = init;
     (container as unknown as Record<string, () => void>)._keepPlaying = keepPlayingFnRef.current;
-    (container as unknown as Record<string, (s: number) => void>)._toggleSize = toggleSizeFnRef.current;
+    (container as unknown as Record<string, (s: number) => void>)._toggleSize =
+      toggleSizeFnRef.current;
     (container as unknown as Record<string, () => number>)._getSize = getSizeFnRef.current;
 
     const keys = new Set<string>();
@@ -888,10 +996,22 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
     function devAlmostGameOver() {
       // Checkerboard pattern of non-adjacent values - no merges possible
       const pattern = [
-        2, 4, 2, 4,
-        8, 16, 8, 16,
-        2, 4, 2, 4,
-        8, 16, 8, 0,  // Last cell empty
+        2,
+        4,
+        2,
+        4,
+        8,
+        16,
+        8,
+        16,
+        2,
+        4,
+        2,
+        4,
+        8,
+        16,
+        8,
+        0, // Last cell empty
       ];
       tiles.length = 0;
       gameOver = false;
@@ -960,7 +1080,9 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("keyup", onKeyUp);
       if (!initialReadOnlyRef.current) {
-        document.removeEventListener("touchmove", preventScrollOnBoard, { passive: false } as EventListenerOptions);
+        document.removeEventListener("touchmove", preventScrollOnBoard, {
+          passive: false,
+        } as EventListenerOptions);
       }
       container.removeEventListener("touchstart", onTouchStart);
       container.removeEventListener("touchend", onTouchEnd);
@@ -989,7 +1111,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
   }, []);
 
   return (
-    <div className={`board-section${miniMode ? ' board-section-mini' : ''}`}>
+    <div className={`board-section${miniMode ? " board-section-mini" : ""}`}>
       {/* Scores */}
       {!hideScore && (
         <div className="score-row">
@@ -1007,7 +1129,12 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
       {/* Game board */}
       <div ref={containerRef} className="game-container">
         {!canvasReady && <div className="game-skeleton" />}
-        <canvas ref={canvasRef} className={`game-canvas${canvasReady ? '' : ' game-canvas-hidden'}`} role="grid" aria-label="2048 game board" />
+        <canvas
+          ref={canvasRef}
+          className={`game-canvas${canvasReady ? "" : " game-canvas-hidden"}`}
+          role="grid"
+          aria-label="2048 game board"
+        />
         <div
           ref={announcementRef}
           aria-live="polite"
@@ -1025,17 +1152,19 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
           }}
         />
         <div className="overlay win">
-          <h2>{readOnlyState ? 'Reached 2048!' : 'You Win!'}</h2>
+          <h2>{readOnlyState ? "Reached 2048!" : "You Win!"}</h2>
           {/* Hide buttons in multiplayer mode — result modal handles actions */}
           {!onStateChange && !readOnlyState && (
             <div className="overlay-buttons">
               <button onClick={handleKeepPlaying}>Keep Playing</button>
-              <button onClick={handleInit} className="secondary">New Game</button>
+              <button onClick={handleInit} className="secondary">
+                New Game
+              </button>
             </div>
           )}
         </div>
         <div className="overlay lose">
-          <h2>{readOnlyState ? 'Ran out of moves' : 'Game Over!'}</h2>
+          <h2>{readOnlyState ? "Ran out of moves" : "Game Over!"}</h2>
           {/* Hide button in multiplayer mode — result modal handles actions */}
           {!onStateChange && !readOnlyState && <button onClick={handleInit}>Try Again</button>}
         </div>

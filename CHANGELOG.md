@@ -100,9 +100,17 @@
 - Added `supabase` CLI as a dev dependency for local database management
 - Added dev-only "DEV: Win Setup" button — places two 1024 tiles for easy win-flow testing
 
+### Code Quality
+- Added Prettier for consistent code formatting — double quotes, 2-space indent, 100 char width, trailing commas, LF endings
+- Added `eslint-config-prettier` to prevent ESLint/Prettier rule conflicts
+- Added `.editorconfig` for consistent editor settings across the team
+- Added `npm run format` and `npm run format:check` scripts
+- Formatted all 48 source files
+
 ### Dependencies
 - Added `sonner` for toast notifications — error toasts shown on leaderboard fetch failures and timeouts
 - Added `web-haptics` for haptic feedback on mobile devices
+- Added `prettier` and `eslint-config-prettier` as dev dependencies
 - Added `supabase` as dev dependency for local database management
 
 ### Documentation

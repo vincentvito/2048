@@ -1,7 +1,7 @@
 "use client";
 
-import React from 'react';
-import { themes, ThemeName } from '@/lib/themes';
+import React from "react";
+import { themes, ThemeName } from "@/lib/themes";
 
 /** Get tile colors from theme */
 function getTileColors(value: number, theme: typeof themes.classic): [string, string] {
@@ -20,11 +20,7 @@ export function MiniGrid({ grid, themeName }: { grid: number[]; themeName: Theme
   return (
     <div className="mini-grid" style={{ background: theme.bgGrid }}>
       {grid.slice(0, 16).map((value, i) => (
-        <div
-          key={i}
-          className="mini-tile"
-          style={{ background: getTileColors(value, theme)[0] }}
-        />
+        <div key={i} className="mini-tile" style={{ background: getTileColors(value, theme)[0] }} />
       ))}
     </div>
   );
@@ -35,11 +31,11 @@ export function ExpandedGrid({ grid, themeName }: { grid: number[]; themeName: T
   const theme = themes[themeName];
 
   const getFontSize = (value: number): string => {
-    if (value === 0) return '0';
+    if (value === 0) return "0";
     const digits = String(value).length;
-    if (digits <= 2) return '2rem';
-    if (digits === 3) return '1.6rem';
-    return '1.2rem';
+    if (digits <= 2) return "2rem";
+    if (digits === 3) return "1.6rem";
+    return "1.2rem";
   };
 
   return (
@@ -56,7 +52,7 @@ export function ExpandedGrid({ grid, themeName }: { grid: number[]; themeName: T
               fontSize: getFontSize(value),
             }}
           >
-            {value > 0 ? value : ''}
+            {value > 0 ? value : ""}
           </div>
         );
       })}
@@ -106,9 +102,7 @@ export default function OpponentPreview({
       >
         <div className="mp-mini-preview-inner">
           <MiniGrid grid={grid} themeName={themeName} />
-          {!opponentConnected && (
-            <div className="mp-mini-preview-offline" />
-          )}
+          {!opponentConnected && <div className="mp-mini-preview-offline" />}
         </div>
         <span className="mp-mini-preview-label">{opponentName}</span>
       </div>
@@ -116,18 +110,23 @@ export default function OpponentPreview({
       {/* Mobile: Expanded opponent view modal */}
       {showExpanded && (
         <div className="mp-opponent-expanded-backdrop" onClick={() => onToggleExpanded(false)}>
-          <div className="mp-opponent-expanded-modal" onClick={e => e.stopPropagation()}>
+          <div className="mp-opponent-expanded-modal" onClick={(e) => e.stopPropagation()}>
             <div className="mp-opponent-expanded-header">
               <span className="mp-opponent-expanded-name">{opponentName}</span>
               <span className="mp-opponent-expanded-score">{score.toLocaleString()}</span>
-              <button className="mp-opponent-expanded-close" onClick={() => onToggleExpanded(false)}>
+              <button
+                className="mp-opponent-expanded-close"
+                onClick={() => onToggleExpanded(false)}
+              >
                 &times;
               </button>
             </div>
-            <div className={`mp-opponent-expanded-board ${opponentDone || timerExpired || hasForfeit ? 'dimmed' : ''}`}>
+            <div
+              className={`mp-opponent-expanded-board ${opponentDone || timerExpired || hasForfeit ? "dimmed" : ""}`}
+            >
               {!opponentConnected && (
                 <div className="expanded-offline-overlay">
-                  {opponentEverConnected ? 'Opponent disconnected...' : 'Connecting...'}
+                  {opponentEverConnected ? "Opponent disconnected..." : "Connecting..."}
                 </div>
               )}
               <ExpandedGrid grid={grid} themeName={themeName} />

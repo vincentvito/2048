@@ -13,9 +13,5 @@ interface BadgeProps {
  * Uses the existing `.modal-badge` CSS class as base.
  */
 export default function Badge({ children, className }: BadgeProps) {
-  return (
-    <span className={`modal-badge${className ? ` ${className}` : ""}`}>
-      {children}
-    </span>
-  );
+  return <span className={`modal-badge${className ? ` ${className}` : ""}`}>{children}</span>;
 }

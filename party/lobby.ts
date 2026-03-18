@@ -1,8 +1,10 @@
 import type * as Party from "partykit/server";
 import { generateBotName, generateBotElo } from "./bot-game";
 
-const isDev = process.env.NODE_ENV !== 'production';
-const log = (...args: unknown[]) => { if (isDev) console.log(...args); };
+const isDev = process.env.NODE_ENV !== "production";
+const log = (...args: unknown[]) => {
+  if (isDev) console.log(...args);
+};
 
 const BOT_MATCH_TIMEOUT = 15000;
 
@@ -24,7 +26,7 @@ export default class LobbyServer implements Party.Server {
     const stored = await this.room.storage.get<WaitingPlayer[]>("queue");
     if (stored && stored.length > 0) {
       const now = Date.now();
-      this.waitingPlayers = stored.filter(p => now - p.joinedAt < 300000);
+      this.waitingPlayers = stored.filter((p) => now - p.joinedAt < 300000);
       await this.saveQueue();
     }
     log(`[Lobby] Ready with ${this.waitingPlayers.length} players in queue`);
@@ -39,19 +41,21 @@ export default class LobbyServer implements Party.Server {
       const data = JSON.parse(message);
 
       switch (data.type) {
-        case 'join_queue':
+        case "join_queue":
           await this.handleJoinQueue(data, sender);
           break;
-        case 'leave_queue':
+        case "leave_queue":
           await this.handleLeaveQueue(sender);
           break;
       }
     } catch (e) {
-      console.error('[Lobby] Message error:', e);
-      sender.send(JSON.stringify({
-        type: 'error',
-        message: 'Invalid message format',
-      }));
+      console.error("[Lobby] Message error:", e);
+      sender.send(
+        JSON.stringify({
+          type: "error",
+          message: "Invalid message format",
+        })
+      );
     }
   }
 
@@ -62,7 +66,7 @@ export default class LobbyServer implements Party.Server {
     const { userId, username, elo } = data;
 
     // Remove if already in queue (reconnection)
-    this.waitingPlayers = this.waitingPlayers.filter(p => p.userId !== userId);
+    this.waitingPlayers = this.waitingPlayers.filter((p) => p.userId !== userId);
 
     if (this.waitingPlayers.length > 0) {
       const opponent = this.waitingPlayers.shift()!;
@@ -72,18 +76,22 @@ export default class LobbyServer implements Party.Server {
 
       const oppConnection = this.room.getConnection(opponent.connectionId);
       if (oppConnection) {
-        oppConnection.send(JSON.stringify({
-          type: 'matched',
-          roomId,
-          opponent: { username, elo },
-        }));
+        oppConnection.send(
+          JSON.stringify({
+            type: "matched",
+            roomId,
+            opponent: { username, elo },
+          })
+        );
       }
 
-      sender.send(JSON.stringify({
-        type: 'matched',
-        roomId,
-        opponent: { username: opponent.username, elo: opponent.elo },
-      }));
+      sender.send(
+        JSON.stringify({
+          type: "matched",
+          roomId,
+          opponent: { username: opponent.username, elo: opponent.elo },
+        })
+      );
 
       await this.saveQueue();
     } else {
@@ -97,10 +105,12 @@ export default class LobbyServer implements Party.Server {
       };
       this.waitingPlayers.push(player);
 
-      sender.send(JSON.stringify({
-        type: 'waiting',
-        position: 1,
-      }));
+      sender.send(
+        JSON.stringify({
+          type: "waiting",
+          position: 1,
+        })
+      );
 
       await this.room.storage.setAlarm(Date.now() + BOT_MATCH_TIMEOUT);
       player.botMatchScheduled = true;
@@ -120,7 +130,7 @@ export default class LobbyServer implements Party.Server {
     }
 
     for (const player of playersToMatch) {
-      this.waitingPlayers = this.waitingPlayers.filter(p => p.userId !== player.userId);
+      this.waitingPlayers = this.waitingPlayers.filter((p) => p.userId !== player.userId);
 
       const botName = generateBotName();
       const botElo = generateBotElo(player.elo);
@@ -130,11 +140,13 @@ export default class LobbyServer implements Party.Server {
 
       const conn = this.room.getConnection(player.connectionId);
       if (conn) {
-        conn.send(JSON.stringify({
-          type: 'matched',
-          roomId,
-          opponent: { username: botName, elo: botElo, isBot: true },
-        }));
+        conn.send(
+          JSON.stringify({
+            type: "matched",
+            roomId,
+            opponent: { username: botName, elo: botElo, isBot: true },
+          })
+        );
       }
     }
 
@@ -155,9 +167,7 @@ export default class LobbyServer implements Party.Server {
 
   private async handleLeaveQueue(sender: Party.Connection) {
     const before = this.waitingPlayers.length;
-    this.waitingPlayers = this.waitingPlayers.filter(
-      p => p.connectionId !== sender.id
-    );
+    this.waitingPlayers = this.waitingPlayers.filter((p) => p.connectionId !== sender.id);
 
     if (this.waitingPlayers.length < before) {
       log(`[Lobby] Player left queue. Size: ${this.waitingPlayers.length}`);

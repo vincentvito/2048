@@ -8,7 +8,10 @@ interface ThemeSwitcherProps {
   onChange: (theme: ThemeName) => void;
 }
 
-export default function ThemeSwitcher({ current, onChange }: ThemeSwitcherProps): React.ReactElement {
+export default function ThemeSwitcher({
+  current,
+  onChange,
+}: ThemeSwitcherProps): React.ReactElement {
   return (
     <div className="theme-switcher">
       {themeNames.map((name) => {
@@ -23,16 +26,9 @@ export default function ThemeSwitcher({ current, onChange }: ThemeSwitcherProps)
             aria-label={`${themeLabels[name]} theme`}
             title={themeLabels[name]}
           >
-            <div
-              className="theme-preview"
-              style={{ background: theme.bgGrid }}
-            >
+            <div className="theme-preview" style={{ background: theme.bgGrid }}>
               {colors.map((c, i) => (
-                <div
-                  key={i}
-                  className="theme-preview-tile"
-                  style={{ background: c }}
-                />
+                <div key={i} className="theme-preview-tile" style={{ background: c }} />
               ))}
             </div>
             <span className="theme-label">{themeLabels[name]}</span>

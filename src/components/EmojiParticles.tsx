@@ -11,11 +11,14 @@ const EMOJI_GAME_OVER = ["💀", "😵", "🫠"];
 
 export type BurstPreset = "win" | "personalBest" | "dailyBest" | "gameOver";
 
-const PRESETS: Record<BurstPreset, { emojis: string[]; count: number; spread: number; gravity: number; life: number }> = {
-  win:          { emojis: EMOJI_WIN,           count: 16, spread: 12, gravity: 0.12, life: 100 },
+const PRESETS: Record<
+  BurstPreset,
+  { emojis: string[]; count: number; spread: number; gravity: number; life: number }
+> = {
+  win: { emojis: EMOJI_WIN, count: 16, spread: 12, gravity: 0.12, life: 100 },
   personalBest: { emojis: EMOJI_PERSONAL_BEST, count: 10, spread: 10, gravity: 0.12, life: 90 },
-  dailyBest:    { emojis: EMOJI_DAILY_BEST,    count: 12, spread: 11, gravity: 0.12, life: 95 },
-  gameOver:     { emojis: EMOJI_GAME_OVER,      count: 5,  spread: 6,  gravity: 0.18, life: 60 },
+  dailyBest: { emojis: EMOJI_DAILY_BEST, count: 12, spread: 11, gravity: 0.12, life: 95 },
+  gameOver: { emojis: EMOJI_GAME_OVER, count: 5, spread: 6, gravity: 0.18, life: 60 },
 };
 
 // ── Particle type ──
@@ -65,7 +68,9 @@ function getStoredEnabled(): boolean {
   try {
     const v = localStorage.getItem(PARTICLES_ENABLED_KEY);
     return v === null ? true : v === "1";
-  } catch { return true; }
+  } catch {
+    return true;
+  }
 }
 
 // ── Context ──
@@ -97,7 +102,11 @@ export function ParticleProvider({ children }: { children: React.ReactNode }) {
 
   const setEnabled = useCallback((v: boolean) => {
     setEnabledState(v);
-    try { localStorage.setItem(PARTICLES_ENABLED_KEY, v ? "1" : "0"); } catch { /* noop */ }
+    try {
+      localStorage.setItem(PARTICLES_ENABLED_KEY, v ? "1" : "0");
+    } catch {
+      /* noop */
+    }
   }, []);
 
   // Animation loop — syncs with external system (canvas), so useEffect is appropriate
@@ -169,40 +178,43 @@ export function ParticleProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const burst = useCallback((preset: BurstPreset, x?: number, y?: number) => {
-    // Check enabled at call time via ref-like pattern (reads current state)
-    if (!getStoredEnabled()) return;
+  const burst = useCallback(
+    (preset: BurstPreset, x?: number, y?: number) => {
+      // Check enabled at call time via ref-like pattern (reads current state)
+      if (!getStoredEnabled()) return;
 
-    const config = PRESETS[preset];
-    if (!config) return;
+      const config = PRESETS[preset];
+      if (!config) return;
 
-    const cx = x ?? window.innerWidth / 2;
-    const cy = y ?? window.innerHeight / 2;
+      const cx = x ?? window.innerWidth / 2;
+      const cy = y ?? window.innerHeight / 2;
 
-    for (let i = 0; i < config.count; i++) {
-      const angle = (Math.PI * 2 * i) / config.count + (Math.random() - 0.5) * 0.5;
-      const speed = config.spread * (0.5 + Math.random() * 0.5);
+      for (let i = 0; i < config.count; i++) {
+        const angle = (Math.PI * 2 * i) / config.count + (Math.random() - 0.5) * 0.5;
+        const speed = config.spread * (0.5 + Math.random() * 0.5);
 
-      particlesRef.current.push({
-        emoji: config.emojis[Math.floor(Math.random() * config.emojis.length)],
-        x: cx,
-        y: cy,
-        xv: Math.cos(angle) * speed,
-        yv: Math.sin(angle) * speed - 4,
-        size: 24 + Math.random() * 20,
-        rotation: Math.random() * Math.PI * 2,
-        rotationSpeed: (Math.random() - 0.5) * 0.15,
-        life: config.life + Math.floor(Math.random() * 20),
-        maxLife: config.life + 20,
-        scale: 0,
-        gravity: config.gravity,
-      });
-    }
+        particlesRef.current.push({
+          emoji: config.emojis[Math.floor(Math.random() * config.emojis.length)],
+          x: cx,
+          y: cy,
+          xv: Math.cos(angle) * speed,
+          yv: Math.sin(angle) * speed - 4,
+          size: 24 + Math.random() * 20,
+          rotation: Math.random() * Math.PI * 2,
+          rotationSpeed: (Math.random() - 0.5) * 0.15,
+          life: config.life + Math.floor(Math.random() * 20),
+          maxLife: config.life + 20,
+          scale: 0,
+          gravity: config.gravity,
+        });
+      }
 
-    if (!rafRef.current) {
-      rafRef.current = requestAnimationFrame(loop);
-    }
-  }, [loop]);
+      if (!rafRef.current) {
+        rafRef.current = requestAnimationFrame(loop);
+      }
+    },
+    [loop]
+  );
 
   // Cleanup rAF on unmount — syncs with external system (rAF), effect is appropriate
   useEffect(() => {

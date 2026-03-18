@@ -1,6 +1,14 @@
 "use client";
 
-import React, { useState, useCallback, useRef, useEffect, useMemo, forwardRef, useImperativeHandle } from "react";
+import React, {
+  useState,
+  useCallback,
+  useRef,
+  useEffect,
+  useMemo,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
 import Game2048, { type Game2048Handle } from "@/components/Game2048";
 import GameOverModal from "@/components/GameOverModal";
 import { saveScore } from "@/lib/score-service";
@@ -39,198 +47,245 @@ export interface SinglePlayerHandle {
   toggleSize: (newSize: number) => void;
 }
 
-const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProps>(function SinglePlayerScreen({
-  user,
-  activeGridSize,
-  refreshTrigger,
-  onRefresh,
-  onScoreChange,
-  leaderboardScores,
-}, ref) {
-  const { theme } = useTheme();
-  const { burst } = useParticles();
-  const haptic = useWebHaptics();
-  const gameRef = useRef<Game2048Handle>(null);
-  const gameResetRef = useRef<(() => void) | null>(null);
-  const devEndGameRef = useRef<(() => void) | null>(null);
-  const devTriggerWinRef = useRef<(() => void) | null>(null);
+const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProps>(
+  function SinglePlayerScreen(
+    { user, activeGridSize, refreshTrigger, onRefresh, onScoreChange, leaderboardScores },
+    ref
+  ) {
+    const { theme } = useTheme();
+    const { burst } = useParticles();
+    const haptic = useWebHaptics();
+    const gameRef = useRef<Game2048Handle>(null);
+    const gameResetRef = useRef<(() => void) | null>(null);
+    const devEndGameRef = useRef<(() => void) | null>(null);
+    const devTriggerWinRef = useRef<(() => void) | null>(null);
 
-  useImperativeHandle(ref, () => ({
-    getSize: () => gameRef.current?.getSize() ?? 4,
-    toggleSize: (newSize: number) => gameRef.current?.toggleSize(newSize),
-  }), []);
-  const isDev = process.env.NODE_ENV === "development";
+    useImperativeHandle(
+      ref,
+      () => ({
+        getSize: () => gameRef.current?.getSize() ?? 4,
+        toggleSize: (newSize: number) => gameRef.current?.toggleSize(newSize),
+      }),
+      []
+    );
+    const isDev = process.env.NODE_ENV === "development";
 
-  const [gameResult, setGameResult] = useState<{
-    open: boolean;
-    won: boolean;
-    score: number;
-    gridSize: number;
-    boardScreenshot?: string;
-  } | null>(null);
-  // Track the unsaved winning score so we can submit it if the player resets
-  // before the game naturally ends.
-  const unsavedWinRef = useRef<{ score: number; gridSize: number } | null>(null);
-  const [showConfetti, setShowConfetti] = useState(false);
-  const [showSwipeHint, setShowSwipeHint] = useState(false);
+    const [gameResult, setGameResult] = useState<{
+      open: boolean;
+      won: boolean;
+      score: number;
+      gridSize: number;
+      boardScreenshot?: string;
+    } | null>(null);
+    // Track the unsaved winning score so we can submit it if the player resets
+    // before the game naturally ends.
+    const unsavedWinRef = useRef<{ score: number; gridSize: number } | null>(null);
+    const [showConfetti, setShowConfetti] = useState(false);
+    const [showSwipeHint, setShowSwipeHint] = useState(false);
 
-  // Show swipe hint on first mobile visit (always in dev for debugging)
-  useEffect(() => {
-    const isTouchDevice = "ontouchstart" in window || navigator.maxTouchPoints > 0;
-    const hasSeenHint = localStorage.getItem("2048_swipe_hint_seen");
-    if (isDev || (isTouchDevice && !hasSeenHint)) {
-      setShowSwipeHint(true);
-      if (!isDev) localStorage.setItem("2048_swipe_hint_seen", "1");
-      const timer = setTimeout(() => setShowSwipeHint(false), 5000);
+    // Show swipe hint on first mobile visit (always in dev for debugging)
+    useEffect(() => {
+      const isTouchDevice = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+      const hasSeenHint = localStorage.getItem("2048_swipe_hint_seen");
+      if (isDev || (isTouchDevice && !hasSeenHint)) {
+        setShowSwipeHint(true);
+        if (!isDev) localStorage.setItem("2048_swipe_hint_seen", "1");
+        const timer = setTimeout(() => setShowSwipeHint(false), 5000);
+        return () => clearTimeout(timer);
+      }
+    }, [isDev]);
+
+    const confettiPieces = useMemo(() => generateConfettiPieces(35), [showConfetti]);
+
+    const handleResetReady = useCallback((resetFn: () => void) => {
+      gameResetRef.current = resetFn;
+    }, []);
+
+    const saveScoreToSupabase = useCallback(
+      async (score: number, gridSize: number) => {
+        if (!user) return;
+        const success = await saveScore(user, score, gridSize);
+        if (success) onRefresh();
+      },
+      [user, onRefresh]
+    );
+
+    const captureBoardScreenshot = useCallback((): string | undefined => {
+      return gameRef.current?.getCanvasDataURL() ?? undefined;
+    }, []);
+
+    const handleGameOver = useCallback(
+      (score: number, gridSize: number) => {
+        const boardScreenshot = captureBoardScreenshot();
+        onScoreChange(score);
+        setGameResult({ open: true, won: false, score, gridSize, boardScreenshot });
+        unsavedWinRef.current = null; // game ended naturally — save the final score
+        saveScoreToSupabase(score, gridSize);
+
+        // Check if this score beats today's leaderboard best
+        const dailyBest = leaderboardScores.length > 0 ? leaderboardScores[0].score : 0;
+        if (score > dailyBest && dailyBest > 0) {
+          burst("dailyBest");
+          haptic.trigger("heavy");
+        } else {
+          burst("gameOver");
+          haptic.trigger("error");
+        }
+      },
+      [saveScoreToSupabase, captureBoardScreenshot, onScoreChange, leaderboardScores, burst, haptic]
+    );
+
+    const handleGameWon = useCallback(
+      (score: number, gridSize: number) => {
+        const boardScreenshot = captureBoardScreenshot();
+        onScoreChange(score);
+        setGameResult({ open: true, won: true, score, gridSize, boardScreenshot });
+        setShowConfetti(true);
+        // Don't save yet — the player may keep playing and reach a higher score.
+        // Track it so we can save if they reset without hitting game over.
+        unsavedWinRef.current = { score, gridSize };
+
+        burst("win");
+        haptic.trigger("success");
+      },
+      [captureBoardScreenshot, onScoreChange, burst, haptic]
+    );
+
+    /** Save the unsaved winning score (if any) before starting a new game. */
+    const flushUnsavedWin = useCallback(() => {
+      const pending = unsavedWinRef.current;
+      if (pending) {
+        unsavedWinRef.current = null;
+        saveScoreToSupabase(pending.score, pending.gridSize);
+      }
+    }, [saveScoreToSupabase]);
+
+    useEffect(() => {
+      if (!showConfetti) return;
+      const timer = setTimeout(() => setShowConfetti(false), 3500);
       return () => clearTimeout(timer);
-    }
-  }, [isDev]);
+    }, [showConfetti]);
 
-  const confettiPieces = useMemo(() => generateConfettiPieces(35), [showConfetti]);
-
-  const handleResetReady = useCallback((resetFn: () => void) => {
-    gameResetRef.current = resetFn;
-  }, []);
-
-  const saveScoreToSupabase = useCallback(async (score: number, gridSize: number) => {
-    if (!user) return;
-    const success = await saveScore(user, score, gridSize);
-    if (success) onRefresh();
-  }, [user, onRefresh]);
-
-  const captureBoardScreenshot = useCallback((): string | undefined => {
-    return gameRef.current?.getCanvasDataURL() ?? undefined;
-  }, []);
-
-  const handleGameOver = useCallback((score: number, gridSize: number) => {
-    const boardScreenshot = captureBoardScreenshot();
-    onScoreChange(score);
-    setGameResult({ open: true, won: false, score, gridSize, boardScreenshot });
-    unsavedWinRef.current = null; // game ended naturally — save the final score
-    saveScoreToSupabase(score, gridSize);
-
-    // Check if this score beats today's leaderboard best
-    const dailyBest = leaderboardScores.length > 0 ? leaderboardScores[0].score : 0;
-    if (score > dailyBest && dailyBest > 0) {
-      burst("dailyBest");
-      haptic.trigger("heavy");
-    } else {
-      burst("gameOver");
-      haptic.trigger("error");
-    }
-  }, [saveScoreToSupabase, captureBoardScreenshot, onScoreChange, leaderboardScores, burst, haptic]);
-
-  const handleGameWon = useCallback((score: number, gridSize: number) => {
-    const boardScreenshot = captureBoardScreenshot();
-    onScoreChange(score);
-    setGameResult({ open: true, won: true, score, gridSize, boardScreenshot });
-    setShowConfetti(true);
-    // Don't save yet — the player may keep playing and reach a higher score.
-    // Track it so we can save if they reset without hitting game over.
-    unsavedWinRef.current = { score, gridSize };
-
-    burst("win");
-    haptic.trigger("success");
-  }, [captureBoardScreenshot, onScoreChange, burst, haptic]);
-
-  /** Save the unsaved winning score (if any) before starting a new game. */
-  const flushUnsavedWin = useCallback(() => {
-    const pending = unsavedWinRef.current;
-    if (pending) {
-      unsavedWinRef.current = null;
-      saveScoreToSupabase(pending.score, pending.gridSize);
-    }
-  }, [saveScoreToSupabase]);
-
-  useEffect(() => {
-    if (!showConfetti) return;
-    const timer = setTimeout(() => setShowConfetti(false), 3500);
-    return () => clearTimeout(timer);
-  }, [showConfetti]);
-
-
-  return (
-    <>
-      {/* Confetti overlay */}
-      {showConfetti && (
-        <div className="confetti-container">
-          {confettiPieces.map((piece) => (
-            <div
-              key={piece.id}
-              className="confetti-piece"
-              style={{
-                left: `${piece.left}%`,
-                width: `${piece.size}px`,
-                height: `${piece.size * 1.5}px`,
-                backgroundColor: piece.color,
-                transform: `rotate(${piece.rotation}deg)`,
-                animationDelay: `${piece.delay}s`,
-                animationDuration: `${piece.duration}s`,
-                // @ts-expect-error CSS custom property for drift
-                "--confetti-drift": `${piece.drift}px`,
-              }}
-            />
-          ))}
-        </div>
-      )}
-
-      <div style={{ position: "relative", touchAction: "none", display: "flex", justifyContent: "center" }}>
-        <Game2048
-          ref={gameRef}
-          onGameOver={handleGameOver}
-          onGameWon={handleGameWon}
-          onResetReady={handleResetReady}
-          initialSize={activeGridSize}
-          themeName={theme}
-          onDevEndGameReady={isDev ? (fn) => { devEndGameRef.current = fn; } : undefined}
-          onDevTriggerWinReady={isDev ? (fn) => { devTriggerWinRef.current = fn; } : undefined}
-        />
-
-        {showSwipeHint && (
-          <div className="swipe-hint-overlay" onClick={() => setShowSwipeHint(false)}>
-            <div className="swipe-hint-content">
-              <div className="swipe-hint-hand">
-                <span className="swipe-hint-emoji">👆</span>
-              </div>
-              <p className="swipe-hint-text">Swipe to move tiles</p>
-            </div>
+    return (
+      <>
+        {/* Confetti overlay */}
+        {showConfetti && (
+          <div className="confetti-container">
+            {confettiPieces.map((piece) => (
+              <div
+                key={piece.id}
+                className="confetti-piece"
+                style={{
+                  left: `${piece.left}%`,
+                  width: `${piece.size}px`,
+                  height: `${piece.size * 1.5}px`,
+                  backgroundColor: piece.color,
+                  transform: `rotate(${piece.rotation}deg)`,
+                  animationDelay: `${piece.delay}s`,
+                  animationDuration: `${piece.duration}s`,
+                  // @ts-expect-error CSS custom property for drift
+                  "--confetti-drift": `${piece.drift}px`,
+                }}
+              />
+            ))}
           </div>
         )}
-      </div>
 
-      <div className="below-board-controls">
-        <button className="header-new-game-btn" onClick={() => { flushUnsavedWin(); gameResetRef.current?.(); }}>
-          New Game
-        </button>
-        {isDev && (
-          <>
-          <button className="header-new-game-btn" style={{ background: '#16a34a' }} onClick={() => devTriggerWinRef.current?.()}>
-            DEV: Win Setup
+        <div
+          style={{
+            position: "relative",
+            touchAction: "none",
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <Game2048
+            ref={gameRef}
+            onGameOver={handleGameOver}
+            onGameWon={handleGameWon}
+            onResetReady={handleResetReady}
+            initialSize={activeGridSize}
+            themeName={theme}
+            onDevEndGameReady={
+              isDev
+                ? (fn) => {
+                    devEndGameRef.current = fn;
+                  }
+                : undefined
+            }
+            onDevTriggerWinReady={
+              isDev
+                ? (fn) => {
+                    devTriggerWinRef.current = fn;
+                  }
+                : undefined
+            }
+          />
+
+          {showSwipeHint && (
+            <div className="swipe-hint-overlay" onClick={() => setShowSwipeHint(false)}>
+              <div className="swipe-hint-content">
+                <div className="swipe-hint-hand">
+                  <span className="swipe-hint-emoji">👆</span>
+                </div>
+                <p className="swipe-hint-text">Swipe to move tiles</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="below-board-controls">
+          <button
+            className="header-new-game-btn"
+            onClick={() => {
+              flushUnsavedWin();
+              gameResetRef.current?.();
+            }}
+          >
+            New Game
           </button>
-          <button className="header-new-game-btn" style={{ background: '#dc2626' }} onClick={() => devEndGameRef.current?.()}>
-            DEV: End Game
-          </button>
-          </>
+          {isDev && (
+            <>
+              <button
+                className="header-new-game-btn"
+                style={{ background: "#16a34a" }}
+                onClick={() => devTriggerWinRef.current?.()}
+              >
+                DEV: Win Setup
+              </button>
+              <button
+                className="header-new-game-btn"
+                style={{ background: "#dc2626" }}
+                onClick={() => devEndGameRef.current?.()}
+              >
+                DEV: End Game
+              </button>
+            </>
+          )}
+        </div>
+
+        {gameResult && (
+          <GameOverModal
+            open={gameResult.open}
+            won={gameResult.won}
+            score={gameResult.score}
+            gridSize={gameResult.gridSize}
+            onClose={() => setGameResult(null)}
+            onPlayAgain={() => {
+              flushUnsavedWin();
+              setGameResult(null);
+              gameResetRef.current?.();
+            }}
+            onKeepPlaying={gameResult.won ? () => setGameResult(null) : undefined}
+            leaderboardScores={leaderboardScores}
+            isSignedIn={!!user}
+            boardScreenshot={gameResult.boardScreenshot}
+            currentUsername={user?.username || user?.email?.split("@")[0]}
+          />
         )}
-      </div>
-
-      {gameResult && (
-        <GameOverModal
-          open={gameResult.open}
-          won={gameResult.won}
-          score={gameResult.score}
-          gridSize={gameResult.gridSize}
-          onClose={() => setGameResult(null)}
-          onPlayAgain={() => { flushUnsavedWin(); setGameResult(null); gameResetRef.current?.(); }}
-          onKeepPlaying={gameResult.won ? () => setGameResult(null) : undefined}
-          leaderboardScores={leaderboardScores}
-          isSignedIn={!!user}
-          boardScreenshot={gameResult.boardScreenshot}
-          currentUsername={user?.username || user?.email?.split("@")[0]}
-        />
-      )}
-    </>
-  );
-});
+      </>
+    );
+  }
+);
 
 export default SinglePlayerScreen;

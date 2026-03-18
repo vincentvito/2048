@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useState, useCallback, useRef, useEffect } from "react";
-import SinglePlayerScreen, { type SinglePlayerHandle } from "@/features/single-player/SinglePlayerScreen";
+import SinglePlayerScreen, {
+  type SinglePlayerHandle,
+} from "@/features/single-player/SinglePlayerScreen";
 import MultiplayerView from "@/components/MultiplayerView";
 import DesktopSidebar from "@/components/DesktopSidebar";
 import MobileMenu from "@/components/MobileMenu";
@@ -23,7 +25,11 @@ export default function Home(): React.ReactElement {
   const [activeGridSize, setActiveGridSize] = useState(4);
   const [gameMode, setGameMode] = useState<"single" | "multi">("single");
   const [matchActive, setMatchActive] = useState(false);
-  const [pendingSession, setPendingSession] = useState<{ roomId: string; gameMode: "ranked" | "friendly"; friendRoomCode?: string } | null>(null);
+  const [pendingSession, setPendingSession] = useState<{
+    roomId: string;
+    gameMode: "ranked" | "friendly";
+    friendRoomCode?: string;
+  } | null>(null);
   const [showSignInModal, setShowSignInModal] = useState(false);
   const { theme, setTheme } = useTheme();
 
@@ -62,22 +68,29 @@ export default function Home(): React.ReactElement {
   }, []);
 
   const handleSignOut = useCallback(async () => {
-    try { await signOut(); } catch { /* ignore */ }
+    try {
+      await signOut();
+    } catch {
+      /* ignore */
+    }
   }, []);
 
-  const handleGridSizeChange = useCallback((newSize: number) => {
-    const wasSingle = gameMode === "single";
-    setActiveGridSize(newSize);
-    setGameMode("single");
-    setMatchActive(false);
+  const handleGridSizeChange = useCallback(
+    (newSize: number) => {
+      const wasSingle = gameMode === "single";
+      setActiveGridSize(newSize);
+      setGameMode("single");
+      setMatchActive(false);
 
-    if (wasSingle && singlePlayerRef.current) {
-      const currentSize = singlePlayerRef.current.getSize();
-      if (currentSize !== newSize) {
-        singlePlayerRef.current.toggleSize(newSize);
+      if (wasSingle && singlePlayerRef.current) {
+        const currentSize = singlePlayerRef.current.getSize();
+        if (currentSize !== newSize) {
+          singlePlayerRef.current.toggleSize(newSize);
+        }
       }
-    }
-  }, [gameMode]);
+    },
+    [gameMode]
+  );
 
   const handleRefresh = useCallback(() => {
     setRefreshTrigger((n) => n + 1);
@@ -96,12 +109,16 @@ export default function Home(): React.ReactElement {
         onScoresLoaded={setLeaderboardScores}
       />
 
-      <div className={`container${gameMode === "single" && activeGridSize === 8 ? " container-wide" : ""}`}>
+      <div
+        className={`container${gameMode === "single" && activeGridSize === 8 ? " container-wide" : ""}`}
+      >
         {/* Title - hidden during active match */}
         {!matchActive && (
           <div className="title-section">
             <h1 className="game-title">2048</h1>
-            <p className="game-intro">Join the tiles, get to <strong>2048!</strong></p>
+            <p className="game-intro">
+              Join the tiles, get to <strong>2048!</strong>
+            </p>
           </div>
         )}
 
@@ -118,7 +135,10 @@ export default function Home(): React.ReactElement {
               {isSupabaseConfigured() && (
                 <button
                   className={`grid-size-option${gameMode === "multi" ? " grid-size-active" : ""}`}
-                  onClick={() => { setActiveGridSize(4); setGameMode("multi"); }}
+                  onClick={() => {
+                    setActiveGridSize(4);
+                    setGameMode("multi");
+                  }}
                 >
                   Multiplayer
                 </button>
@@ -161,24 +181,51 @@ export default function Home(): React.ReactElement {
         {/* Rejoin multiplayer match modal */}
         <Modal
           open={!!pendingSession && gameMode === "single"}
-          onClose={() => { if (user?.id) clearMultiplayerSession(); setPendingSession(null); }}
+          onClose={() => {
+            if (user?.id) clearMultiplayerSession();
+            setPendingSession(null);
+          }}
           labelledBy="rejoin-title"
         >
           <div style={{ textAlign: "center", padding: "4px 0" }}>
-            <h2 id="rejoin-title" style={{ margin: "0 0 12px", fontSize: "1.4rem" }}>Match In Progress</h2>
+            <h2 id="rejoin-title" style={{ margin: "0 0 12px", fontSize: "1.4rem" }}>
+              Match In Progress
+            </h2>
             <p style={{ margin: "0 0 8px", color: "var(--text-secondary)", fontSize: "0.95rem" }}>
-              You have an active {pendingSession?.gameMode === "friendly" ? "friendly" : "ranked"} match
+              You have an active {pendingSession?.gameMode === "friendly" ? "friendly" : "ranked"}{" "}
+              match
             </p>
             {pendingSession?.friendRoomCode && (
-              <p style={{ margin: "0 0 4px", fontFamily: "monospace", fontSize: "1.1rem", fontWeight: 600 }}>
+              <p
+                style={{
+                  margin: "0 0 4px",
+                  fontFamily: "monospace",
+                  fontSize: "1.1rem",
+                  fontWeight: 600,
+                }}
+              >
                 Room: {pendingSession.friendRoomCode}
               </p>
             )}
-            <div style={{ display: "flex", gap: "12px", justifyContent: "center", marginTop: "24px" }}>
-              <Button variant="primary" onClick={() => { setActiveGridSize(4); setGameMode("multi"); }}>
+            <div
+              style={{ display: "flex", gap: "12px", justifyContent: "center", marginTop: "24px" }}
+            >
+              <Button
+                variant="primary"
+                onClick={() => {
+                  setActiveGridSize(4);
+                  setGameMode("multi");
+                }}
+              >
                 Rejoin
               </Button>
-              <Button variant="secondary" onClick={() => { if (user?.id) clearMultiplayerSession(); setPendingSession(null); }}>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  if (user?.id) clearMultiplayerSession();
+                  setPendingSession(null);
+                }}
+              >
                 Leave
               </Button>
             </div>

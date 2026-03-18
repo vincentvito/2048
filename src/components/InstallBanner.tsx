@@ -32,7 +32,9 @@ export default function InstallBanner(): React.ReactElement | null {
         // Show again after 7 days
         if (ago < 7 * 24 * 60 * 60 * 1000) return;
       }
-    } catch { /* noop */ }
+    } catch {
+      /* noop */
+    }
 
     setDismissed(false);
 
@@ -64,7 +66,11 @@ export default function InstallBanner(): React.ReactElement | null {
 
   const handleDismiss = useCallback(() => {
     setDismissed(true);
-    try { localStorage.setItem(DISMISSED_KEY, String(Date.now())); } catch { /* noop */ }
+    try {
+      localStorage.setItem(DISMISSED_KEY, String(Date.now()));
+    } catch {
+      /* noop */
+    }
   }, []);
 
   // Don't render if already installed, dismissed, or not applicable
@@ -79,7 +85,8 @@ export default function InstallBanner(): React.ReactElement | null {
           <strong>Install 2048</strong>
           {isIOS ? (
             <span>
-              Tap <span className="install-banner-share">⎋</span> then &quot;Add to Home Screen&quot;
+              Tap <span className="install-banner-share">⎋</span> then &quot;Add to Home
+              Screen&quot;
             </span>
           ) : (
             <span>Add to your home screen for the best experience</span>

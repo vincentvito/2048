@@ -7,11 +7,7 @@ import { getPendingScore, clearPendingScore } from "./guest-scores";
  * Save a score to Supabase for authenticated users.
  * Returns true if saved successfully.
  */
-export async function saveScore(
-  user: AppUser,
-  score: number,
-  gridSize: number
-): Promise<boolean> {
+export async function saveScore(user: AppUser, score: number, gridSize: number): Promise<boolean> {
   const supabase = createClient();
   if (!supabase) return false;
 

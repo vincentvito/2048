@@ -1,6 +1,6 @@
 // Shared message types for PartyKit communication
 
-export type GameMode = 'ranked' | 'friendly';
+export type GameMode = "ranked" | "friendly";
 
 export interface PlayerInfo {
   userId: string;
@@ -18,40 +18,69 @@ export interface GameStateMessage {
 // ============ Lobby Messages (Client -> Server) ============
 
 export type LobbyClientMessage =
-  | { type: 'join_queue'; userId: string; username: string; elo: number }
-  | { type: 'leave_queue' };
+  | { type: "join_queue"; userId: string; username: string; elo: number }
+  | { type: "leave_queue" };
 
 // ============ Lobby Messages (Server -> Client) ============
 
 export type LobbyServerMessage =
-  | { type: 'waiting'; position: number }
-  | { type: 'matched'; roomId: string; opponent: { username: string; elo: number; isBot?: boolean } }
-  | { type: 'error'; message: string };
+  | { type: "waiting"; position: number }
+  | {
+      type: "matched";
+      roomId: string;
+      opponent: { username: string; elo: number; isBot?: boolean };
+    }
+  | { type: "error"; message: string };
 
 // ============ Game Messages (Client -> Server) ============
 
 export type GameClientMessage =
-  | { type: 'join'; userId: string; username: string; elo: number; mode?: GameMode }
-  | { type: 'move'; direction: number }
-  | { type: 'state_update'; state: GameStateMessage }
-  | { type: 'request_rematch' }
-  | { type: 'forfeit' }
-  | { type: 'heartbeat' }
-  | { type: 'timer_expired' };
+  | { type: "join"; userId: string; username: string; elo: number; mode?: GameMode }
+  | { type: "move"; direction: number }
+  | { type: "state_update"; state: GameStateMessage }
+  | { type: "request_rematch" }
+  | { type: "forfeit" }
+  | { type: "heartbeat" }
+  | { type: "timer_expired" };
 
 // ============ Game Messages (Server -> Client) ============
 
 export type GameServerMessage =
-  | { type: 'player_joined'; playerId: string; username: string; elo: number; playerCount: number; isBot?: boolean }
-  | { type: 'player_left'; playerId: string }
-  | { type: 'game_start'; players: Array<{ id: string; username: string; elo: number; isBot?: boolean }>; duration: number; timeRemaining?: number; mode: GameMode }
-  | { type: 'your_initial_state'; state: GameStateMessage }
-  | { type: 'your_game_state'; state: GameStateMessage }
-  | { type: 'your_state'; state: GameStateMessage }
-  | { type: 'opponent_state'; state: GameStateMessage; username: string; elo: number; isBot?: boolean }
-  | { type: 'opponent_connected'; connected: boolean }
-  | { type: 'rematch_requested'; by: 'local' | 'opponent' }
-  | { type: 'rematch_start' }
-  | { type: 'opponent_forfeited' }
-  | { type: 'game_result'; outcome: 'win' | 'loss' | 'tie'; yourScore: number; opponentScore: number; reason: 'score' | '2048' | 'forfeit' | 'timer' | 'no_moves' }
-  | { type: 'error'; message: string };
+  | {
+      type: "player_joined";
+      playerId: string;
+      username: string;
+      elo: number;
+      playerCount: number;
+      isBot?: boolean;
+    }
+  | { type: "player_left"; playerId: string }
+  | {
+      type: "game_start";
+      players: Array<{ id: string; username: string; elo: number; isBot?: boolean }>;
+      duration: number;
+      timeRemaining?: number;
+      mode: GameMode;
+    }
+  | { type: "your_initial_state"; state: GameStateMessage }
+  | { type: "your_game_state"; state: GameStateMessage }
+  | { type: "your_state"; state: GameStateMessage }
+  | {
+      type: "opponent_state";
+      state: GameStateMessage;
+      username: string;
+      elo: number;
+      isBot?: boolean;
+    }
+  | { type: "opponent_connected"; connected: boolean }
+  | { type: "rematch_requested"; by: "local" | "opponent" }
+  | { type: "rematch_start" }
+  | { type: "opponent_forfeited" }
+  | {
+      type: "game_result";
+      outcome: "win" | "loss" | "tie";
+      yourScore: number;
+      opponentScore: number;
+      reason: "score" | "2048" | "forfeit" | "timer" | "no_moves";
+    }
+  | { type: "error"; message: string };

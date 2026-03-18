@@ -1,16 +1,20 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
-import PartySocket from 'partysocket';
-import type { LobbyServerMessage } from '@/lib/party/messages';
+import { useEffect, useState, useCallback, useRef } from "react";
+import PartySocket from "partysocket";
+import type { LobbyServerMessage } from "@/lib/party/messages";
 
-export type MatchmakingState = 'idle' | 'searching' | 'matched';
+export type MatchmakingState = "idle" | "searching" | "matched";
 
-const PARTYKIT_HOST = process.env.NEXT_PUBLIC_PARTYKIT_HOST || 'localhost:1999';
+const PARTYKIT_HOST = process.env.NEXT_PUBLIC_PARTYKIT_HOST || "localhost:1999";
 const BOT_MATCH_TIMEOUT = 15; // seconds until bot match
 
 export function usePartyMatchmaking() {
-  const [state, setState] = useState<MatchmakingState>('idle');
+  const [state, setState] = useState<MatchmakingState>("idle");
   const [roomId, setRoomId] = useState<string | null>(null);
-  const [opponentInfo, setOpponentInfo] = useState<{ username: string; elo: number; isBot?: boolean } | null>(null);
+  const [opponentInfo, setOpponentInfo] = useState<{
+    username: string;
+    elo: number;
+    isBot?: boolean;
+  } | null>(null);
   const [myId] = useState(() => Math.random().toString(36).substring(2, 10));
   const [searchTimeLeft, setSearchTimeLeft] = useState(BOT_MATCH_TIMEOUT);
 
@@ -28,92 +32,97 @@ export function usePartyMatchmaking() {
     }
   }, []);
 
-  const startMatchmaking = useCallback((userId: string, username: string, elo: number) => {
-    if (!userId) {
-      console.error('[usePartyMatchmaking] No userId provided');
-      return;
-    }
-
-    // Close existing connection
-    cleanup();
-
-    setState('searching');
-    setRoomId(null);
-    setOpponentInfo(null);
-    setSearchTimeLeft(BOT_MATCH_TIMEOUT);
-
-    // Start countdown timer
-    timerRef.current = setInterval(() => {
-      setSearchTimeLeft((prev) => {
-        if (prev <= 1) return 0;
-        return prev - 1;
-      });
-    }, 1000);
-
-    // Connect to lobby
-    const socket = new PartySocket({
-      host: PARTYKIT_HOST,
-      room: 'main-lobby',
-      party: 'lobby',
-    });
-
-    socketRef.current = socket;
-
-    socket.onopen = () => {
-      // console.log('[usePartyMatchmaking] Connected to lobby');
-      // Join queue
-      socket.send(JSON.stringify({
-        type: 'join_queue',
-        userId,
-        username,
-        elo,
-      }));
-    };
-
-    socket.onmessage = (event) => {
-      try {
-        const message: LobbyServerMessage = JSON.parse(event.data);
-
-        switch (message.type) {
-          case 'waiting':
-            // console.log(`[usePartyMatchmaking] In queue, position: ${message.position}`);
-            break;
-
-          case 'matched':
-            // console.log(`[usePartyMatchmaking] Matched! Room: ${message.roomId}`);
-            setRoomId(message.roomId);
-            setOpponentInfo(message.opponent);
-            setState('matched');
-            // Close lobby connection after match
-            cleanup();
-            break;
-
-          case 'error':
-            console.error('[usePartyMatchmaking] Error:', message.message);
-            setState('idle');
-            cleanup();
-            break;
-        }
-      } catch (e) {
-        console.error('[usePartyMatchmaking] Parse error:', e);
+  const startMatchmaking = useCallback(
+    (userId: string, username: string, elo: number) => {
+      if (!userId) {
+        console.error("[usePartyMatchmaking] No userId provided");
+        return;
       }
-    };
 
-    socket.onclose = () => {
-      // console.log('[usePartyMatchmaking] Disconnected from lobby');
-    };
+      // Close existing connection
+      cleanup();
 
-    socket.onerror = (e) => {
-      console.error('[usePartyMatchmaking] Socket error:', e);
-    };
-  }, [cleanup]);
+      setState("searching");
+      setRoomId(null);
+      setOpponentInfo(null);
+      setSearchTimeLeft(BOT_MATCH_TIMEOUT);
+
+      // Start countdown timer
+      timerRef.current = setInterval(() => {
+        setSearchTimeLeft((prev) => {
+          if (prev <= 1) return 0;
+          return prev - 1;
+        });
+      }, 1000);
+
+      // Connect to lobby
+      const socket = new PartySocket({
+        host: PARTYKIT_HOST,
+        room: "main-lobby",
+        party: "lobby",
+      });
+
+      socketRef.current = socket;
+
+      socket.onopen = () => {
+        // console.log('[usePartyMatchmaking] Connected to lobby');
+        // Join queue
+        socket.send(
+          JSON.stringify({
+            type: "join_queue",
+            userId,
+            username,
+            elo,
+          })
+        );
+      };
+
+      socket.onmessage = (event) => {
+        try {
+          const message: LobbyServerMessage = JSON.parse(event.data);
+
+          switch (message.type) {
+            case "waiting":
+              // console.log(`[usePartyMatchmaking] In queue, position: ${message.position}`);
+              break;
+
+            case "matched":
+              // console.log(`[usePartyMatchmaking] Matched! Room: ${message.roomId}`);
+              setRoomId(message.roomId);
+              setOpponentInfo(message.opponent);
+              setState("matched");
+              // Close lobby connection after match
+              cleanup();
+              break;
+
+            case "error":
+              console.error("[usePartyMatchmaking] Error:", message.message);
+              setState("idle");
+              cleanup();
+              break;
+          }
+        } catch (e) {
+          console.error("[usePartyMatchmaking] Parse error:", e);
+        }
+      };
+
+      socket.onclose = () => {
+        // console.log('[usePartyMatchmaking] Disconnected from lobby');
+      };
+
+      socket.onerror = (e) => {
+        console.error("[usePartyMatchmaking] Socket error:", e);
+      };
+    },
+    [cleanup]
+  );
 
   const cancelMatchmaking = useCallback(() => {
     if (socketRef.current) {
-      socketRef.current.send(JSON.stringify({ type: 'leave_queue' }));
+      socketRef.current.send(JSON.stringify({ type: "leave_queue" }));
     }
     cleanup();
-    setState('idle');
+    setState("idle");
     setRoomId(null);
     setOpponentInfo(null);
   }, [cleanup]);

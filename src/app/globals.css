@@ -635,6 +635,25 @@ body {
   animation: boardGlow 4s ease-in-out infinite;
 }
 
+.game-canvas-hidden {
+  visibility: hidden;
+  position: absolute;
+}
+
+/* Skeleton placeholder while canvas initializes */
+.game-skeleton {
+  width: min(calc(100vw - 32px), 460px);
+  aspect-ratio: 1;
+  border-radius: 16px;
+  background: var(--bg-grid, #bbada0);
+  animation: skeletonPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 0.3; }
+}
+
 @keyframes boardGlow {
   0%, 100% {
     box-shadow:

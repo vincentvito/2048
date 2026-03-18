@@ -78,6 +78,7 @@
 - Emoji burst + haptic events: win (🎉🏆⭐ + success), beat daily leaderboard (👑🥇🏆 + heavy), game over (💀😵🫠 + error)
 - Added "Emoji Effects" toggle in both desktop sidebar and mobile menu — persisted to localStorage
 - Replaced broken SVG swipe hint with animated `👆` emoji that swipes in 4 directions with semi-transparent backdrop
+- Added skeleton loading placeholder for the game board — prevents layout shift (small square → full board) on page load by reserving the correct dimensions with a pulsing placeholder until the canvas initializes
 
 ### Local Development
 - Added local Supabase support — `npm run db:start`, `db:stop`, `db:reset`, `db:status` scripts

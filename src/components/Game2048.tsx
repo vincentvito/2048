@@ -100,6 +100,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
   const initialReadOnlyRef = useRef(!!readOnlyState);
   const disableSaveRef = useRef(disableSave);
   const [displaySize, setDisplaySize] = useState(4);
+  const [canvasReady, setCanvasReady] = useState(false);
   const themeRef = useRef<ThemeColors>(themes[(themeName as keyof typeof themes)] || themes.classic);
 
   // Sync callback refs during render (React-recommended pattern — no effects needed)
@@ -830,6 +831,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
       // Read-only mode: just render the empty grid, no random tiles
       render(1);
     }
+    setCanvasReady(true);
 
     // Dev-only: fill board with random tiles and end the game
     function devEndGame() {
@@ -1004,7 +1006,8 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
 
       {/* Game board */}
       <div ref={containerRef} className="game-container">
-        <canvas ref={canvasRef} className="game-canvas" role="grid" aria-label="2048 game board" />
+        {!canvasReady && <div className="game-skeleton" />}
+        <canvas ref={canvasRef} className={`game-canvas${canvasReady ? '' : ' game-canvas-hidden'}`} role="grid" aria-label="2048 game board" />
         <div
           ref={announcementRef}
           aria-live="polite"

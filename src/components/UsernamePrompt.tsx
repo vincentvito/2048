@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { useSession, BetterAuthUser } from "@/lib/auth-client";
+import { useSession } from "@/lib/auth-client";
+import { type AppUser } from "@/features/auth/types";
 
 /**
  * Global overlay that prompts for a username after sign-in
@@ -9,22 +10,15 @@ import { useSession, BetterAuthUser } from "@/lib/auth-client";
  */
 export default function UsernamePrompt(): React.ReactElement | null {
   const { data: sessionData, isPending, refetch } = useSession();
-  const user = (sessionData?.user as BetterAuthUser | undefined) ?? null;
+  const user = (sessionData?.user as AppUser | undefined) ?? null;
 
-  const [show, setShow] = useState(false);
   const [username, setUsername] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Show prompt if user is signed in but has no username
-  useEffect(() => {
-    if (!isPending && user && !user.username) {
-      setShow(true);
-    } else {
-      setShow(false);
-    }
-  }, [user, isPending]);
+  // Derive show state — no effect needed
+  const show = !isPending && !!user && !user.username;
 
   // Auto-focus input when shown
   useEffect(() => {
@@ -67,9 +61,8 @@ export default function UsernamePrompt(): React.ReactElement | null {
         return;
       }
 
-      // Refetch session to get updated user data
+      // Refetch session — show will automatically hide since user now has a username
       await refetch();
-      setShow(false);
     } catch {
       setError("Failed to save username");
     } finally {
@@ -80,12 +73,24 @@ export default function UsernamePrompt(): React.ReactElement | null {
   if (!show) return null;
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="username-prompt-title">
+    <div
+      className="modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="username-prompt-title"
+    >
       <div className="modal-card" style={{ padding: "24px" }}>
         <h2 id="username-prompt-title" className="modal-result" style={{ marginBottom: "4px" }}>
           Choose a Username
         </h2>
-        <p style={{ color: "var(--text-secondary)", fontSize: "14px", margin: "0 0 16px", lineHeight: 1.5 }}>
+        <p
+          style={{
+            color: "var(--text-secondary)",
+            fontSize: "14px",
+            margin: "0 0 16px",
+            lineHeight: 1.5,
+          }}
+        >
           This is how you&apos;ll appear on the leaderboard and to opponents.
         </p>
 
@@ -102,7 +107,11 @@ export default function UsernamePrompt(): React.ReactElement | null {
           autoComplete="username"
         />
 
-        {error && <p className="modal-error" style={{ marginTop: "8px" }}>{error}</p>}
+        {error && (
+          <p className="modal-error" style={{ marginTop: "8px" }}>
+            {error}
+          </p>
+        )}
 
         <div className="modal-primary-actions" style={{ marginTop: "16px" }}>
           <button

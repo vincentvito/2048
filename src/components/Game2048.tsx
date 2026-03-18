@@ -1,6 +1,13 @@
 "use client";
 
-import React, { useRef, useEffect, useCallback, useState } from "react";
+import React, {
+  useRef,
+  useEffect,
+  useCallback,
+  useState,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
 import { ThemeColors, themes } from "@/lib/themes";
 
 const GAP = 12;
@@ -37,14 +44,27 @@ export interface GameState {
   won: boolean;
 }
 
+/** Typed imperative handle for Game2048 — replaces DOM-private methods. */
+export interface Game2048Handle {
+  init: () => void;
+  updateState: (state: GameState) => void;
+  keepPlaying: () => void;
+  toggleSize: (newSize: number) => void;
+  getSize: () => number;
+  rerender: () => void;
+  getCanvasDataURL: () => string | null;
+}
+
 interface Game2048Props {
   onGameOver?: (score: number, gridSize: number) => void;
   onGameWon?: (score: number, gridSize: number) => void;
   onResetReady?: (resetFn: () => void) => void;
   readOnlyState?: GameState | null;
   onStateChange?: (state: GameState) => void;
+  onMove?: (direction: number) => void;
   disableInputs?: boolean;
   onDevEndGameReady?: (fn: () => void) => void;
+  onDevTriggerWinReady?: (fn: () => void) => void;
   hideScore?: boolean;
   initialSize?: number;
   themeName?: string;
@@ -52,66 +72,86 @@ interface Game2048Props {
   miniMode?: boolean;
 }
 
-export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnlyState, onStateChange, disableInputs, onDevEndGameReady, hideScore, initialSize = 4, themeName = "classic", miniMode = false, disableSave = false }: Game2048Props): React.ReactElement {
+const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
+  {
+    onGameOver,
+    onGameWon,
+    onResetReady,
+    readOnlyState,
+    onStateChange,
+    onMove,
+    disableInputs,
+    onDevEndGameReady,
+    onDevTriggerWinReady,
+    hideScore,
+    initialSize = 4,
+    themeName = "classic",
+    miniMode = false,
+    disableSave = false,
+  },
+  ref
+) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const scoreElRef = useRef<HTMLElement>(null);
   const bestElRef = useRef<HTMLElement>(null);
+
+  // Refs for closure functions exposed via imperative handle
+  const initFnRef = useRef<() => void>(() => {});
+  const updateStateFnRef = useRef<(state: GameState) => void>(() => {});
+  const keepPlayingFnRef = useRef<() => void>(() => {});
+  const toggleSizeFnRef = useRef<(newSize: number) => void>(() => {});
+  const getSizeFnRef = useRef<() => number>(() => 4);
+  const rerenderFnRef = useRef<() => void>(() => {});
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      init: () => initFnRef.current(),
+      updateState: (state: GameState) => updateStateFnRef.current(state),
+      keepPlaying: () => keepPlayingFnRef.current(),
+      toggleSize: (newSize: number) => toggleSizeFnRef.current(newSize),
+      getSize: () => getSizeFnRef.current(),
+      rerender: () => rerenderFnRef.current(),
+      getCanvasDataURL: () => canvasRef.current?.toDataURL("image/png") ?? null,
+    }),
+    []
+  );
   const announcementRef = useRef<HTMLDivElement>(null);
   const onGameOverRef = useRef(onGameOver);
   const onGameWonRef = useRef(onGameWon);
   const onResetReadyRef = useRef(onResetReady);
   const onStateChangeRef = useRef(onStateChange);
+  const onMoveRef = useRef(onMove);
   const disableInputsRef = useRef(disableInputs);
   const onDevEndGameReadyRef = useRef(onDevEndGameReady);
+  const onDevTriggerWinReadyRef = useRef(onDevTriggerWinReady);
   const initialReadOnlyRef = useRef(!!readOnlyState);
   const disableSaveRef = useRef(disableSave);
-  const [displaySize, setDisplaySize] = useState(4);
-  const themeRef = useRef<ThemeColors>(themes[(themeName as keyof typeof themes)] || themes.classic);
+  const [canvasReady, setCanvasReady] = useState(false);
+  const themeRef = useRef<ThemeColors>(themes[themeName as keyof typeof themes] || themes.classic);
 
-  useEffect(() => {
-    onGameOverRef.current = onGameOver;
-  }, [onGameOver]);
-
-  useEffect(() => {
-    onGameWonRef.current = onGameWon;
-  }, [onGameWon]);
-
-  useEffect(() => {
-    onResetReadyRef.current = onResetReady;
-  }, [onResetReady]);
-
-  useEffect(() => {
-    onStateChangeRef.current = onStateChange;
-  }, [onStateChange]);
-
-  useEffect(() => {
-    disableInputsRef.current = disableInputs;
-  }, [disableInputs]);
-
-  useEffect(() => {
-    disableSaveRef.current = disableSave;
-  }, [disableSave]);
-
-  useEffect(() => {
-    onDevEndGameReadyRef.current = onDevEndGameReady;
-  }, [onDevEndGameReady]);
+  // Sync callback refs during render (React-recommended pattern — no effects needed)
+  onGameOverRef.current = onGameOver;
+  onGameWonRef.current = onGameWon;
+  onResetReadyRef.current = onResetReady;
+  onStateChangeRef.current = onStateChange;
+  onMoveRef.current = onMove;
+  disableInputsRef.current = disableInputs;
+  disableSaveRef.current = disableSave;
+  onDevEndGameReadyRef.current = onDevEndGameReady;
+  onDevTriggerWinReadyRef.current = onDevTriggerWinReady;
 
   // Update theme ref and re-render canvas when theme changes
   useEffect(() => {
-    themeRef.current = themes[(themeName as keyof typeof themes)] || themes.classic;
-    const container = containerRef.current;
-    if (container) {
-      const renderFn = (container as unknown as Record<string, () => void>)._rerender;
-      renderFn?.();
-    }
+    themeRef.current = themes[themeName as keyof typeof themes] || themes.classic;
+    rerenderFnRef.current();
   }, [themeName]);
 
   // Hook to handle readOnlyState changes
   useEffect(() => {
-    if (readOnlyState && containerRef.current) {
-      const updateFn = (containerRef.current as any)._updateState;
-      if (updateFn) updateFn(readOnlyState);
+    if (readOnlyState) {
+      updateStateFnRef.current(readOnlyState);
     }
   }, [readOnlyState]);
 
@@ -131,7 +171,11 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
     let grid = new Uint16Array(16);
     let score = 0;
     let best = (() => {
-      try { return Number(localStorage.getItem("2048_best_overall")) || 0; } catch { return 0; }
+      try {
+        return Number(localStorage.getItem("2048_best_overall")) || 0;
+      } catch {
+        return 0;
+      }
     })();
     let gameOver = false;
     let won = false;
@@ -151,13 +195,12 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
       return r * SIZE + c;
     }
 
-    function setSizeInternal(newSize: number) {
-      SIZE = newSize;
-      // Use available viewport width (minus padding) capped at a max container width
-      const maxContainerWidth = newSize === 4 ? 480 : 640;
+    /** Recalculate canvas dimensions for the current SIZE without touching game state. */
+    function recalcCanvas() {
+      const maxContainerWidth = SIZE === 4 ? 480 : 640;
       const availableWidth = Math.min(window.innerWidth - 32, maxContainerWidth);
-      const maxCell = Math.floor((availableWidth - (newSize + 1) * GAP) / newSize);
-      const idealCell = newSize === 4 ? 100 : 64;
+      const maxCell = Math.floor((availableWidth - (SIZE + 1) * GAP) / SIZE);
+      const idealCell = SIZE === 4 ? 100 : 64;
       CELL = Math.min(idealCell, maxCell);
       GRID_SIZE = SIZE * CELL + (SIZE + 1) * GAP;
       canvas.width = GRID_SIZE * dpr;
@@ -166,8 +209,13 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
       canvas.style.height = GRID_SIZE + "px";
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.scale(dpr, dpr);
+    }
+
+    /** Change grid size — resets all game state. */
+    function setSizeInternal(newSize: number) {
+      SIZE = newSize;
+      recalcCanvas();
       grid = new Uint16Array(SIZE * SIZE);
-      setDisplaySize(newSize);
     }
 
     function addTile() {
@@ -195,7 +243,11 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
       if (scoreEl) scoreEl.textContent = String(score);
       if (score > best) {
         best = score;
-        try { localStorage.setItem("2048_best_overall", String(best)); } catch { /* noop */ }
+        try {
+          localStorage.setItem("2048_best_overall", String(best));
+        } catch {
+          /* noop */
+        }
       }
       if (bestEl) bestEl.textContent = String(best);
     }
@@ -213,10 +265,19 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
     function saveState() {
       if (disableSaveRef.current) return; // Skip save in multiplayer mode
       try {
-        localStorage.setItem(SAVE_KEY + SIZE, JSON.stringify({
-          grid: Array.from(grid), score, gameOver, won, keepPlaying,
-        }));
-      } catch { /* noop */ }
+        localStorage.setItem(
+          SAVE_KEY + SIZE,
+          JSON.stringify({
+            grid: Array.from(grid),
+            score,
+            gameOver,
+            won,
+            keepPlaying,
+          })
+        );
+      } catch {
+        /* noop */
+      }
     }
 
     function restoreState(): boolean {
@@ -235,8 +296,13 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
         for (let i = 0; i < grid.length; i++) {
           if (grid[i] !== 0) {
             tiles.push({
-              value: grid[i], r: (i / SIZE) | 0, c: i % SIZE,
-              fromR: (i / SIZE) | 0, fromC: i % SIZE, scale: 1, merged: false,
+              value: grid[i],
+              r: (i / SIZE) | 0,
+              c: i % SIZE,
+              fromR: (i / SIZE) | 0,
+              fromC: i % SIZE,
+              scale: 1,
+              merged: false,
             });
           }
         }
@@ -244,7 +310,9 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
         render();
         onStateChangeRef.current?.({ grid: Array.from(grid), score, gameOver, won });
         return true;
-      } catch { return false; }
+      } catch {
+        return false;
+      }
     }
 
     function renderPopups() {
@@ -254,7 +322,7 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
       // popup launches fast and decelerates to a stop — feels snappy, not floaty.
       const POPUP_TOTAL = 800;
       const POPUP_FADE_START = 600; // ms before fade begins
-      const POPUP_TRAVEL = 44;     // total pixels to float upward
+      const POPUP_TRAVEL = 44; // total pixels to float upward
 
       for (let i = scorePopups.length - 1; i >= 0; i--) {
         const p = scorePopups[i];
@@ -388,9 +456,21 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
 
         ctx.fillStyle = colors[1];
         const digits = String(tile.value).length;
-        const fontSize = Math.max(10, Math.floor(
-          CELL * (digits <= 1 ? 0.42 : digits === 2 ? 0.36 : digits === 3 ? 0.28 : digits === 4 ? 0.22 : 0.18)
-        ));
+        const fontSize = Math.max(
+          10,
+          Math.floor(
+            CELL *
+              (digits <= 1
+                ? 0.42
+                : digits === 2
+                  ? 0.36
+                  : digits === 3
+                    ? 0.28
+                    : digits === 4
+                      ? 0.22
+                      : 0.18)
+          )
+        );
         ctx.font = `bold ${fontSize}px system-ui`;
         ctx.fillText(String(tile.value), 0, 2);
 
@@ -446,15 +526,37 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
 
     function move(dir: number) {
       if (gameOver || animating) return false;
+      // Notify parent of move direction (for server-authoritative multiplayer)
+      onMoveRef.current?.(dir);
 
       tiles.length = 0;
       let moved = false;
-      let dr = 0, dc = 0, rStart = 0, rEnd = SIZE, rStep = 1, cStart = 0, cEnd = SIZE, cStep = 1;
+      let dr = 0,
+        dc = 0,
+        rStart = 0,
+        rEnd = SIZE,
+        rStep = 1,
+        cStart = 0,
+        cEnd = SIZE,
+        cStep = 1;
 
-      if (dir === 0) { dc = -1; cStart = 1; }
-      else if (dir === 1) { dc = 1; cStart = SIZE - 2; cEnd = -1; cStep = -1; }
-      else if (dir === 2) { dr = -1; rStart = 1; }
-      else { dr = 1; rStart = SIZE - 2; rEnd = -1; rStep = -1; }
+      if (dir === 0) {
+        dc = -1;
+        cStart = 1;
+      } else if (dir === 1) {
+        dc = 1;
+        cStart = SIZE - 2;
+        cEnd = -1;
+        cStep = -1;
+      } else if (dir === 2) {
+        dr = -1;
+        rStart = 1;
+      } else {
+        dr = 1;
+        rStart = SIZE - 2;
+        rEnd = -1;
+        rStep = -1;
+      }
 
       const merged = new Uint8Array(SIZE * SIZE);
 
@@ -463,9 +565,11 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
           const i = idx(r, c);
           if (grid[i] === 0) continue;
 
-          let nr = r, nc = c;
+          let nr = r,
+            nc = c;
           while (true) {
-            const nextR = nr + dr, nextC = nc + dc;
+            const nextR = nr + dr,
+              nextC = nc + dc;
             if (nextR < 0 || nextR >= SIZE || nextC < 0 || nextC >= SIZE) break;
             const nextI = idx(nextR, nextC);
             if (grid[nextI] === 0) {
@@ -489,7 +593,15 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
                 won = true;
                 onGameWonRef.current?.(score, SIZE);
               }
-              tiles.push({ value: grid[ni], r: nr, c: nc, fromR: r, fromC: c, scale: 1, merged: true });
+              tiles.push({
+                value: grid[ni],
+                r: nr,
+                c: nc,
+                fromR: r,
+                fromC: c,
+                scale: 1,
+                merged: true,
+              });
               // Add floating score popup at the merge destination
               scorePopups.push({
                 value: grid[ni],
@@ -501,7 +613,15 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
               });
             } else {
               grid[ni] = grid[i];
-              tiles.push({ value: grid[i], r: nr, c: nc, fromR: r, fromC: c, scale: 1, merged: false });
+              tiles.push({
+                value: grid[i],
+                r: nr,
+                c: nc,
+                fromR: r,
+                fromC: c,
+                scale: 1,
+                merged: false,
+              });
             }
             grid[i] = 0;
           } else {
@@ -549,7 +669,10 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
       keepPlaying = false;
       addTile();
       addTile();
-      if (SIZE === 8) { addTile(); addTile(); }
+      if (SIZE === 8) {
+        addTile();
+        addTile();
+      }
       updateScore();
       render();
       onStateChangeRef.current?.({ grid: Array.from(grid), score, gameOver, won });
@@ -557,9 +680,9 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
     }
 
     // React buttons can't access the useEffect closure, so we attach game functions to the container DOM node
-    let prevGrid = new Uint16Array(SIZE * SIZE);
+    const prevGrid = new Uint16Array(SIZE * SIZE);
     let prevScore = 0;
-    (container as unknown as Record<string, (state: GameState) => void>)._updateState = (state: GameState) => {
+    const updateStateImpl = (state: GameState) => {
       const oldScore = prevScore;
       const scoreDiff = state.score - oldScore;
 
@@ -629,20 +752,33 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
         popupAnimFrame = requestAnimationFrame(popupLoop);
       }
     };
+    updateStateFnRef.current = updateStateImpl;
+    // Legacy DOM-private method (kept during migration)
+    (container as unknown as Record<string, (state: GameState) => void>)._updateState =
+      updateStateImpl;
 
-    (container as unknown as Record<string, () => void>)._rerender = () => render(1);
-    (container as unknown as Record<string, () => void>)._init = init;
-    (container as unknown as Record<string, () => void>)._keepPlaying = () => {
+    // Expose closure functions via refs for useImperativeHandle
+    rerenderFnRef.current = () => render(1);
+    initFnRef.current = init;
+    keepPlayingFnRef.current = () => {
       keepPlaying = true;
       won = false;
       render();
       saveState();
     };
-    (container as unknown as Record<string, (s: number) => void>)._toggleSize = (newSize: number) => {
+    toggleSizeFnRef.current = (newSize: number) => {
       setSizeInternal(newSize);
       init();
     };
-    (container as unknown as Record<string, () => number>)._getSize = () => SIZE;
+    getSizeFnRef.current = () => SIZE;
+
+    // Legacy DOM-private methods (kept for backward compat during migration)
+    (container as unknown as Record<string, () => void>)._rerender = rerenderFnRef.current;
+    (container as unknown as Record<string, () => void>)._init = init;
+    (container as unknown as Record<string, () => void>)._keepPlaying = keepPlayingFnRef.current;
+    (container as unknown as Record<string, (s: number) => void>)._toggleSize =
+      toggleSizeFnRef.current;
+    (container as unknown as Record<string, () => number>)._getSize = getSizeFnRef.current;
 
     const keys = new Set<string>();
     let lastMove = 0;
@@ -745,12 +881,54 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
     container.addEventListener("touchend", onTouchEnd, { passive: false });
     container.addEventListener("touchcancel", onTouchCancel);
 
-    // Resize board on orientation change / window resize
+    // Resize board on orientation change / window resize (debounced)
+    let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+    function rebuildTilesFromGrid() {
+      tiles.length = 0;
+      for (let i = 0; i < SIZE * SIZE; i++) {
+        if (grid[i] !== 0) {
+          tiles.push({
+            value: grid[i],
+            r: (i / SIZE) | 0,
+            c: i % SIZE,
+            fromR: (i / SIZE) | 0,
+            fromC: i % SIZE,
+            scale: 1,
+            merged: false,
+          });
+        }
+      }
+    }
+
     function onResize() {
-      setSizeInternal(SIZE);
-      render(1);
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        // If an animation is in progress, cancel it cleanly
+        animating = false;
+        recalcCanvas();
+        rebuildTilesFromGrid();
+        updateScore();
+        render(1);
+        saveState();
+      }, 150);
     }
     window.addEventListener("resize", onResize);
+
+    // Re-render canvas when page becomes visible again (fixes blank canvas after screen off/tab switch)
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        // Cancel any in-flight animation — state may be stale after being hidden
+        animating = false;
+        // Recalculate canvas dimensions (viewport may have changed while hidden)
+        recalcCanvas();
+        // Rebuild tiles from grid in case they're out of sync
+        rebuildTilesFromGrid();
+        updateScore();
+        // Small delay to ensure canvas context is ready on mobile browsers
+        setTimeout(() => render(1), 50);
+      }
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     setSizeInternal(initialSize);
     if (!initialReadOnlyRef.current) {
@@ -759,6 +937,7 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
       // Read-only mode: just render the empty grid, no random tiles
       render(1);
     }
+    setCanvasReady(true);
 
     // Dev-only: fill board with random tiles and end the game
     function devEndGame() {
@@ -815,10 +994,22 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
     function devAlmostGameOver() {
       // Checkerboard pattern of non-adjacent values - no merges possible
       const pattern = [
-        2, 4, 2, 4,
-        8, 16, 8, 16,
-        2, 4, 2, 4,
-        8, 16, 8, 0,  // Last cell empty
+        2,
+        4,
+        2,
+        4,
+        8,
+        16,
+        8,
+        16,
+        2,
+        4,
+        2,
+        4,
+        8,
+        16,
+        8,
+        0, // Last cell empty
       ];
       tiles.length = 0;
       gameOver = false;
@@ -845,12 +1036,40 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
       onStateChangeRef.current?.({ grid: Array.from(grid), score, gameOver, won });
     }
 
-    // Only expose dev functions for the local (non-read-only) board
-    if (typeof window !== 'undefined' && !initialReadOnlyRef.current) {
-      (window as any).__devPreviewTiles = devPreviewTiles;
-      (window as any).__devAlmostGameOver = devAlmostGameOver;
+    // Dev-only: set up board so the next move merges two 1024s into 2048
+    function devTriggerWin() {
+      tiles.length = 0;
+      grid.fill(0);
+      // Place two 1024 tiles side by side in the top-left
+      grid[0] = 1024;
+      grid[1] = 1024;
+      // Add a small tile so the board isn't nearly empty
+      grid[SIZE] = 2;
+      gameOver = false;
+      won = false;
+      keepPlaying = false;
+      score = 4500;
+      for (let i = 0; i < SIZE * SIZE; i++) {
+        if (grid[i] !== 0) {
+          tiles.push({
+            value: grid[i],
+            r: (i / SIZE) | 0,
+            c: i % SIZE,
+            fromR: (i / SIZE) | 0,
+            fromC: i % SIZE,
+            scale: 1,
+            merged: false,
+          });
+        }
+      }
+      updateScore();
+      render(1);
+      saveState();
+      onStateChangeRef.current?.({ grid: Array.from(grid), score, gameOver, won });
     }
+
     onDevEndGameReadyRef.current?.(devEndGame);
+    onDevTriggerWinReadyRef.current?.(devTriggerWin);
 
     // Expose reset function to parent via callback
     onResetReadyRef.current?.(init);
@@ -859,12 +1078,16 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("keyup", onKeyUp);
       if (!initialReadOnlyRef.current) {
-        document.removeEventListener("touchmove", preventScrollOnBoard, { passive: false } as EventListenerOptions);
+        document.removeEventListener("touchmove", preventScrollOnBoard, {
+          passive: false,
+        } as EventListenerOptions);
       }
       container.removeEventListener("touchstart", onTouchStart);
       container.removeEventListener("touchend", onTouchEnd);
       container.removeEventListener("touchcancel", onTouchCancel);
       window.removeEventListener("resize", onResize);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      if (resizeTimer) clearTimeout(resizeTimer);
       if (repeatTimeout) clearTimeout(repeatTimeout);
       if (popupAnimFrame) cancelAnimationFrame(popupAnimFrame);
     };
@@ -872,26 +1095,15 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
   }, []);
 
   const handleInit = useCallback(() => {
-    const container = containerRef.current;
-    if (container) (container as unknown as Record<string, () => void>)._init?.();
+    initFnRef.current();
   }, []);
 
   const handleKeepPlaying = useCallback(() => {
-    const container = containerRef.current;
-    if (container) (container as unknown as Record<string, () => void>)._keepPlaying?.();
-  }, []);
-
-  const handleSizeToggle = useCallback(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const getSize = (container as unknown as Record<string, () => number>)._getSize;
-    const currentSize = getSize?.() ?? 4;
-    const newSize = currentSize === 4 ? 8 : 4;
-    (container as unknown as Record<string, (s: number) => void>)._toggleSize?.(newSize);
+    keepPlayingFnRef.current();
   }, []);
 
   return (
-    <div className={`board-section${miniMode ? ' board-section-mini' : ''}`}>
+    <div className={`board-section${miniMode ? " board-section-mini" : ""}`}>
       {/* Scores */}
       {!hideScore && (
         <div className="score-row">
@@ -908,7 +1120,13 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
 
       {/* Game board */}
       <div ref={containerRef} className="game-container">
-        <canvas ref={canvasRef} className="game-canvas" role="grid" aria-label="2048 game board" />
+        {!canvasReady && <div className="game-skeleton" />}
+        <canvas
+          ref={canvasRef}
+          className={`game-canvas${canvasReady ? "" : " game-canvas-hidden"}`}
+          role="grid"
+          aria-label="2048 game board"
+        />
         <div
           ref={announcementRef}
           aria-live="polite"
@@ -926,17 +1144,19 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
           }}
         />
         <div className="overlay win">
-          <h2>{readOnlyState ? 'Reached 2048!' : 'You Win!'}</h2>
+          <h2>{readOnlyState ? "Reached 2048!" : "You Win!"}</h2>
           {/* Hide buttons in multiplayer mode — result modal handles actions */}
           {!onStateChange && !readOnlyState && (
             <div className="overlay-buttons">
               <button onClick={handleKeepPlaying}>Keep Playing</button>
-              <button onClick={handleInit} className="secondary">New Game</button>
+              <button onClick={handleInit} className="secondary">
+                New Game
+              </button>
             </div>
           )}
         </div>
         <div className="overlay lose">
-          <h2>{readOnlyState ? 'Ran out of moves' : 'Game Over!'}</h2>
+          <h2>{readOnlyState ? "Ran out of moves" : "Game Over!"}</h2>
           {/* Hide button in multiplayer mode — result modal handles actions */}
           {!onStateChange && !readOnlyState && <button onClick={handleInit}>Try Again</button>}
         </div>
@@ -950,4 +1170,6 @@ export default function Game2048({ onGameOver, onGameWon, onResetReady, readOnly
       </div>
     </div>
   );
-}
+});
+
+export default Game2048;

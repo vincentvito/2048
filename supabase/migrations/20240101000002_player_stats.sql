@@ -37,24 +37,14 @@ create trigger trg_player_stats_updated_at
 
 alter table public.player_stats enable row level security;
 
--- Any authenticated user can read all player stats (needed for leaderboards).
-create policy "Authenticated users can view all player stats"
-  on public.player_stats
-  for select
-  to authenticated
-  using (true);
-
--- Users can only insert their own stats row.
-create policy "Users can insert their own stats"
-  on public.player_stats
-  for insert
-  to authenticated
-  with check (auth.uid() = user_id);
-
--- Users can only update their own stats row.
-create policy "Users can update their own stats"
-  on public.player_stats
-  for update
-  to authenticated
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+do $$ begin
+  if not exists (select 1 from pg_policies where tablename = 'player_stats' and policyname = 'Authenticated users can view all player stats') then
+    create policy "Authenticated users can view all player stats" on public.player_stats for select to authenticated using (true);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'player_stats' and policyname = 'Users can insert their own stats') then
+    create policy "Users can insert their own stats" on public.player_stats for insert to authenticated with check (auth.uid() = user_id);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'player_stats' and policyname = 'Users can update their own stats') then
+    create policy "Users can update their own stats" on public.player_stats for update to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  end if;
+end $$;

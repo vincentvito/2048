@@ -23,13 +23,17 @@ export const auth = betterAuth({
       otpLength: 6,
       expiresIn: 300, // 5 minutes
       async sendVerificationOTP({ email, otp, type }) {
+        // In development without a Resend key, log OTP to console
+        if (!process.env.RESEND_API_KEY) {
+          console.log(`\n[DEV OTP] ${email} → ${otp} (${type})\n`);
+          return;
+        }
         const resend = getResend();
         const { error } = await resend.emails.send({
           from: "2048 <noreply@auth.the2048league.com>",
           to: email,
-          subject: type === "sign-in"
-            ? `Your 2048 login code: ${otp}`
-            : `Your verification code: ${otp}`,
+          subject:
+            type === "sign-in" ? `Your 2048 login code: ${otp}` : `Your verification code: ${otp}`,
           html: `
             <h2>Your verification code</h2>
             <p style="font-size: 32px; font-weight: bold; letter-spacing: 4px;">${otp}</p>

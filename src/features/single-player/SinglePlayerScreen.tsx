@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import React, { useState, useCallback, useRef, useEffect, useMemo, forwardRef, useImperativeHandle } from "react";
 import Game2048, { type Game2048Handle } from "@/components/Game2048";
 import GameOverModal from "@/components/GameOverModal";
 import { saveScore } from "@/lib/score-service";
@@ -31,18 +31,29 @@ interface SinglePlayerScreenProps {
   leaderboardScores: LeaderboardEntry[];
 }
 
-export default function SinglePlayerScreen({
+/** Handle exposed to parent for grid size toggling. */
+export interface SinglePlayerHandle {
+  getSize: () => number;
+  toggleSize: (newSize: number) => void;
+}
+
+const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProps>(function SinglePlayerScreen({
   user,
   activeGridSize,
   refreshTrigger,
   onRefresh,
   onScoreChange,
   leaderboardScores,
-}: SinglePlayerScreenProps) {
+}, ref) {
   const { theme } = useTheme();
   const gameRef = useRef<Game2048Handle>(null);
   const gameResetRef = useRef<(() => void) | null>(null);
   const devEndGameRef = useRef<(() => void) | null>(null);
+
+  useImperativeHandle(ref, () => ({
+    getSize: () => gameRef.current?.getSize() ?? 4,
+    toggleSize: (newSize: number) => gameRef.current?.toggleSize(newSize),
+  }), []);
   const isDev = process.env.NODE_ENV === "development";
 
   const [gameResult, setGameResult] = useState<{
@@ -104,13 +115,6 @@ export default function SinglePlayerScreen({
     return () => clearTimeout(timer);
   }, [showConfetti]);
 
-  /** Expose the Game2048Handle so the parent can call toggleSize. */
-  const getGameRef = useCallback(() => gameRef.current, []);
-  // Attach to window-level for parent access via callback
-  // (parent uses handleGridSizeChange which needs getSize/toggleSize)
-  React.useEffect(() => {
-    (SinglePlayerScreen as any)._gameRef = gameRef;
-  });
 
   return (
     <>
@@ -198,4 +202,6 @@ export default function SinglePlayerScreen({
       )}
     </>
   );
-}
+});
+
+export default SinglePlayerScreen;

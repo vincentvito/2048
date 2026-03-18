@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   // Check for session cookie (lightweight check)
   const sessionCookie = getSessionCookie(request);
 

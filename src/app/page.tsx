@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useRef, useEffect } from "react";
-import SinglePlayerScreen from "@/features/single-player/SinglePlayerScreen";
+import SinglePlayerScreen, { type SinglePlayerHandle } from "@/features/single-player/SinglePlayerScreen";
 import MultiplayerView from "@/components/MultiplayerView";
 import DesktopSidebar from "@/components/DesktopSidebar";
 import MobileMenu from "@/components/MobileMenu";
@@ -27,8 +27,7 @@ export default function Home(): React.ReactElement {
   const [showSignInModal, setShowSignInModal] = useState(false);
   const { theme, setTheme } = useTheme();
 
-  // Ref to access SinglePlayerScreen's Game2048 for size toggling
-  const singlePlayerGameRef = useRef<{ getSize: () => number; toggleSize: (s: number) => void } | null>(null);
+  const singlePlayerRef = useRef<SinglePlayerHandle>(null);
 
   // Auth session
   const { data: sessionData } = useSession();
@@ -72,14 +71,10 @@ export default function Home(): React.ReactElement {
     setGameMode("single");
     setMatchActive(false);
 
-    if (wasSingle) {
-      // Access the game ref via the static property set by SinglePlayerScreen
-      const gameRef = (SinglePlayerScreen as any)._gameRef?.current;
-      if (gameRef) {
-        const currentSize = gameRef.getSize();
-        if (currentSize !== newSize) {
-          gameRef.toggleSize(newSize);
-        }
+    if (wasSingle && singlePlayerRef.current) {
+      const currentSize = singlePlayerRef.current.getSize();
+      if (currentSize !== newSize) {
+        singlePlayerRef.current.toggleSize(newSize);
       }
     }
   }, [gameMode]);
@@ -134,6 +129,7 @@ export default function Home(): React.ReactElement {
 
         {gameMode === "single" ? (
           <SinglePlayerScreen
+            ref={singlePlayerRef}
             user={user}
             activeGridSize={activeGridSize}
             refreshTrigger={refreshTrigger}

@@ -100,37 +100,15 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
   const [displaySize, setDisplaySize] = useState(4);
   const themeRef = useRef<ThemeColors>(themes[(themeName as keyof typeof themes)] || themes.classic);
 
-  useEffect(() => {
-    onGameOverRef.current = onGameOver;
-  }, [onGameOver]);
-
-  useEffect(() => {
-    onGameWonRef.current = onGameWon;
-  }, [onGameWon]);
-
-  useEffect(() => {
-    onResetReadyRef.current = onResetReady;
-  }, [onResetReady]);
-
-  useEffect(() => {
-    onStateChangeRef.current = onStateChange;
-  }, [onStateChange]);
-
-  useEffect(() => {
-    onMoveRef.current = onMove;
-  }, [onMove]);
-
-  useEffect(() => {
-    disableInputsRef.current = disableInputs;
-  }, [disableInputs]);
-
-  useEffect(() => {
-    disableSaveRef.current = disableSave;
-  }, [disableSave]);
-
-  useEffect(() => {
-    onDevEndGameReadyRef.current = onDevEndGameReady;
-  }, [onDevEndGameReady]);
+  // Sync callback refs during render (React-recommended pattern — no effects needed)
+  onGameOverRef.current = onGameOver;
+  onGameWonRef.current = onGameWon;
+  onResetReadyRef.current = onResetReady;
+  onStateChangeRef.current = onStateChange;
+  onMoveRef.current = onMove;
+  disableInputsRef.current = disableInputs;
+  disableSaveRef.current = disableSave;
+  onDevEndGameReadyRef.current = onDevEndGameReady;
 
   // Update theme ref and re-render canvas when theme changes
   useEffect(() => {

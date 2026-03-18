@@ -43,8 +43,11 @@ interface MultiplayerViewProps {
 export default function MultiplayerView({ onMatchActiveChange, reconnectSession }: MultiplayerViewProps) {
   const { state: matchmakingState, setState: setMatchmakingState, roomId, setRoomId: setMatchmakingRoomId, opponentInfo, startMatchmaking, cancelMatchmaking, myId, searchTimeLeft } = useMatchmaking();
 
-  // Bot opponent info from matchmaking
-  const [botOpponent, setBotOpponent] = useState<{ username: string; elo: number } | null>(null);
+  // Derive bot opponent info from matchmaking (no effect needed)
+  const botOpponent = useMemo(
+    () => opponentInfo?.isBot ? { username: opponentInfo.username, elo: opponentInfo.elo } : null,
+    [opponentInfo]
+  );
 
   const { theme: themeName } = useTheme();
 
@@ -108,15 +111,6 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
 
   // Compute effective room ID — friend room takes priority when in friendly mode
   const effectiveRoomId = gameMode === 'friendly' ? friendRoomId : roomId;
-
-  // Set bot opponent info when matched with a bot
-  useEffect(() => {
-    if (opponentInfo?.isBot) {
-      setBotOpponent({ username: opponentInfo.username, elo: opponentInfo.elo });
-    } else {
-      setBotOpponent(null);
-    }
-  }, [opponentInfo]);
 
   // Persist session whenever we have an active room
   useEffect(() => {
@@ -186,7 +180,7 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
   }, [isReconnecting, effectiveRoomId]);
 
   const [localGameResult, setLocalGameResult] = useState<{ won: boolean; score: number; gameOver: boolean } | null>(null);
-  const [showResultModal, setShowResultModal] = useState(false);
+  // showResultModal is derived from isMatchResolved (computed below)
   const [showOpponentExpanded, setShowOpponentExpanded] = useState(false);
   const [showLeaveWarning, setShowLeaveWarning] = useState(false);
   const localGameResetRef = useRef<(() => void) | null>(null);
@@ -317,21 +311,21 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
     setLobbyScreen('main');
     setCodeCopied(false);
     setLocalGameResult(null);
-    setShowResultModal(false);
+
     confettiFiredRef.current = false;
     setLocalEloDelta(null);
     setOpponentEloDelta(null);
     setLocalEloAfter(null);
     setEloProcessed(false);
     setIsReconnecting(false);
-    setBotOpponent(null);
+    // botOpponent is derived from opponentInfo, no need to reset
   };
 
   const handleNewOpponent = () => {
     if (user?.id) clearMultiplayerSession();
     cancelMatchmaking();
     setLocalGameResult(null);
-    setShowResultModal(false);
+
     confettiFiredRef.current = false;
     setLocalEloDelta(null);
     setOpponentEloDelta(null);
@@ -366,13 +360,15 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
   // Disable local inputs when the local player is done or match is fully resolved
   const disableLocalInputs = localDone || someoneWon2048 || timerExpired || hasForfeit || isMatchResolved;
 
-  // Show result modal and clear active match when match resolves
+  // Clear active match session when match resolves
+  const matchClearedRef = useRef(false);
   useEffect(() => {
-    if (isMatchResolved && !showResultModal) {
-      setShowResultModal(true);
+    if (isMatchResolved && !matchClearedRef.current) {
+      matchClearedRef.current = true;
       if (user?.id) clearMultiplayerSession();
     }
-  }, [isMatchResolved, showResultModal, user?.id]);
+    if (!isMatchResolved) matchClearedRef.current = false;
+  }, [isMatchResolved, user?.id]);
 
   // Process ELO changes when match resolves (skip for friendly games)
   useEffect(() => {
@@ -450,7 +446,7 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
     if (rematchReady) {
       resetRematchState();
       setLocalGameResult(null);
-      setShowResultModal(false);
+  
       confettiFiredRef.current = false;
       setLocalEloDelta(null);
       setOpponentEloDelta(null);
@@ -465,7 +461,7 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
     if (rematchStarted) {
       clearRematchStarted();
       setLocalGameResult(null);
-      setShowResultModal(false);
+  
       confettiFiredRef.current = false;
       setLocalEloDelta(null);
       setOpponentEloDelta(null);
@@ -826,7 +822,7 @@ export default function MultiplayerView({ onMatchActiveChange, reconnectSession 
       />
 
       <MatchResultModal
-        show={showResultModal && isMatchResolved}
+        show={isMatchResolved}
         resultTitle={getResultTitle()}
         resultSubtitle={getResultSubtitle()}
         resultBannerClass={getResultBannerClass()}

@@ -12,20 +12,13 @@ export default function UsernamePrompt(): React.ReactElement | null {
   const { data: sessionData, isPending, refetch } = useSession();
   const user = (sessionData?.user as AppUser | undefined) ?? null;
 
-  const [show, setShow] = useState(false);
   const [username, setUsername] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Show prompt if user is signed in but has no username
-  useEffect(() => {
-    if (!isPending && user && !user.username) {
-      setShow(true);
-    } else {
-      setShow(false);
-    }
-  }, [user, isPending]);
+  // Derive show state — no effect needed
+  const show = !isPending && !!user && !user.username;
 
   // Auto-focus input when shown
   useEffect(() => {
@@ -68,9 +61,8 @@ export default function UsernamePrompt(): React.ReactElement | null {
         return;
       }
 
-      // Refetch session to get updated user data
+      // Refetch session — show will automatically hide since user now has a username
       await refetch();
-      setShow(false);
     } catch {
       setError("Failed to save username");
     } finally {

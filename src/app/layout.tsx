@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/features/theme/ThemeProvider";
 import { Toaster } from "sonner";
 import { ParticleProvider } from "@/components/EmojiParticles";
+import InstallBanner from "@/components/InstallBanner";
 
 const fredoka = Fredoka({
   subsets: ["latin"],
@@ -20,13 +21,48 @@ const nunito = Nunito({
 });
 
 export const metadata: Metadata = {
-  title: "2048",
-  description: "Play 2048 - the classic sliding tile puzzle game",
+  title: {
+    default: "The 2048 League — Play, Compete, Win",
+    template: "%s | The 2048 League",
+  },
+  description:
+    "Play 2048 — the classic sliding tile puzzle. Compete on leaderboards and challenge friends in real-time multiplayer.",
+  keywords: ["2048", "puzzle", "game", "multiplayer", "leaderboard", "tiles"],
+  authors: [{ name: "The 2048 League" }],
+  openGraph: {
+    title: "The 2048 League",
+    description:
+      "Play 2048 — slide tiles, hit 2048, and compete on leaderboards.",
+    url: "https://www.the2048league.com",
+    siteName: "The 2048 League",
+    images: [{ url: "/brand.png", width: 1024, height: 512 }],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "The 2048 League",
+    description:
+      "Play 2048 — slide tiles, hit 2048, and compete on leaderboards.",
+    images: ["/brand.png"],
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "2048",
+  },
+  icons: {
+    icon: [
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  themeColor: "#f59e0b",
 };
 
 export default function RootLayout({
@@ -41,6 +77,11 @@ export default function RootLayout({
           <ParticleProvider>
             {children}
           </ParticleProvider>
+          <div className="landscape-blocker">
+            <span className="landscape-blocker-icon">📱</span>
+            <p className="landscape-blocker-text">Please rotate your device to portrait mode</p>
+          </div>
+          <InstallBanner />
           <Toaster position="top-right" richColors />
         </ThemeProvider>
       </body>

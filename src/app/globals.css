@@ -264,14 +264,14 @@ body {
 /* ========== Page Layout (sidebar + main) ========== */
 .page-layout {
   display: flex;
+  justify-content: center;
   min-height: 100vh;
 }
 
 /* ========== Container ========== */
 .container {
-  max-width: 480px;
   width: 100%;
-  margin: 0 auto;
+  max-width: 480px;
   padding: 0;
   transition: max-width 0.3s ease;
 }
@@ -330,10 +330,9 @@ body {
     display: none; /* Chrome, Safari, Opera */
   }
 
-  /* Main content area: fill space right of sidebar and center content within it */
+  /* Offset main content by sidebar width — container's margin:auto centers within the remaining space */
   .page-layout {
     padding-left: 300px;
-    justify-content: center;
   }
 }
 
@@ -1686,7 +1685,7 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 44px;
+  height: 52px;
   min-width: 44px;
   padding: 0 24px;
   border: 2px solid var(--accent-border-light);
@@ -1974,10 +1973,48 @@ button:focus-visible,
 }
 
 /* ========== Safe Area (notched devices) ========== */
-.page-layout {
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
-  padding-bottom: env(safe-area-inset-bottom);
+@supports (padding: env(safe-area-inset-left)) {
+  .page-layout {
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* ========== Landscape blocker (mobile only) ========== */
+.landscape-blocker {
+  display: none;
+}
+
+@media screen and (max-width: 900px) and (orientation: landscape) {
+  .landscape-blocker {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: var(--bg-page, #fef3c7);
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
+    text-align: center;
+    padding: 24px;
+  }
+
+  .landscape-blocker-icon {
+    font-size: 48px;
+    animation: rotateHint 1.5s ease-in-out infinite;
+  }
+
+  .landscape-blocker-text {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  @keyframes rotateHint {
+    0%, 100% { transform: rotate(0deg); }
+    50%      { transform: rotate(90deg); }
+  }
 }
 
 /* ==========================================================
@@ -2227,7 +2264,7 @@ button:focus-visible,
   .modal-btn-primary,
   .modal-btn-secondary {
     height: 44px;
-    font-size: 13px;
+    font-size: 14px;
   }
 
   .modal-btn-leaderboard {
@@ -4462,4 +4499,109 @@ body.mobile-no-scroll {
   margin: 0 0 12px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
+}
+
+/* ── Install Banner (PWA) ── */
+.install-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  padding: 12px 16px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  background: var(--modal-bg, #fffbeb);
+  border-top: 1px solid var(--accent-border-medium);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+  animation: installSlideUp 0.4s ease-out;
+}
+
+@media (min-width: 601px) {
+  .install-banner {
+    left: 300px;
+  }
+}
+
+.install-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.install-banner-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.install-banner-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.install-banner-text strong {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.install-banner-text span {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.install-banner-share {
+  font-size: 1.1em;
+}
+
+.install-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.install-banner-btn {
+  padding: 8px 20px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--accent-light), var(--accent));
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.install-banner-btn:active {
+  transform: scale(0.96);
+}
+
+.install-banner-close {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: background 0.15s;
+}
+
+.install-banner-close:hover {
+  background: var(--accent-bg-subtle);
+}
+
+@keyframes installSlideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
 }

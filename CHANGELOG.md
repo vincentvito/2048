@@ -79,6 +79,18 @@
 - Added "Emoji Effects" toggle in both desktop sidebar and mobile menu — persisted to localStorage
 - Replaced broken SVG swipe hint with animated `👆` emoji that swipes in 4 directions with semi-transparent backdrop
 - Added skeleton loading placeholder for the game board — prevents layout shift (small square → full board) on page load by reserving the correct dimensions with a pulsing placeholder until the canvas initializes
+- Fixed board not centered in sidebar layout — safe-area `padding-left` rule was overriding the sidebar offset; removed conflicting rule
+
+### PWA & SEO
+- Made the app a Progressive Web App — web app manifest (`manifest.ts`), service worker with network-first caching, and install banner for "Add to Home Screen"
+- Install banner slides up from the bottom with Install/Dismiss actions; respects 7-day dismiss cooldown; detects iOS and shows share-button instructions
+- Cropped brand image to square and generated PWA icons (192x192, 512x512, apple-touch-icon)
+- Added comprehensive SEO metadata — OpenGraph, Twitter card, keywords, apple-web-app-capable, theme-color
+- Added security headers via `next.config.ts` — `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, plus no-cache for service worker
+- Created `public/` folder with favicon, brand image, and PWA icons
+- Replaced default Vercel favicon with 2048 League brand icon (auto-generated 16x16, 32x32, 48x48 from brand)
+- Added landscape orientation blocker on mobile — shows "rotate to portrait" overlay when screen width < 900px in landscape
+- Manifest specifies `orientation: "portrait"` for installed PWA mode
 
 ### Local Development
 - Added local Supabase support — `npm run db:start`, `db:stop`, `db:reset`, `db:status` scripts

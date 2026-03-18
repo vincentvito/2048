@@ -6,6 +6,10 @@
     "dev": "next dev",
     "dev:party": "partykit dev",
     "dev:all": "concurrently \"npm run dev\" \"npm run dev:party\"",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:status": "supabase status",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -34,6 +38,7 @@
     "concurrently": "^9.2.1",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "supabase": "^2.81.3",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

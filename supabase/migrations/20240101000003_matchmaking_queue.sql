@@ -36,30 +36,17 @@ create trigger trg_matchmaking_updated_at
 -- RLS
 alter table public.matchmaking_queue enable row level security;
 
--- Users can view their own queue entries and matched opponents
-create policy "Users can view own and matched entries"
-  on public.matchmaking_queue
-  for select
-  to authenticated
-  using (auth.uid() = user_id OR auth.uid() = opponent_id);
-
--- Users can insert their own entries
-create policy "Users can insert own entries"
-  on public.matchmaking_queue
-  for insert
-  to authenticated
-  with check (auth.uid() = user_id);
-
--- Users can update their own entries
-create policy "Users can update own entries"
-  on public.matchmaking_queue
-  for update
-  to authenticated
-  using (auth.uid() = user_id);
-
--- Users can delete their own entries
-create policy "Users can delete own entries"
-  on public.matchmaking_queue
-  for delete
-  to authenticated
-  using (auth.uid() = user_id);
+do $$ begin
+  if not exists (select 1 from pg_policies where tablename = 'matchmaking_queue' and policyname = 'Users can view own and matched entries') then
+    create policy "Users can view own and matched entries" on public.matchmaking_queue for select to authenticated using (auth.uid() = user_id OR auth.uid() = opponent_id);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'matchmaking_queue' and policyname = 'Users can insert own entries') then
+    create policy "Users can insert own entries" on public.matchmaking_queue for insert to authenticated with check (auth.uid() = user_id);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'matchmaking_queue' and policyname = 'Users can update own entries') then
+    create policy "Users can update own entries" on public.matchmaking_queue for update to authenticated using (auth.uid() = user_id);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'matchmaking_queue' and policyname = 'Users can delete own entries') then
+    create policy "Users can delete own entries" on public.matchmaking_queue for delete to authenticated using (auth.uid() = user_id);
+  end if;
+end $$;

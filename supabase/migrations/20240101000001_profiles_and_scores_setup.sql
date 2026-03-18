@@ -9,17 +9,17 @@ create table if not exists public.profiles (
 
 alter table public.profiles enable row level security;
 
-create policy "Profiles are viewable by everyone"
-  on public.profiles for select
-  using (true);
-
-create policy "Users can update own profile"
-  on public.profiles for update
-  using (auth.uid() = id);
-
-create policy "Users can insert own profile"
-  on public.profiles for insert
-  with check (auth.uid() = id);
+do $$ begin
+  if not exists (select 1 from pg_policies where tablename = 'profiles' and policyname = 'Profiles are viewable by everyone') then
+    create policy "Profiles are viewable by everyone" on public.profiles for select using (true);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'profiles' and policyname = 'Users can update own profile') then
+    create policy "Users can update own profile" on public.profiles for update using (auth.uid() = id);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'profiles' and policyname = 'Users can insert own profile') then
+    create policy "Users can insert own profile" on public.profiles for insert with check (auth.uid() = id);
+  end if;
+end $$;
 
 -- 2. Auto-create profile on new user sign-up
 create or replace function public.handle_new_user()
@@ -47,16 +47,11 @@ alter table public.scores
 create index if not exists idx_scores_user_id on public.scores(user_id);
 
 -- 4. Scores RLS policies
--- Allow anyone (including unauthenticated / anon role) to read scores.
-create policy "Anyone can read scores"
-  on public.scores
-  for select
-  to anon, authenticated
-  using (true);
-
--- Authenticated users can insert their own scores.
-create policy "Authenticated users can insert scores"
-  on public.scores
-  for insert
-  to authenticated
-  with check (true);
+do $$ begin
+  if not exists (select 1 from pg_policies where tablename = 'scores' and policyname = 'Anyone can read scores') then
+    create policy "Anyone can read scores" on public.scores for select to anon, authenticated using (true);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'scores' and policyname = 'Authenticated users can insert scores') then
+    create policy "Authenticated users can insert scores" on public.scores for insert to authenticated with check (true);
+  end if;
+end $$;

@@ -49,6 +49,7 @@ const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProp
   const gameRef = useRef<Game2048Handle>(null);
   const gameResetRef = useRef<(() => void) | null>(null);
   const devEndGameRef = useRef<(() => void) | null>(null);
+  const devTriggerWinRef = useRef<(() => void) | null>(null);
 
   useImperativeHandle(ref, () => ({
     getSize: () => gameRef.current?.getSize() ?? 4,
@@ -63,6 +64,9 @@ const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProp
     gridSize: number;
     boardScreenshot?: string;
   } | null>(null);
+  // Track the unsaved winning score so we can submit it if the player resets
+  // before the game naturally ends.
+  const unsavedWinRef = useRef<{ score: number; gridSize: number } | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showSwipeHint, setShowSwipeHint] = useState(false);
 
@@ -98,6 +102,7 @@ const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProp
     const boardScreenshot = captureBoardScreenshot();
     onScoreChange(score);
     setGameResult({ open: true, won: false, score, gridSize, boardScreenshot });
+    unsavedWinRef.current = null; // game ended naturally — save the final score
     saveScoreToSupabase(score, gridSize);
   }, [saveScoreToSupabase, captureBoardScreenshot, onScoreChange]);
 
@@ -106,8 +111,19 @@ const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProp
     onScoreChange(score);
     setGameResult({ open: true, won: true, score, gridSize, boardScreenshot });
     setShowConfetti(true);
-    saveScoreToSupabase(score, gridSize);
-  }, [saveScoreToSupabase, captureBoardScreenshot, onScoreChange]);
+    // Don't save yet — the player may keep playing and reach a higher score.
+    // Track it so we can save if they reset without hitting game over.
+    unsavedWinRef.current = { score, gridSize };
+  }, [captureBoardScreenshot, onScoreChange]);
+
+  /** Save the unsaved winning score (if any) before starting a new game. */
+  const flushUnsavedWin = useCallback(() => {
+    const pending = unsavedWinRef.current;
+    if (pending) {
+      unsavedWinRef.current = null;
+      saveScoreToSupabase(pending.score, pending.gridSize);
+    }
+  }, [saveScoreToSupabase]);
 
   useEffect(() => {
     if (!showConfetti) return;
@@ -150,6 +166,7 @@ const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProp
           initialSize={activeGridSize}
           themeName={theme}
           onDevEndGameReady={isDev ? (fn) => { devEndGameRef.current = fn; } : undefined}
+          onDevTriggerWinReady={isDev ? (fn) => { devTriggerWinRef.current = fn; } : undefined}
         />
 
         {showSwipeHint && (
@@ -175,13 +192,18 @@ const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProp
       </div>
 
       <div className="below-board-controls">
-        <button className="header-new-game-btn" onClick={() => gameResetRef.current?.()}>
+        <button className="header-new-game-btn" onClick={() => { flushUnsavedWin(); gameResetRef.current?.(); }}>
           New Game
         </button>
         {isDev && (
+          <>
+          <button className="header-new-game-btn" style={{ background: '#16a34a' }} onClick={() => devTriggerWinRef.current?.()}>
+            DEV: Win Setup
+          </button>
           <button className="header-new-game-btn" style={{ background: '#dc2626' }} onClick={() => devEndGameRef.current?.()}>
             DEV: End Game
           </button>
+          </>
         )}
       </div>
 
@@ -192,7 +214,7 @@ const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProp
           score={gameResult.score}
           gridSize={gameResult.gridSize}
           onClose={() => setGameResult(null)}
-          onPlayAgain={() => { setGameResult(null); gameResetRef.current?.(); }}
+          onPlayAgain={() => { flushUnsavedWin(); setGameResult(null); gameResetRef.current?.(); }}
           onKeepPlaying={gameResult.won ? () => setGameResult(null) : undefined}
           leaderboardScores={leaderboardScores}
           isSignedIn={!!user}

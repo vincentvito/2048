@@ -38,36 +38,18 @@ create trigger trg_game_state_updated_at
 -- RLS
 alter table public.game_state enable row level security;
 
--- Users can view game state for their rooms
-create policy "Users can view game state in their rooms"
-  on public.game_state
-  for select
-  to authenticated
-  using (
-    exists (
-      select 1 from public.game_state gs
-      where gs.room_id = game_state.room_id
-      and gs.user_id = auth.uid()
-    )
-  );
-
--- Users can insert their own game state
-create policy "Users can insert own game state"
-  on public.game_state
-  for insert
-  to authenticated
-  with check (auth.uid() = user_id);
-
--- Users can update their own game state
-create policy "Users can update own game state"
-  on public.game_state
-  for update
-  to authenticated
-  using (auth.uid() = user_id);
-
--- Users can delete their own game state
-create policy "Users can delete own game state"
-  on public.game_state
-  for delete
-  to authenticated
-  using (auth.uid() = user_id);
+do $$ begin
+  if not exists (select 1 from pg_policies where tablename = 'game_state' and policyname = 'Users can view game state in their rooms') then
+    create policy "Users can view game state in their rooms" on public.game_state for select to authenticated
+      using (exists (select 1 from public.game_state gs where gs.room_id = game_state.room_id and gs.user_id = auth.uid()));
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'game_state' and policyname = 'Users can insert own game state') then
+    create policy "Users can insert own game state" on public.game_state for insert to authenticated with check (auth.uid() = user_id);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'game_state' and policyname = 'Users can update own game state') then
+    create policy "Users can update own game state" on public.game_state for update to authenticated using (auth.uid() = user_id);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'game_state' and policyname = 'Users can delete own game state') then
+    create policy "Users can delete own game state" on public.game_state for delete to authenticated using (auth.uid() = user_id);
+  end if;
+end $$;

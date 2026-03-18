@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase-client";
 import { getPersonalBest } from "@/lib/guest-scores";
+import { toast } from "sonner";
 
 interface LeaderboardApiResponse {
   scores?: Score[];
@@ -63,16 +64,16 @@ export default function Leaderboard({
       );
 
       if (!res.ok) {
-        console.error('[Leaderboard] API returned', res.status, res.statusText);
         setFetchError('Could not load scores');
+        toast.error('Could not load leaderboard');
         return;
       }
 
       const json: LeaderboardApiResponse = await res.json();
 
       if (json.error) {
-        console.error('[Leaderboard] API error:', json.error);
         setFetchError('Could not load scores');
+        toast.error('Could not load leaderboard');
         return;
       }
 
@@ -81,8 +82,9 @@ export default function Leaderboard({
       onScoresLoaded?.(data.map((s) => ({ username: s.username, score: s.score })));
     } catch (err: unknown) {
       const isAbort = err instanceof DOMException && err.name === 'AbortError';
-      console.error('[Leaderboard] Fetch threw:', isAbort ? 'AbortError (timeout)' : err);
-      setFetchError(isAbort ? 'Request timed out' : 'Could not load scores');
+      const msg = isAbort ? 'Request timed out' : 'Could not load scores';
+      setFetchError(msg);
+      toast.error(msg);
     } finally {
       clearTimeout(timeoutId);
       setLoading(false);

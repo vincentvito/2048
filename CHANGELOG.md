@@ -63,6 +63,20 @@
 - Fixed orientation change causing game freeze — debounced resize handler prevents cascading redraws
 - Fixed UsernamePrompt not auto-hiding after username save (now derived from session state)
 - Renamed `middleware.ts` to `proxy.ts` per Next.js 16 deprecation (function renamed from `middleware` to `proxy`)
+- Fixed score not recorded in leaderboard after continuing past 2048 — score is now saved when the game truly ends (game over, play again, or new game) instead of at the moment 2048 is reached
+- Fixed "All Time" leaderboard tab returning 400 — API now accepts `alltime` tab parameter
+- Fixed OTP email sending failing in local development — OTP code is logged to the console when no Resend API key is configured
+
+### Local Development
+- Added local Supabase support — `npm run db:start`, `db:stop`, `db:reset`, `db:status` scripts
+- Created proper migration ordering with Supabase timestamp format — all migrations now apply cleanly on `db reset`
+- Added missing `scores` table migration (`20240101000000_scores.sql`) and consolidated `profiles` + scores RLS into `20240101000001_profiles_and_scores_setup.sql`
+- Removed standalone `supabase-migration.sql` (content merged into numbered migrations)
+- Added `supabase` CLI as a dev dependency for local database management
+- Added dev-only "DEV: Win Setup" button — places two 1024 tiles for easy win-flow testing
+
+### Dependencies
+- Added `sonner` for toast notifications — error toasts shown on leaderboard fetch failures and timeouts
 
 ### Documentation
 - Rewrote `README.md` with stack, setup instructions, architecture overview, multiplayer protocol, auth model, and project structure

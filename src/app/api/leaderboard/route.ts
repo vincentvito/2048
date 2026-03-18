@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
   if (![4, 8].includes(gridSize)) {
     return NextResponse.json({ error: 'Invalid grid size' }, { status: 400 });
   }
-  if (!['today', 'all'].includes(tab)) {
+  if (!['today', 'all', 'alltime'].includes(tab)) {
     return NextResponse.json({ error: 'Invalid tab' }, { status: 400 });
   }
 
@@ -46,7 +46,6 @@ export async function GET(req: NextRequest) {
   const { data, error } = await query;
 
   if (error) {
-    console.error('[Leaderboard] Supabase error:', error);
     return NextResponse.json({ error: 'Failed to fetch leaderboard' }, { status: 500 });
   }
 

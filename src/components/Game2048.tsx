@@ -57,6 +57,7 @@ interface Game2048Props {
   onMove?: (direction: number) => void;
   disableInputs?: boolean;
   onDevEndGameReady?: (fn: () => void) => void;
+  onDevTriggerWinReady?: (fn: () => void) => void;
   hideScore?: boolean;
   initialSize?: number;
   themeName?: string;
@@ -64,7 +65,7 @@ interface Game2048Props {
   miniMode?: boolean;
 }
 
-const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ onGameOver, onGameWon, onResetReady, readOnlyState, onStateChange, onMove, disableInputs, onDevEndGameReady, hideScore, initialSize = 4, themeName = "classic", miniMode = false, disableSave = false }, ref) {
+const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ onGameOver, onGameWon, onResetReady, readOnlyState, onStateChange, onMove, disableInputs, onDevEndGameReady, onDevTriggerWinReady, hideScore, initialSize = 4, themeName = "classic", miniMode = false, disableSave = false }, ref) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const scoreElRef = useRef<HTMLElement>(null);
@@ -95,6 +96,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
   const onMoveRef = useRef(onMove);
   const disableInputsRef = useRef(disableInputs);
   const onDevEndGameReadyRef = useRef(onDevEndGameReady);
+  const onDevTriggerWinReadyRef = useRef(onDevTriggerWinReady);
   const initialReadOnlyRef = useRef(!!readOnlyState);
   const disableSaveRef = useRef(disableSave);
   const [displaySize, setDisplaySize] = useState(4);
@@ -109,6 +111,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
   disableInputsRef.current = disableInputs;
   disableSaveRef.current = disableSave;
   onDevEndGameReadyRef.current = onDevEndGameReady;
+  onDevTriggerWinReadyRef.current = onDevTriggerWinReady;
 
   // Update theme ref and re-render canvas when theme changes
   useEffect(() => {
@@ -879,7 +882,40 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048({ o
       onStateChangeRef.current?.({ grid: Array.from(grid), score, gameOver, won });
     }
 
+    // Dev-only: set up board so the next move merges two 1024s into 2048
+    function devTriggerWin() {
+      tiles.length = 0;
+      grid.fill(0);
+      // Place two 1024 tiles side by side in the top-left
+      grid[0] = 1024;
+      grid[1] = 1024;
+      // Add a small tile so the board isn't nearly empty
+      grid[SIZE] = 2;
+      gameOver = false;
+      won = false;
+      keepPlaying = false;
+      score = 4500;
+      for (let i = 0; i < SIZE * SIZE; i++) {
+        if (grid[i] !== 0) {
+          tiles.push({
+            value: grid[i],
+            r: (i / SIZE) | 0,
+            c: i % SIZE,
+            fromR: (i / SIZE) | 0,
+            fromC: i % SIZE,
+            scale: 1,
+            merged: false,
+          });
+        }
+      }
+      updateScore();
+      render(1);
+      saveState();
+      onStateChangeRef.current?.({ grid: Array.from(grid), score, gameOver, won });
+    }
+
     onDevEndGameReadyRef.current?.(devEndGame);
+    onDevTriggerWinReadyRef.current?.(devTriggerWin);
 
     // Expose reset function to parent via callback
     onResetReadyRef.current?.(init);

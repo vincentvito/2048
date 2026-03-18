@@ -9,23 +9,19 @@ export default function HowToPlay(): React.ReactElement {
   useEffect(() => {
     // Detect mobile via touch capability and screen width
     const checkMobile = () => {
-      const hasTouchScreen = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      const hasTouchScreen = "ontouchstart" in window || navigator.maxTouchPoints > 0;
       const isSmallScreen = window.innerWidth <= 600;
       setIsMobile(hasTouchScreen && isSmallScreen);
     };
 
     checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   return (
     <div className="how-to-play">
-      <button
-        onClick={() => setOpen(!open)}
-        className="how-to-play-toggle"
-        aria-expanded={open}
-      >
+      <button onClick={() => setOpen(!open)} className="how-to-play-toggle" aria-expanded={open}>
         <span>How to Play</span>
         <svg
           className={`toggle-icon ${open ? "open" : ""}`}
@@ -34,7 +30,13 @@ export default function HowToPlay(): React.ReactElement {
           viewBox="0 0 16 16"
           fill="none"
         >
-          <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path
+            d="M4 6L8 10L12 6"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </svg>
       </button>
 
@@ -44,7 +46,13 @@ export default function HowToPlay(): React.ReactElement {
             <div className="instruction-item">
               <div className="instruction-icon">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <path d="M5 12H19M19 12L13 6M19 12L13 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <path
+                    d="M5 12H19M19 12L13 6M19 12L13 18"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               </div>
               <div>
@@ -56,10 +64,37 @@ export default function HowToPlay(): React.ReactElement {
             <div className="instruction-item">
               <div className="instruction-icon">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <rect x="3" y="3" width="8" height="8" rx="2" stroke="currentColor" strokeWidth="2" />
-                  <rect x="13" y="3" width="8" height="8" rx="2" stroke="currentColor" strokeWidth="2" />
-                  <path d="M7 7H7.01M17 7H17.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                  <path d="M12 15L8 19M12 15L16 19M12 15V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <rect
+                    x="3"
+                    y="3"
+                    width="8"
+                    height="8"
+                    rx="2"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  />
+                  <rect
+                    x="13"
+                    y="3"
+                    width="8"
+                    height="8"
+                    rx="2"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  />
+                  <path
+                    d="M7 7H7.01M17 7H17.01"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M12 15L8 19M12 15L16 19M12 15V21"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               </div>
               <div>
@@ -71,7 +106,13 @@ export default function HowToPlay(): React.ReactElement {
             <div className="instruction-item">
               <div className="instruction-icon">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <path
+                    d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               </div>
               <div>
@@ -85,7 +126,7 @@ export default function HowToPlay(): React.ReactElement {
             <h4>Controls</h4>
             <div className="controls-grid">
               <div className="control-item">
-                <span>{isMobile ? 'Swipe gestures' : 'Arrow keys'}</span>
+                <span>{isMobile ? "Swipe gestures" : "Arrow keys"}</span>
               </div>
             </div>
           </div>

@@ -1,20 +1,16 @@
 export interface MultiplayerSession {
   roomId: string;
-  gameMode: 'ranked' | 'friendly';
+  gameMode: "ranked" | "friendly";
   friendRoomCode?: string;
 }
 
 /** Save active match info to the database. */
-export async function saveMultiplayerSession(
-  userId: string,
-  session: MultiplayerSession
-): Promise<void> {
+export async function saveMultiplayerSession(session: MultiplayerSession): Promise<void> {
   try {
-    await fetch('/api/active-match', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    await fetch("/api/active-match", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        userId,
         roomId: session.roomId,
         gameMode: session.gameMode,
         friendRoomCode: session.friendRoomCode,
@@ -26,11 +22,9 @@ export async function saveMultiplayerSession(
 }
 
 /** Fetch active match info from the database. */
-export async function getMultiplayerSession(
-  userId: string
-): Promise<MultiplayerSession | null> {
+export async function getMultiplayerSession(): Promise<MultiplayerSession | null> {
   try {
-    const res = await fetch(`/api/active-match?userId=${encodeURIComponent(userId)}`);
+    const res = await fetch("/api/active-match");
     const { data } = await res.json();
     return data as MultiplayerSession | null;
   } catch {
@@ -39,10 +33,10 @@ export async function getMultiplayerSession(
 }
 
 /** Clear active match info in the database. */
-export async function clearMultiplayerSession(userId: string): Promise<void> {
+export async function clearMultiplayerSession(): Promise<void> {
   try {
-    await fetch(`/api/active-match?userId=${encodeURIComponent(userId)}`, {
-      method: 'DELETE',
+    await fetch("/api/active-match", {
+      method: "DELETE",
     });
   } catch {
     // best-effort

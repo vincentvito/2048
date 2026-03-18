@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase-client";
 import { getPersonalBest } from "@/lib/guest-scores";
+import { toast } from "sonner";
 
 interface LeaderboardApiResponse {
   scores?: Score[];
@@ -57,22 +58,21 @@ export default function Leaderboard({
     try {
       // Pass user's timezone offset for accurate "today" filtering
       const tzOffset = new Date().getTimezoneOffset();
-      const res = await fetch(
-        `/api/leaderboard?gridSize=${gridSize}&tab=${tab}&tz=${tzOffset}`,
-        { signal: controller.signal }
-      );
+      const res = await fetch(`/api/leaderboard?gridSize=${gridSize}&tab=${tab}&tz=${tzOffset}`, {
+        signal: controller.signal,
+      });
 
       if (!res.ok) {
-        console.error('[Leaderboard] API returned', res.status, res.statusText);
-        setFetchError('Could not load scores');
+        setFetchError("Could not load scores");
+        toast.error("Could not load leaderboard");
         return;
       }
 
       const json: LeaderboardApiResponse = await res.json();
 
       if (json.error) {
-        console.error('[Leaderboard] API error:', json.error);
-        setFetchError('Could not load scores');
+        setFetchError("Could not load scores");
+        toast.error("Could not load leaderboard");
         return;
       }
 
@@ -80,9 +80,10 @@ export default function Leaderboard({
       setScores(data);
       onScoresLoaded?.(data.map((s) => ({ username: s.username, score: s.score })));
     } catch (err: unknown) {
-      const isAbort = err instanceof DOMException && err.name === 'AbortError';
-      console.error('[Leaderboard] Fetch threw:', isAbort ? 'AbortError (timeout)' : err);
-      setFetchError(isAbort ? 'Request timed out' : 'Could not load scores');
+      const isAbort = err instanceof DOMException && err.name === "AbortError";
+      const msg = isAbort ? "Request timed out" : "Could not load scores";
+      setFetchError(msg);
+      toast.error(msg);
     } finally {
       clearTimeout(timeoutId);
       setLoading(false);
@@ -161,7 +162,13 @@ export default function Leaderboard({
         <div className="lb-empty-state">
           <div className="lb-empty-icon">
             <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-              <path d="M16 4L20.18 12.52L29.5 13.88L22.75 20.46L24.36 29.74L16 25.34L7.64 29.74L9.25 20.46L2.5 13.88L11.82 12.52L16 4Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <path
+                d="M16 4L20.18 12.52L29.5 13.88L22.75 20.46L24.36 29.74L16 25.34L7.64 29.74L9.25 20.46L2.5 13.88L11.82 12.52L16 4Z"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
           </div>
           <p className="lb-empty-title">No scores yet</p>
@@ -176,15 +183,19 @@ export default function Leaderboard({
                 {scores.map((entry, i) => {
                   const rank = i + 1;
                   // Insert ghost entry before this row if it belongs here
-                  const showGhostBefore = !ghostInserted && ghostRank !== null && ghostRank === rank && guestScore >= entry.score;
+                  const showGhostBefore =
+                    !ghostInserted &&
+                    ghostRank !== null &&
+                    ghostRank === rank &&
+                    guestScore >= entry.score;
                   if (showGhostBefore) ghostInserted = true;
 
                   return (
                     <React.Fragment key={entry.id}>
-                      {showGhostBefore && (
-                        <GhostEntry rank={ghostRank} score={guestScore} />
-                      )}
-                      <div className={`lb-row ${i < 3 && !ghostInserted ? "lb-row-top" : i < 2 && ghostInserted ? "lb-row-top" : ""}`}>
+                      {showGhostBefore && <GhostEntry rank={ghostRank} score={guestScore} />}
+                      <div
+                        className={`lb-row ${i < 3 && !ghostInserted ? "lb-row-top" : i < 2 && ghostInserted ? "lb-row-top" : ""}`}
+                      >
                         <span className="lb-rank">
                           {rankDisplay(ghostInserted ? rank + 1 : rank)}
                         </span>
@@ -240,7 +251,13 @@ function LocalBestDisplay(): React.ReactElement {
       <div className="lb-empty-state">
         <div className="lb-empty-icon">
           <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-            <path d="M16 4L20.18 12.52L29.5 13.88L22.75 20.46L24.36 29.74L16 25.34L7.64 29.74L9.25 20.46L2.5 13.88L11.82 12.52L16 4Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path
+              d="M16 4L20.18 12.52L29.5 13.88L22.75 20.46L24.36 29.74L16 25.34L7.64 29.74L9.25 20.46L2.5 13.88L11.82 12.52L16 4Z"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         </div>
         <p className="lb-empty-title">No scores yet</p>

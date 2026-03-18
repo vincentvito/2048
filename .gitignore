@@ -45,3 +45,5 @@ next-env.d.ts
 
 # claude code commands (local only)
 .claude/commands/
+/.claude
+notes/TODO_CODEBASE_AUDIT.md

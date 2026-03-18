@@ -105,7 +105,9 @@ function OtpBoxes({
       {Array.from({ length: OTP_LENGTH }, (_, i) => (
         <input
           key={i}
-          ref={(el) => { inputsRef.current[i] = el; }}
+          ref={(el) => {
+            inputsRef.current[i] = el;
+          }}
           type="text"
           inputMode="numeric"
           autoComplete={i === 0 ? "one-time-code" : "off"}
@@ -149,7 +151,9 @@ export default function EmailSignIn({
           setStep("otp");
         }
       }
-    } catch { /* noop */ }
+    } catch {
+      /* noop */
+    }
   }, []);
 
   async function handleSendOtp() {
@@ -172,7 +176,11 @@ export default function EmailSignIn({
       }
 
       setStep("otp");
-      try { sessionStorage.setItem(SIGNIN_PROGRESS_KEY, JSON.stringify({ email })); } catch { /* noop */ }
+      try {
+        sessionStorage.setItem(SIGNIN_PROGRESS_KEY, JSON.stringify({ email }));
+      } catch {
+        /* noop */
+      }
     } catch (e) {
       setOtpError(e instanceof Error ? e.message : "Failed to send code");
     } finally {
@@ -199,7 +207,11 @@ export default function EmailSignIn({
       }
 
       // Success! Better Auth handles session management automatically
-      try { sessionStorage.removeItem(SIGNIN_PROGRESS_KEY); } catch { /* noop */ }
+      try {
+        sessionStorage.removeItem(SIGNIN_PROGRESS_KEY);
+      } catch {
+        /* noop */
+      }
       onSuccess?.();
     } catch (e) {
       setOtpError(e instanceof Error ? e.message : "Verification failed");
@@ -214,15 +226,36 @@ export default function EmailSignIn({
       setOtpCode("");
       setOtpError("");
     } else {
-      try { sessionStorage.removeItem(SIGNIN_PROGRESS_KEY); } catch { /* noop */ }
+      try {
+        sessionStorage.removeItem(SIGNIN_PROGRESS_KEY);
+      } catch {
+        /* noop */
+      }
       onCancel?.();
     }
   }
 
   // CSS class mappings per variant
-  const cls = variant === "mobile"
-    ? { section: "mobile-menu-signin-form", input: "mobile-menu-signin-input", error: "mobile-menu-signin-error", label: "mobile-menu-signin-label", actions: "mobile-menu-signin-actions", btnBack: "mobile-menu-signin-back", btnSubmit: "mobile-menu-signin-submit" }
-    : { section: "modal-email-section", input: "modal-input", error: "modal-error", label: "modal-success", actions: "modal-actions", btnBack: "modal-btn-secondary", btnSubmit: "modal-btn-primary" };
+  const cls =
+    variant === "mobile"
+      ? {
+          section: "mobile-menu-signin-form",
+          input: "mobile-menu-signin-input",
+          error: "mobile-menu-signin-error",
+          label: "mobile-menu-signin-label",
+          actions: "mobile-menu-signin-actions",
+          btnBack: "mobile-menu-signin-back",
+          btnSubmit: "mobile-menu-signin-submit",
+        }
+      : {
+          section: "modal-email-section",
+          input: "modal-input",
+          error: "modal-error",
+          label: "modal-success",
+          actions: "modal-actions",
+          btnBack: "modal-btn-secondary",
+          btnSubmit: "modal-btn-primary",
+        };
 
   const wrapperStyle = maxWidth ? { width: "100%", maxWidth } : undefined;
 
@@ -237,7 +270,9 @@ export default function EmailSignIn({
           placeholder="your@email.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") handleSendOtp(); }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleSendOtp();
+          }}
           autoFocus
         />
         {otpError && <p className={cls.error}>{otpError}</p>}
@@ -260,9 +295,7 @@ export default function EmailSignIn({
 
   return (
     <div className={cls.section} style={wrapperStyle}>
-      <p className={cls.label}>
-        Code sent to {email}
-      </p>
+      <p className={cls.label}>Code sent to {email}</p>
       <OtpBoxes
         value={otpCode}
         onChange={setOtpCode}

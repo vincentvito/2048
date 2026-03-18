@@ -6,20 +6,11 @@ import HowToPlay from "./HowToPlay";
 import EmailSignIn from "./EmailSignIn";
 import ThemeSwitcher from "./ThemeSwitcher";
 import { ThemeName } from "@/lib/themes";
-
-interface BetterAuthUser {
-  id: string;
-  email: string;
-  username?: string | null;
-  name?: string | null;
-  image?: string | null;
-  emailVerified: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
+import { type AppUser, getDisplayName } from "@/features/auth/types";
+import { useParticles } from "./EmojiParticles";
 
 interface DesktopSidebarProps {
-  user: BetterAuthUser | null;
+  user: AppUser | null;
   currentScore: number;
   activeGridSize: number;
   refreshTrigger: number;
@@ -40,10 +31,9 @@ export default function DesktopSidebar({
   onScoresLoaded,
 }: DesktopSidebarProps): React.ReactElement {
   const [showSignIn, setShowSignIn] = useState(false);
+  const { enabled: particlesEnabled, setEnabled: setParticlesEnabled } = useParticles();
 
-  const displayName = user
-    ? (user.username || user.name || user.email?.split("@")[0] || "Player")
-    : null;
+  const displayName = user ? getDisplayName(user) : null;
 
   return (
     <>
@@ -59,9 +49,7 @@ export default function DesktopSidebar({
             {user ? (
               <>
                 <div className="sidebar-user">
-                  <div className="sidebar-avatar">
-                    {(displayName?.[0] ?? "P").toUpperCase()}
-                  </div>
+                  <div className="sidebar-avatar">{(displayName?.[0] ?? "P").toUpperCase()}</div>
                   <span className="sidebar-username">{displayName}</span>
                 </div>
                 <button className="sidebar-signout" onClick={onSignOut}>
@@ -87,6 +75,14 @@ export default function DesktopSidebar({
           <div className="sidebar-section">
             <h3 className="sidebar-section-title">Theme</h3>
             <ThemeSwitcher current={theme} onChange={onThemeChange} />
+            <label className="sidebar-toggle">
+              <input
+                type="checkbox"
+                checked={particlesEnabled}
+                onChange={(e) => setParticlesEnabled(e.target.checked)}
+              />
+              <span>Emoji Effects</span>
+            </label>
           </div>
 
           <div className="sidebar-divider" />

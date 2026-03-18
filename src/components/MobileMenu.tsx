@@ -6,20 +6,11 @@ import HowToPlay from "./HowToPlay";
 import EmailSignIn from "./EmailSignIn";
 import ThemeSwitcher from "./ThemeSwitcher";
 import { ThemeName } from "@/lib/themes";
-
-interface BetterAuthUser {
-  id: string;
-  email: string;
-  username?: string | null;
-  name?: string | null;
-  image?: string | null;
-  emailVerified: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
+import { type AppUser, getDisplayName } from "@/features/auth/types";
+import { useParticles } from "./EmojiParticles";
 
 interface MobileMenuProps {
-  user: BetterAuthUser | null;
+  user: AppUser | null;
   currentScore: number;
   activeGridSize: number;
   refreshTrigger: number;
@@ -40,6 +31,7 @@ export default function MobileMenu({
 }: MobileMenuProps): React.ReactElement {
   const [open, setOpen] = useState(false);
   const [showSignIn, setShowSignIn] = useState(false);
+  const { enabled: particlesEnabled, setEnabled: setParticlesEnabled } = useParticles();
 
   const close = useCallback(() => {
     setOpen(false);
@@ -53,45 +45,53 @@ export default function MobileMenu({
     } else {
       document.body.style.overflow = "";
     }
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [open]);
 
   // Close on Escape
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, close]);
 
-  const displayName = user
-    ? (user.username || user.name || user.email?.split("@")[0] || "Player")
-    : null;
+  const displayName = user ? getDisplayName(user) : null;
 
   return (
     <>
       {/* Hamburger trigger — mobile only */}
-      <button
-        className="mobile-menu-trigger"
-        onClick={() => setOpen(true)}
-        aria-label="Open menu"
-      >
-        <span /><span /><span />
+      <button className="mobile-menu-trigger" onClick={() => setOpen(true)} aria-label="Open menu">
+        <span />
+        <span />
+        <span />
       </button>
 
       {/* Backdrop */}
-      {open && (
-        <div className="mobile-menu-backdrop" onClick={close} aria-hidden="true" />
-      )}
+      {open && <div className="mobile-menu-backdrop" onClick={close} aria-hidden="true" />}
 
       {/* Drawer */}
-      <div className={`mobile-menu-drawer ${open ? "open" : ""}`} role="dialog" aria-modal="true" aria-label="Menu">
+      <div
+        className={`mobile-menu-drawer ${open ? "open" : ""}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Menu"
+      >
         {/* Header */}
         <div className="mobile-menu-header">
           <span className="mobile-menu-title">Menu</span>
           <button className="mobile-menu-close" onClick={close} aria-label="Close menu">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path d="M4 4L16 16M16 4L4 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              <path
+                d="M4 4L16 16M16 4L4 16"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
             </svg>
           </button>
         </div>
@@ -107,7 +107,13 @@ export default function MobileMenu({
                   </div>
                   <span className="mobile-menu-username">{displayName}</span>
                 </div>
-                <button className="mobile-menu-signout" onClick={() => { onSignOut(); close(); }}>
+                <button
+                  className="mobile-menu-signout"
+                  onClick={() => {
+                    onSignOut();
+                    close();
+                  }}
+                >
                   Sign Out
                 </button>
               </>
@@ -130,6 +136,14 @@ export default function MobileMenu({
           <div className="mobile-menu-section">
             <h3 className="mobile-menu-section-title">Theme</h3>
             <ThemeSwitcher current={theme} onChange={onThemeChange} />
+            <label className="sidebar-toggle">
+              <input
+                type="checkbox"
+                checked={particlesEnabled}
+                onChange={(e) => setParticlesEnabled(e.target.checked)}
+              />
+              <span>Emoji Effects</span>
+            </label>
           </div>
 
           <div className="mobile-menu-divider" />

@@ -160,13 +160,11 @@ const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProp
 
     const handleMoveFeedback = useCallback(
       (maxMerge: number, moved: boolean) => {
-        if (!moved) return;
+        if (!moved || maxMerge === 0) return;
         if (maxMerge >= 256) {
           triggerHaptic("medium");
-        } else if (maxMerge > 0) {
-          triggerHaptic("selection");
         } else {
-          triggerHaptic("light");
+          triggerHaptic("selection");
         }
       },
       [triggerHaptic]

@@ -74,7 +74,7 @@
 
 ### Features
 - Added emoji particle burst system (`EmojiParticles.tsx`) — canvas-based particle engine with physics (gravity, drag, rotation, scale easing) and pre-cached emoji rendering
-- Added haptic feedback via `web-haptics` — triggers on every move (light tap for slides, selection tick for merges, medium for big merges 256+), plus win/game over/daily best events. Silently no-ops on unsupported platforms.
+- Added haptic feedback via `web-haptics` — triggers on tile merges (selection tick for small, medium buzz for 256+), plus win/game over/daily best events. Plain slides with no merge produce no haptic. Silently no-ops on unsupported platforms.
 - Emoji burst + haptic events: win (🎉🏆⭐ + success), beat daily leaderboard (👑🥇🏆 + heavy), game over (💀😵🫠 + error)
 - Added "Emoji Effects" and "Haptic Feedback" toggles in both desktop sidebar and mobile menu — both persisted to localStorage, both enabled by default
 - Replaced broken SVG swipe hint with animated `👆` emoji that swipes in 4 directions with semi-transparent backdrop
@@ -85,8 +85,11 @@
 - Fixed install banner covered by browser toolbar — raised z-index and padding for safe area
 
 ### PWA & SEO
-- Made the app a Progressive Web App — web app manifest (`manifest.ts`), service worker with network-first caching, and install banner for "Add to Home Screen"
-- Install banner slides up from the bottom with Install/Dismiss actions; respects 7-day dismiss cooldown; detects iOS and shows share-button instructions
+- Made the app a Progressive Web App — web app manifest (`manifest.ts`), service worker, and install banner for "Add to Home Screen"
+- Service worker v2: only caches static assets (images), never HTML or API responses — prevents stale content issues
+- Added automatic update detection — when a new service worker activates, a persistent "New version available [Refresh]" toast appears in both browser and installed PWA mode
+- Install banner only shows when applicable — on Android when `beforeinstallprompt` fires, on iOS immediately with share instructions, never on desktop
+- Install banner styled as a floating centered card above the hamburger menu to avoid overlap
 - Cropped brand image to square and generated PWA icons (192x192, 512x512, apple-touch-icon)
 - Added comprehensive SEO metadata — OpenGraph, Twitter card, keywords, apple-web-app-capable, theme-color
 - Added security headers via `next.config.ts` — `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, plus no-cache for service worker

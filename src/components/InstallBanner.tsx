@@ -53,11 +53,30 @@ export default function InstallBanner(): React.ReactElement | null {
     return () => window.removeEventListener("beforeinstallprompt", handlePrompt);
   }, []);
 
-  // Register service worker
+  // Register service worker and listen for updates
   useEffect(() => {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
+    if (!("serviceWorker" in navigator)) return;
+
+    navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
+
+    // Listen for SW_UPDATED message from the new service worker
+    function onMessage(event: MessageEvent) {
+      if (event.data?.type === "SW_UPDATED") {
+        // Dynamic import to avoid SSR issues with sonner
+        import("sonner").then(({ toast }) => {
+          toast("New version available", {
+            action: {
+              label: "Refresh",
+              onClick: () => window.location.reload(),
+            },
+            duration: Infinity,
+          });
+        });
+      }
     }
+
+    navigator.serviceWorker.addEventListener("message", onMessage);
+    return () => navigator.serviceWorker.removeEventListener("message", onMessage);
   }, []);
 
   const handleInstall = useCallback(async () => {

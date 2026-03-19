@@ -1,44 +1,60 @@
 // Service Worker for 2048 PWA
 // Handles push notifications and basic offline caching
 
-const CACHE_NAME = "2048-v1";
+const CACHE_NAME = "2048-v2";
+
+// Only cache static assets — never cache HTML or API responses
+const STATIC_ASSETS = ["/icon-192x192.png", "/icon-512x512.png", "/brand.png"];
 
 // Cache essential assets on install
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) =>
-      cache.addAll(["/", "/favicon.ico", "/icon-192x192.png"])
-    )
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
   );
   self.skipWaiting();
 });
 
-// Clean old caches on activate
+// Clean old caches on activate and notify clients
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    )
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+      )
+      .then(() => {
+        // Notify all clients that a new version is active
+        self.clients.matchAll().then((clients) => {
+          clients.forEach((client) => client.postMessage({ type: "SW_UPDATED" }));
+        });
+      })
   );
   self.clients.claim();
 });
 
-// Network-first strategy: try network, fall back to cache
+// Network-first for pages/API, cache-first for static assets
 self.addEventListener("fetch", (event) => {
-  // Only cache GET requests for same-origin pages/assets
   if (event.request.method !== "GET") return;
 
+  const url = new URL(event.request.url);
+
+  // Never cache API routes or HTML pages
+  if (url.pathname.startsWith("/api/") || event.request.headers.get("accept")?.includes("text/html")) {
+    return;
+  }
+
+  // Static assets: cache-first
   event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        // Cache successful responses
+    caches.match(event.request).then((cached) => {
+      if (cached) return cached;
+      return fetch(event.request).then((response) => {
         if (response.ok) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         }
         return response;
-      })
-      .catch(() => caches.match(event.request))
+      });
+    })
   );
 });
 

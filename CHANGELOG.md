@@ -15,6 +15,8 @@
 - Server now sends opponent's initial board state at game start — opponent board no longer appears empty until their first move
 - Auto-join via invite link waits for session to load — logged-in users no longer briefly connect as "Guest" with wrong identity
 - HUD scores initialize from server state immediately — no longer shows 0 until first move
+- Invite link now opens directly on multiplayer screen (was briefly showing single player)
+- `usePartyGame` hook no longer tears down WebSocket when ELO/name/gameMode changes — only reconnects on room change. Prevents opponent state messages from being lost during unnecessary reconnections
 
 ### Changed
 - "Play with a Friend" is now one click — immediately generates room + shareable link (no more Create/Join menu)

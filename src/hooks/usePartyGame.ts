@@ -84,10 +84,23 @@ export function usePartyGame(
     timerExpiredSentRef.current = false;
   }, [roomId]);
 
-  // Connect to game room
-  useEffect(() => {
-    if (!roomId || !userId || !myName || initializedRef.current) return;
+  // Use refs for values that may change but shouldn't cause reconnection
+  const userIdRef = useRef(userId);
+  const myNameRef = useRef(myName);
+  const myEloRef = useRef(myElo);
+  const gameModeRef = useRef(gameMode);
+  const botOpponentRef = useRef(botOpponent);
+  userIdRef.current = userId;
+  myNameRef.current = myName;
+  myEloRef.current = myElo;
+  gameModeRef.current = gameMode;
+  botOpponentRef.current = botOpponent;
 
+  // Connect to game room — only reconnect when roomId changes
+  useEffect(() => {
+    if (!roomId || !userIdRef.current || !myNameRef.current || initializedRef.current) return;
+
+    console.log(`[usePartyGame] Connecting to room=${roomId} userId=${userIdRef.current} name=${myNameRef.current}`);
     initializedRef.current = true;
 
     const socket = new PartySocket({
@@ -102,14 +115,14 @@ export function usePartyGame(
 
       const joinMessage: Record<string, unknown> = {
         type: "join",
-        userId,
-        username: myName,
-        elo: myElo || 1200,
-        mode: gameMode,
+        userId: userIdRef.current,
+        username: myNameRef.current,
+        elo: myEloRef.current || 1200,
+        mode: gameModeRef.current,
       };
 
-      if (botOpponent) {
-        joinMessage.botOpponent = botOpponent;
+      if (botOpponentRef.current) {
+        joinMessage.botOpponent = botOpponentRef.current;
       }
 
       socket.send(JSON.stringify(joinMessage));
@@ -140,10 +153,11 @@ export function usePartyGame(
     socket.onmessage = (event) => {
       try {
         const message: GameServerMessage = JSON.parse(event.data);
+        console.log(`[usePartyGame] Received: ${message.type}`, message.type === "opponent_state" ? `score=${message.state.score}` : "");
 
         switch (message.type) {
           case "player_joined":
-            if (message.playerId !== userId) {
+            if (message.playerId !== userIdRef.current) {
               setOpponentName(message.username);
               setOpponentElo(message.elo);
               setOpponentIsBot(!!message.isBot);
@@ -153,13 +167,13 @@ export function usePartyGame(
             break;
 
           case "player_left":
-            if (message.playerId !== userId) {
+            if (message.playerId !== userIdRef.current) {
               setOpponentConnected(false);
             }
             break;
 
           case "game_start": {
-            const opp = message.players.find((p) => p.id !== userId);
+            const opp = message.players.find((p) => p.id !== userIdRef.current);
             if (opp) {
               setOpponentName(opp.username);
               setOpponentElo(opp.elo);
@@ -283,7 +297,8 @@ export function usePartyGame(
       }
       initializedRef.current = false;
     };
-  }, [roomId, userId, myName, myElo, gameMode, botOpponent, clearTimer]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomId, clearTimer]);
 
   // Timer countdown
   useEffect(() => {

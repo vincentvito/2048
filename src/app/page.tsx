@@ -31,11 +31,22 @@ export default function Home(): React.ReactElement {
 function HomeInner(): React.ReactElement {
   const searchParams = useSearchParams();
   const router = useRouter();
+
+  // Read ?join=CODE at init time so first render is already on multiplayer
+  const [autoJoinCode] = useState<string | null>(() => {
+    const joinParam = searchParams.get("join");
+    if (joinParam) {
+      const upper = joinParam.toUpperCase();
+      if (isValidRoomCode(upper)) return upper;
+    }
+    return null;
+  });
+
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [leaderboardScores, setLeaderboardScores] = useState<LeaderboardEntry[]>([]);
   const [currentScore, setCurrentScore] = useState(0);
   const [activeGridSize, setActiveGridSize] = useState(4);
-  const [gameMode, setGameMode] = useState<"single" | "multi">("single");
+  const [gameMode, setGameMode] = useState<"single" | "multi">(autoJoinCode ? "multi" : "single");
   const [matchActive, setMatchActive] = useState(false);
   const [pendingSession, setPendingSession] = useState<{
     roomId: string;
@@ -51,20 +62,11 @@ function HomeInner(): React.ReactElement {
   const { data: sessionData } = useSession();
   const user = (sessionData?.user as AppUser | undefined) ?? null;
 
-  // Read ?join=CODE from URL
-  const [autoJoinCode, setAutoJoinCode] = useState<string | null>(null);
+  // Clean ?join= from URL after capturing it
   useEffect(() => {
-    const joinParam = searchParams.get("join");
-    if (joinParam) {
-      const upper = joinParam.toUpperCase();
-      if (isValidRoomCode(upper)) {
-        setAutoJoinCode(upper);
-        setGameMode("multi");
-        setActiveGridSize(4);
-      }
+    if (searchParams.get("join")) {
       router.replace("/", { scroll: false });
     }
-    // Only run on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

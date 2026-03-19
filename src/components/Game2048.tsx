@@ -65,6 +65,7 @@ interface Game2048Props {
   /** Called after a successful move with the highest merged tile value (0 if no merges). */
   onMoveFeedback?: (maxMerge: number, moved: boolean) => void;
   disableInputs?: boolean;
+  serverAuthoritative?: boolean;
   onDevEndGameReady?: (fn: () => void) => void;
   onDevTriggerWinReady?: (fn: () => void) => void;
   hideScore?: boolean;
@@ -84,6 +85,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
     onMove,
     onMoveFeedback,
     disableInputs,
+    serverAuthoritative,
     onDevEndGameReady,
     onDevTriggerWinReady,
     hideScore,
@@ -128,9 +130,11 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
   const onMoveRef = useRef(onMove);
   const onMoveFeedbackRef = useRef(onMoveFeedback);
   const disableInputsRef = useRef(disableInputs);
+  const serverAuthoritativeRef = useRef(serverAuthoritative);
   const onDevEndGameReadyRef = useRef(onDevEndGameReady);
   const onDevTriggerWinReadyRef = useRef(onDevTriggerWinReady);
   const initialReadOnlyRef = useRef(!!readOnlyState);
+  const latestReadOnlyStateRef = useRef<GameState | null>(readOnlyState ?? null);
   const disableSaveRef = useRef(disableSave);
   const [canvasReady, setCanvasReady] = useState(false);
   const themeRef = useRef<ThemeColors>(themes[themeName as keyof typeof themes] || themes.classic);
@@ -143,9 +147,11 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
   onMoveRef.current = onMove;
   onMoveFeedbackRef.current = onMoveFeedback;
   disableInputsRef.current = disableInputs;
+  serverAuthoritativeRef.current = serverAuthoritative;
   disableSaveRef.current = disableSave;
   onDevEndGameReadyRef.current = onDevEndGameReady;
   onDevTriggerWinReadyRef.current = onDevTriggerWinReady;
+  latestReadOnlyStateRef.current = readOnlyState ?? null;
 
   // Update theme ref and re-render canvas when theme changes
   useEffect(() => {
@@ -544,6 +550,10 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
 
     function move(dir: number) {
       if (gameOver || animating) return false;
+      if (serverAuthoritativeRef.current) {
+        onMoveRef.current?.(dir);
+        return true;
+      }
       // Notify parent of move direction (for server-authoritative multiplayer)
       onMoveRef.current?.(dir);
 
@@ -695,6 +705,13 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
       gameOver = false;
       won = false;
       keepPlaying = false;
+      prevGrid.fill(0);
+      prevScore = 0;
+      if (serverAuthoritativeRef.current) {
+        updateScore();
+        render();
+        return;
+      }
       addTile();
       addTile();
       if (SIZE === 8) {
@@ -713,6 +730,8 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
     const updateStateImpl = (state: GameState) => {
       const oldScore = prevScore;
       const scoreDiff = state.score - oldScore;
+      const wasGameOver = gameOver;
+      const hadWon = won;
 
       // Detect merged tiles by comparing old vs new grid
       const mergedPositions = new Set<number>();
@@ -778,6 +797,13 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
       // Start score popup animation if not already running
       if (scorePopups.length > 0 && !popupAnimFrame) {
         popupAnimFrame = requestAnimationFrame(popupLoop);
+      }
+
+      if (!hadWon && state.won) {
+        onGameWonRef.current?.(state.score, SIZE);
+      }
+      if (!wasGameOver && state.gameOver) {
+        onGameOverRef.current?.(state.score, SIZE);
       }
     };
     updateStateFnRef.current = updateStateImpl;
@@ -961,6 +987,8 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
     setSizeInternal(initialSize);
     if (!initialReadOnlyRef.current) {
       if (!restoreState()) init();
+    } else if (latestReadOnlyStateRef.current) {
+      updateStateImpl(latestReadOnlyStateRef.current);
     } else {
       // Read-only mode: just render the empty grid, no random tiles
       render(1);

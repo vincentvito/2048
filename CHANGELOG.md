@@ -17,12 +17,14 @@
 - HUD scores initialize from server state immediately — no longer shows 0 until first move
 - Invite link now opens directly on multiplayer screen (was briefly showing single player)
 - `usePartyGame` hook no longer tears down WebSocket when ELO/name/gameMode changes — only reconnects on room change. Prevents opponent state messages from being lost during unnecessary reconnections
-- Multiplayer now syncs server-authoritative game state back to client after each move — prevents client/server grid divergence from different random tile placement, fixing "0-0 tie" results
+- Moved reconnection state sync from `onConnect` to `handleJoin` — server now sends game state only after the player identifies themselves, preventing premature/duplicate `game_start` messages
+- Server rejects moves before game starts or with fewer than 2 players (`handleMove` guard)
 
 ### Changed
 - "Play with a Friend" is now one click — immediately generates room + shareable link (no more Create/Join menu)
 - Joining a friend's game is link-only — removed manual room code input
 - Auth gate allows guests through for friendly mode (ranked still requires sign-in)
+- Multiplayer Game2048 now runs in fully server-authoritative mode — client sends move direction only, server computes grid/score/tiles, client renders server state. Eliminates client/server grid divergence and fixes "0-0 tie" results
 
 ### Removed
 - Room code display and manual code entry UI (replaced by invite links)

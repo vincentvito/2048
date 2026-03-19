@@ -88,48 +88,7 @@ export default class GameServer implements Party.Server {
   }
 
   async onConnect(connection: Party.Connection) {
-    const players = Array.from(this.state.players.values());
-
-    if (players.length > 0) {
-      const duration = this.state.mode === "friendly" ? FRIENDLY_DURATION : RANKED_DURATION;
-      let timeRemaining: number | undefined;
-      if (this.state.gameStartedAt) {
-        const elapsed = Math.floor((Date.now() - this.state.gameStartedAt) / 1000);
-        timeRemaining = Math.max(0, duration - elapsed);
-      }
-      connection.send(
-        JSON.stringify({
-          type: "game_start",
-          players: players.map((p) => ({
-            id: p.userId,
-            username: p.username,
-            elo: p.elo,
-          })),
-          duration,
-          timeRemaining,
-          mode: this.state.mode,
-        })
-      );
-
-      // Send opponent state from server-authoritative source
-      for (const player of players) {
-        if (player.connectionId !== connection.id) {
-          connection.send(
-            JSON.stringify({
-              type: "opponent_state",
-              state: {
-                grid: player.engineState.grid,
-                score: player.engineState.score,
-                gameOver: player.engineState.gameOver,
-                won: player.engineState.won,
-              },
-              username: player.username,
-              elo: player.elo,
-            })
-          );
-        }
-      }
-    }
+    void connection;
   }
 
   async onMessage(message: string, sender: Party.Connection) {
@@ -211,6 +170,49 @@ export default class GameServer implements Party.Server {
             },
           })
         );
+      }
+
+      if (this.state.gameStarted) {
+        const players = Array.from(this.state.players.values());
+        const duration = this.state.mode === "friendly" ? FRIENDLY_DURATION : RANKED_DURATION;
+        let timeRemaining: number | undefined;
+        if (this.state.gameStartedAt) {
+          const elapsed = Math.floor((Date.now() - this.state.gameStartedAt) / 1000);
+          timeRemaining = Math.max(0, duration - elapsed);
+        }
+
+        sender.send(
+          JSON.stringify({
+            type: "game_start",
+            players: players.map((p) => ({
+              id: p.userId,
+              username: p.username,
+              elo: p.elo,
+              isBot: p.isBot,
+            })),
+            duration,
+            timeRemaining,
+            mode: this.state.mode,
+          })
+        );
+
+        const opponent = players.find((p) => p.userId !== existing.userId);
+        if (opponent) {
+          sender.send(
+            JSON.stringify({
+              type: "opponent_state",
+              state: {
+                grid: opponent.engineState.grid,
+                score: opponent.engineState.score,
+                gameOver: opponent.engineState.gameOver,
+                won: opponent.engineState.won,
+              },
+              username: opponent.username,
+              elo: opponent.elo,
+              isBot: opponent.isBot,
+            })
+          );
+        }
       }
     } else {
       // Create server-authoritative initial board for this player
@@ -478,6 +480,7 @@ export default class GameServer implements Party.Server {
   private async handleMove(data: { direction: number }, sender: Party.Connection) {
     const direction = data.direction;
     if (typeof direction !== "number" || direction < 0 || direction > 3) return;
+    if (!this.state.gameStarted || this.state.players.size < 2) return;
 
     let player: Player | undefined;
     for (const p of this.state.players.values()) {
@@ -700,6 +703,24 @@ export default class GameServer implements Party.Server {
                 },
               })
             );
+
+            const opponent = players.find((op) => op.userId !== p.userId);
+            if (opponent) {
+              conn.send(
+                JSON.stringify({
+                  type: "opponent_state",
+                  state: {
+                    grid: opponent.engineState.grid,
+                    score: opponent.engineState.score,
+                    gameOver: opponent.engineState.gameOver,
+                    won: opponent.engineState.won,
+                  },
+                  username: opponent.username,
+                  elo: opponent.elo,
+                  isBot: opponent.isBot,
+                })
+              );
+            }
           }
         }
       }

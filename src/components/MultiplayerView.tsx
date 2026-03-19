@@ -341,15 +341,21 @@ export default function MultiplayerView({
     });
   }, [serverGameState]);
 
-  const handleLocalGameOver = useCallback((score: number) => {
-    setLocalGameResult({ won: false, score, gameOver: true });
-    onGameOverFeedback();
-  }, [onGameOverFeedback]);
+  const handleLocalGameOver = useCallback(
+    (score: number) => {
+      setLocalGameResult({ won: false, score, gameOver: true });
+      onGameOverFeedback();
+    },
+    [onGameOverFeedback]
+  );
 
-  const handleLocalGameWon = useCallback((score: number) => {
-    setLocalGameResult({ won: true, score, gameOver: true });
-    onWinFeedback();
-  }, [onWinFeedback]);
+  const handleLocalGameWon = useCallback(
+    (score: number) => {
+      setLocalGameResult({ won: true, score, gameOver: true });
+      onWinFeedback();
+    },
+    [onWinFeedback]
+  );
 
   const handleLocalStateChange = useCallback((state: GameState) => {
     if (suppressStateRef.current) return;
@@ -363,7 +369,6 @@ export default function MultiplayerView({
     },
     [sendMove]
   );
-
 
   const handleResetReady = useCallback((resetFn: () => void) => {
     localGameResetRef.current = resetFn;
@@ -989,6 +994,7 @@ export default function MultiplayerView({
               onMove={handleLocalMove}
               onMoveFeedback={onMoveFeedback}
               disableInputs={disableLocalInputs}
+              serverAuthoritative
               onDevEndGameReady={isDev ? handleDevEndGameReady : undefined}
               hideScore
               themeName={themeName}
@@ -1055,20 +1061,34 @@ export default function MultiplayerView({
         localWantsRematch={localWantsRematch}
         opponentWantsRematch={opponentWantsRematch}
         opponentConnected={opponentConnected}
-        inviteUrl={gameMode === "friendly" && friendRoomCode ? buildInviteUrl(friendRoomCode) : undefined}
+        inviteUrl={
+          gameMode === "friendly" && friendRoomCode ? buildInviteUrl(friendRoomCode) : undefined
+        }
         onRequestRematch={requestRematch}
-        onShareInvite={gameMode === "friendly" && friendRoomCode ? async () => {
-          const url = buildInviteUrl(friendRoomCode);
-          if (navigator.share) {
-            try {
-              await navigator.share({ title: "Join my 2048 match!", text: "Click to join my 2048 match", url });
-              return;
-            } catch { /* cancelled */ }
-          }
-          try {
-            await navigator.clipboard.writeText(url);
-          } catch { /* unavailable */ }
-        } : undefined}
+        onShareInvite={
+          gameMode === "friendly" && friendRoomCode
+            ? async () => {
+                const url = buildInviteUrl(friendRoomCode);
+                if (navigator.share) {
+                  try {
+                    await navigator.share({
+                      title: "Join my 2048 match!",
+                      text: "Click to join my 2048 match",
+                      url,
+                    });
+                    return;
+                  } catch {
+                    /* cancelled */
+                  }
+                }
+                try {
+                  await navigator.clipboard.writeText(url);
+                } catch {
+                  /* unavailable */
+                }
+              }
+            : undefined
+        }
         onNewOpponent={handleNewOpponent}
         onLeave={handleLeaveMatch}
       />

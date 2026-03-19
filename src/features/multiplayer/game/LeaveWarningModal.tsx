@@ -23,7 +23,7 @@ export default function LeaveWarningModal({ show, onCancel, onConfirm }: LeaveWa
         <p style={{ margin: "0 0 8px", color: "var(--text-secondary)", fontSize: "0.95rem" }}>
           Leaving now will count as a forfeit.
         </p>
-        <p style={{ margin: "0 0 20px", color: "#dc2626", fontSize: "0.9rem", fontWeight: 500 }}>
+        <p style={{ margin: "0 0 20px", color: "var(--color-danger)", fontSize: "0.9rem", fontWeight: 500 }}>
           Your ELO rating will decrease.
         </p>
         <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>

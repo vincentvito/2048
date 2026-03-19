@@ -94,7 +94,9 @@ export default function UsernamePrompt(): React.ReactElement | null {
           This is how you&apos;ll appear on the leaderboard and to opponents.
         </p>
 
+        <label htmlFor="username-input" className="sr-only">Username</label>
         <input
+          id="username-input"
           ref={inputRef}
           type="text"
           className="modal-input"
@@ -105,10 +107,11 @@ export default function UsernamePrompt(): React.ReactElement | null {
             if (e.key === "Enter") handleSave();
           }}
           autoComplete="username"
+          aria-describedby={error ? "username-error" : undefined}
         />
 
         {error && (
-          <p className="modal-error" style={{ marginTop: "8px" }}>
+          <p id="username-error" className="modal-error" role="alert" style={{ marginTop: "8px" }}>
             {error}
           </p>
         )}

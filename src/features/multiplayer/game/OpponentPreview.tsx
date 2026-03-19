@@ -96,9 +96,10 @@ export default function OpponentPreview({
       <div
         className="mp-opponent-mini-preview"
         onClick={() => onToggleExpanded(true)}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggleExpanded(true); } }}
         role="button"
         tabIndex={0}
-        aria-label="View opponent board"
+        aria-label={`View ${opponentName}'s board`}
       >
         <div className="mp-mini-preview-inner">
           <MiniGrid grid={grid} themeName={themeName} />
@@ -109,7 +110,13 @@ export default function OpponentPreview({
 
       {/* Mobile: Expanded opponent view modal */}
       {showExpanded && (
-        <div className="mp-opponent-expanded-backdrop" onClick={() => onToggleExpanded(false)}>
+        <div
+          className="mp-opponent-expanded-backdrop"
+          onClick={() => onToggleExpanded(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${opponentName}'s board`}
+        >
           <div className="mp-opponent-expanded-modal" onClick={(e) => e.stopPropagation()}>
             <div className="mp-opponent-expanded-header">
               <span className="mp-opponent-expanded-name">{opponentName}</span>
@@ -117,6 +124,7 @@ export default function OpponentPreview({
               <button
                 className="mp-opponent-expanded-close"
                 onClick={() => onToggleExpanded(false)}
+                aria-label="Close opponent board"
               >
                 &times;
               </button>
@@ -125,7 +133,7 @@ export default function OpponentPreview({
               className={`mp-opponent-expanded-board ${opponentDone || timerExpired || hasForfeit ? "dimmed" : ""}`}
             >
               {!opponentConnected && (
-                <div className="expanded-offline-overlay">
+                <div className="expanded-offline-overlay" role="status" aria-live="assertive">
                   {opponentEverConnected ? "Opponent disconnected..." : "Connecting..."}
                 </div>
               )}

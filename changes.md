@@ -1,3 +1,90 @@
+# Changes: Design Audit & Comprehensive Quality Fixes
+
+## Overview
+
+Full design audit across accessibility, performance, theming, and responsive design — followed by systematic fixes via `/colorize`, `/harden`, `/normalize`, and `/optimize` passes. 65 issues identified, 50+ fixed.
+
+## Colorize — Contrast & Theme Fixes
+
+### Button Contrast (WCAG AA — was failing in 3/4 themes)
+- **Classic**: Button gradient darkened `#f59e0b→#d97706` → `#b45309→#92400e` (3.19:1 → 5.02–7.09:1)
+- **Ocean**: `#22d3ee→#0891b2` → `#0e7490→#155e75` (3.68:1 → 5.36–7.27:1)
+- **Forest**: `#4ade80→#16a34a` → `#15803d→#166534` (3.30:1 → 5.02–7.13:1)
+- All button gradients changed from `accent-light→accent` to `bg-button→bg-button-hover`
+
+### Semantic Color Variables (new)
+Added per-theme CSS variables for consistent semantic colors:
+- `--color-danger`: `#dc2626` (light) / `#f87171` (midnight) — fixes 3.03:1 failure on dark bg
+- `--color-success`: `#15803d` (light) / `#4ade80` (midnight) — fixes 2.20:1 failure on Classic
+- `--color-connected`: `#047857` (light) / `#34d399` (midnight) — fixes 3.38:1 failure
+- `--text-on-accent`: `#ffffff` (all themes) — single variable for text on colored surfaces
+
+### Midnight Theme Toned Down
+- `--accent-glow` opacity: 0.3 → 0.15
+- `--title-glow` opacity: 0.5 → 0.3
+- Title gradient: removed pink (`#ec4899`), now purple-only (`#8b5cf6`, `#c4b5fd`)
+
+### Hardcoded Colors Replaced
+- 18× `#dc2626` → `var(--color-danger)`
+- 4× `#059669` → `var(--color-connected)`
+- 4× `#16a34a` → `var(--color-success)`
+- 1× `#22c55e` → `var(--color-success)`
+- Modal card border: `rgba(251,191,36,0.15)` → `var(--accent-border-medium)`
+- Google button border: `rgba(217,119,6,0.2)` → `var(--bg-card-border)`
+- Google button hover/active: hardcoded amber → `var(--accent-bg-subtle)` / `var(--accent-bg-light)`
+- Ghost CTA text: `var(--accent)` (3.07:1 fail) → `var(--text-secondary)` (6.84:1)
+- `boardGlow` animation: `infinite` → single play on load
+- Win/loss stat pill Midnight overrides: hardcoded hex → `var(--color-success/danger)`
+
+### Files Changed
+- `src/app/globals.css` — theme variables, button gradients, semantic colors
+- `src/lib/themes.ts` — bgButton/bgButtonHover values for Classic, Ocean, Forest
+- `src/features/multiplayer/game/LeaveWarningModal.tsx` — inline danger color
+- `src/features/single-player/SinglePlayerScreen.tsx` — DEV button colors
+
+---
+
+## Harden — Accessibility Fixes (22 issues)
+
+### Form Labels & Error Association
+- **EmailSignIn.tsx**: `<label htmlFor="signin-email">`, `aria-describedby` on inputs → error messages, `role="alert"` on errors, `aria-busy` on verify button, `<fieldset>`+`<legend>` wrapping OTP boxes, `aria-label` per digit
+- **UsernamePrompt.tsx**: `<label htmlFor="username-input">`, `aria-describedby="username-error"`, `role="alert"` on error
+
+### aria-live Regions
+- **MultiplayerHud.tsx**: `aria-live="polite" aria-atomic="true"` on timer, `role="status" aria-live="polite"` on status bar
+- **OpponentPreview.tsx**: `role="status" aria-live="assertive"` on disconnection overlay
+- **MatchResultModal.tsx**: `role="status" aria-live="polite"` on rematch notification
+
+### Keyboard & ARIA
+- **OpponentPreview.tsx**: `onKeyDown` handler for Enter/Space on mini preview, `aria-label="Close opponent board"` on close button, `role="dialog" aria-modal="true"` on expanded view
+- **MultiplayerHud.tsx**: `title` → `aria-label` on connection status, `aria-hidden` on decorative blob
+- **MobileMenu.tsx**: `aria-expanded={open}` on hamburger trigger
+- **DesktopSidebar.tsx**: `aria-label="Game menu"` on `<aside>`
+- **HowToPlay.tsx**: `aria-controls="how-to-play-content"` + matching `id`, `aria-hidden="true"` on all 3 instruction SVGs
+
+### Decorative Elements
+- **SinglePlayerScreen.tsx**: `aria-hidden="true"` on confetti container
+
+### Infrastructure
+- **globals.css**: Added `.sr-only` utility class
+
+---
+
+## Normalize — Theming Consistency
+
+- Replaced 30+ hardcoded white text colors (`#ffffff`, `#fff`, `white`) → `var(--text-on-accent)`
+- Removed duplicate `@keyframes pulse` definition (was defined twice with different values)
+
+---
+
+## Optimize — Performance
+
+- **Leaderboard.tsx**: Realtime subscription stabilized with ref pattern (no longer recreates on tab/trigger change), INSERT events debounced at 500ms
+- **globals.css**: `backdrop-filter: none` added to `prefers-reduced-motion: reduce` for modals/overlays (removes expensive GPU compositing)
+- **globals.css**: `boardGlow` changed from infinite to single play (reduces continuous paint cost)
+
+---
+
 # Changes: Resend Email via Supabase Auth Hook
 
 ## Overview

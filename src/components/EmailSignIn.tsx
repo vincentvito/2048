@@ -101,7 +101,8 @@ function OtpBoxes({
   }
 
   return (
-    <div className="otp-boxes">
+    <fieldset className="otp-boxes" style={{ border: "none", padding: 0, margin: 0 }}>
+      <legend className="sr-only">Verification code</legend>
       {Array.from({ length: OTP_LENGTH }, (_, i) => (
         <input
           key={i}
@@ -120,9 +121,10 @@ function OtpBoxes({
           disabled={disabled}
           maxLength={OTP_LENGTH}
           autoFocus={i === 0}
+          aria-label={`Digit ${i + 1} of ${OTP_LENGTH}`}
         />
       ))}
-    </div>
+    </fieldset>
   );
 }
 
@@ -264,7 +266,9 @@ export default function EmailSignIn({
       <div className={cls.section} style={wrapperStyle}>
         {variant === "mobile" && <p className={cls.label}>Enter your email</p>}
         {variant === "modal" && <div className="modal-divider">sign in with email</div>}
+        <label htmlFor="signin-email" className="sr-only">Email address</label>
         <input
+          id="signin-email"
           type="email"
           className={cls.input}
           placeholder="your@email.com"
@@ -274,8 +278,9 @@ export default function EmailSignIn({
             if (e.key === "Enter") handleSendOtp();
           }}
           autoFocus
+          aria-describedby={otpError ? "signin-email-error" : undefined}
         />
-        {otpError && <p className={cls.error}>{otpError}</p>}
+        {otpError && <p id="signin-email-error" className={cls.error} role="alert">{otpError}</p>}
         <div className={cls.actions}>
           <button type="button" className={cls.btnBack} onClick={handleBack}>
             Cancel
@@ -302,7 +307,7 @@ export default function EmailSignIn({
         onComplete={handleVerifyOtp}
         disabled={verifying}
       />
-      {otpError && <p className={cls.error}>{otpError}</p>}
+      {otpError && <p id="signin-otp-error" className={cls.error} role="alert">{otpError}</p>}
       <div className={cls.actions}>
         <button type="button" className={cls.btnBack} onClick={handleBack}>
           Back
@@ -312,6 +317,7 @@ export default function EmailSignIn({
           className={cls.btnSubmit}
           onClick={handleVerifyOtp}
           disabled={verifying || otpCode.length < OTP_LENGTH}
+          aria-busy={verifying}
         >
           {verifying ? "Verifying..." : "Verify"}
         </button>

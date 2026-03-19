@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase-client";
 import { getPersonalBest } from "@/lib/guest-scores";
 import { toast } from "sonner";
@@ -94,21 +94,29 @@ export default function Leaderboard({
     fetchScores();
   }, [fetchScores]);
 
+  // Stable ref so the realtime subscription doesn't recreate on every tab/trigger change
+  const fetchRef = useRef(fetchScores);
+  fetchRef.current = fetchScores;
+
   useEffect(() => {
     const supabase = createClient();
     if (!supabase) return;
 
+    let debounceTimer: ReturnType<typeof setTimeout>;
     const channel = supabase
       .channel("scores_realtime")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "scores" }, () => {
-        fetchScores();
+        // Debounce rapid inserts (e.g. multiple players finishing at once)
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => fetchRef.current(), 500);
       })
       .subscribe();
 
     return () => {
+      clearTimeout(debounceTimer);
       supabase.removeChannel(channel);
     };
-  }, [fetchScores]);
+  }, []); // Stable — never recreates
 
   // Only show ghost for an unsaved score from the current session
   const guestScore = currentScore && currentScore > 0 ? currentScore : 0;

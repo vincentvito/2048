@@ -39,7 +39,7 @@ export default function DesktopSidebar({
 
   return (
     <>
-      <aside className="desktop-sidebar">
+      <aside className="desktop-sidebar" aria-label="Game menu">
         {/* Header with title */}
         <div className="sidebar-header">
           <span className="sidebar-header-title">Menu</span>

@@ -21,7 +21,7 @@ export default function HowToPlay(): React.ReactElement {
 
   return (
     <div className="how-to-play">
-      <button onClick={() => setOpen(!open)} className="how-to-play-toggle" aria-expanded={open}>
+      <button onClick={() => setOpen(!open)} className="how-to-play-toggle" aria-expanded={open} aria-controls="how-to-play-content">
         <span>How to Play</span>
         <svg
           className={`toggle-icon ${open ? "open" : ""}`}
@@ -41,10 +41,10 @@ export default function HowToPlay(): React.ReactElement {
       </button>
 
       {open && (
-        <div className="how-to-play-content">
+        <div id="how-to-play-content" className="how-to-play-content">
           <div className="play-instructions">
             <div className="instruction-item">
-              <div className="instruction-icon">
+              <div className="instruction-icon" aria-hidden="true">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                   <path
                     d="M5 12H19M19 12L13 6M19 12L13 18"
@@ -62,7 +62,7 @@ export default function HowToPlay(): React.ReactElement {
             </div>
 
             <div className="instruction-item">
-              <div className="instruction-icon">
+              <div className="instruction-icon" aria-hidden="true">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                   <rect
                     x="3"
@@ -104,7 +104,7 @@ export default function HowToPlay(): React.ReactElement {
             </div>
 
             <div className="instruction-item">
-              <div className="instruction-icon">
+              <div className="instruction-icon" aria-hidden="true">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                   <path
                     d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"

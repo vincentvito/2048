@@ -13,13 +13,17 @@
   --bg-card: rgba(255, 251, 235, 0.8);
   --bg-card-border: rgba(251, 191, 36, 0.2);
   --bg-segmented: #78350f;
-  --bg-button: #d97706;
-  --bg-button-hover: #b45309;
-  --button-shadow: rgba(180, 83, 9, 0.25);
+  --bg-button: #b45309;
+  --bg-button-hover: #92400e;
+  --button-shadow: rgba(146, 64, 14, 0.3);
   --text-primary: #78350f;
   --text-secondary: #92400e;
   --text-label: #fde68a;
   --text-body: #451a03;
+  --text-on-accent: #ffffff;
+  --color-danger: #dc2626;
+  --color-success: #15803d;
+  --color-connected: #047857;
   --accent: #d97706;
   --accent-light: #f59e0b;
   --accent-glow: rgba(245, 158, 11, 0.25);
@@ -57,13 +61,17 @@
   --bg-card: rgba(240, 249, 255, 0.85);
   --bg-card-border: rgba(14, 165, 233, 0.2);
   --bg-segmented: #155e75;
-  --bg-button: #0891b2;
-  --bg-button-hover: #0e7490;
+  --bg-button: #0e7490;
+  --bg-button-hover: #155e75;
   --button-shadow: rgba(14, 116, 144, 0.25);
   --text-primary: #164e63;
   --text-secondary: #0e7490;
   --text-label: #a5f3fc;
   --text-body: #083344;
+  --text-on-accent: #ffffff;
+  --color-danger: #dc2626;
+  --color-success: #15803d;
+  --color-connected: #047857;
   --accent: #0891b2;
   --accent-light: #22d3ee;
   --accent-glow: rgba(34, 211, 238, 0.25);
@@ -101,13 +109,17 @@
   --bg-card: rgba(240, 253, 244, 0.85);
   --bg-card-border: rgba(34, 197, 94, 0.2);
   --bg-segmented: #166534;
-  --bg-button: #16a34a;
-  --bg-button-hover: #15803d;
+  --bg-button: #15803d;
+  --bg-button-hover: #166534;
   --button-shadow: rgba(21, 128, 61, 0.25);
   --text-primary: #14532d;
   --text-secondary: #166534;
   --text-label: #bbf7d0;
   --text-body: #052e16;
+  --text-on-accent: #ffffff;
+  --color-danger: #dc2626;
+  --color-success: #15803d;
+  --color-connected: #047857;
   --accent: #16a34a;
   --accent-light: #4ade80;
   --accent-glow: rgba(74, 222, 128, 0.25);
@@ -154,7 +166,11 @@
   --text-body: #e2e8f0;
   --accent: #8b5cf6;
   --accent-light: #a78bfa;
-  --accent-glow: rgba(139, 92, 246, 0.3);
+  --text-on-accent: #ffffff;
+  --color-danger: #f87171;
+  --color-success: #4ade80;
+  --color-connected: #34d399;
+  --accent-glow: rgba(139, 92, 246, 0.15);
   --overlay-win: rgba(139, 92, 246, 0.45);
   --overlay-lose: rgba(15, 23, 42, 0.78);
   --modal-backdrop: rgba(0, 0, 0, 0.6);
@@ -162,12 +178,12 @@
   --title-gradient: linear-gradient(
     90deg,
     #a78bfa 0%,
-    #ec4899 40%,
-    #c084fc 50%,
-    #ec4899 60%,
+    #8b5cf6 40%,
+    #c4b5fd 50%,
+    #8b5cf6 60%,
     #a78bfa 100%
   );
-  --title-glow: rgba(167, 139, 250, 0.5);
+  --title-glow: rgba(167, 139, 250, 0.3);
   --segmented-text: rgba(196, 181, 253, 0.6);
   --segmented-text-hover: rgba(196, 181, 253, 0.9);
   --board-shadow-a: rgba(0, 0, 0, 0.3);
@@ -222,12 +238,12 @@
   pointer-events: none;
 }
 .ui-btn-primary {
-  background: linear-gradient(135deg, var(--accent-light), var(--accent));
-  color: #ffffff;
+  background: linear-gradient(135deg, var(--bg-button), var(--bg-button-hover));
+  color: var(--text-on-accent);
   box-shadow: 0 3px 10px var(--button-shadow);
 }
 .ui-btn-primary:hover {
-  background: linear-gradient(135deg, var(--accent), var(--bg-button-hover));
+  background: var(--bg-button-hover);
   transform: translateY(-1px);
   box-shadow: 0 5px 16px var(--button-shadow);
 }
@@ -249,7 +265,7 @@
 }
 .ui-btn-danger {
   background: #dc2626;
-  color: #ffffff;
+  color: var(--text-on-accent);
   box-shadow: 0 3px 10px rgba(220, 38, 38, 0.25);
 }
 .ui-btn-danger:hover {
@@ -390,7 +406,7 @@ body {
   height: 36px;
   border-radius: 50%;
   background: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
   font-family: var(--font-fredoka), "Fredoka", sans-serif;
   font-size: 1rem;
   font-weight: 700;
@@ -434,7 +450,7 @@ body {
   border-radius: 10px;
   background: var(--bg-button);
   border: none;
-  color: #fff;
+  color: var(--text-on-accent);
   font-size: 15px;
   font-weight: 700;
   font-family: inherit;
@@ -519,7 +535,7 @@ body {
 }
 
 .user-bar-signout:hover {
-  color: #dc2626;
+  color: var(--color-danger);
 }
 
 .game-title {
@@ -570,7 +586,7 @@ body {
   border: none;
   border-radius: 8px;
   background: var(--bg-button);
-  color: #ffffff;
+  color: var(--text-on-accent);
   font-size: 13px;
   font-weight: 700;
   font-family: inherit;
@@ -624,7 +640,7 @@ body {
   padding: 10px 24px 8px;
   border-radius: 12px;
   text-align: center;
-  color: white;
+  color: var(--text-on-accent);
   background: var(--bg-score);
   min-width: 80px;
   box-shadow:
@@ -646,7 +662,7 @@ body {
   font-size: 28px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
-  color: white;
+  color: var(--text-on-accent);
 }
 
 /* ---- Game Board ---- */
@@ -667,7 +683,7 @@ body {
   box-shadow:
     0 4px 6px -1px rgba(0, 0, 0, 0.1),
     0 10px 25px -5px var(--board-shadow-a);
-  animation: boardGlow 4s ease-in-out infinite;
+  animation: boardGlow 4s ease-in-out 1;
 }
 
 .game-canvas-hidden {
@@ -721,7 +737,7 @@ body {
   border: none;
   border-radius: 8px;
   background: var(--bg-button);
-  color: #ffffff;
+  color: var(--text-on-accent);
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
@@ -864,7 +880,7 @@ body {
   border: none;
   border-radius: 8px;
   background: var(--bg-button);
-  color: #ffffff;
+  color: var(--text-on-accent);
   font-weight: 700;
   cursor: pointer;
   line-height: 44px;
@@ -978,9 +994,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--accent-light), var(--accent));
+  background: linear-gradient(135deg, var(--bg-button), var(--bg-button-hover));
   border-radius: 8px;
-  color: #ffffff;
+  color: var(--text-on-accent);
   box-shadow: 0 2px 6px var(--accent-glow);
 }
 
@@ -1031,8 +1047,8 @@ body {
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
-  background: linear-gradient(135deg, var(--accent-light), var(--accent));
-  color: #ffffff;
+  background: linear-gradient(135deg, var(--bg-button), var(--bg-button-hover));
+  color: var(--text-on-accent);
   border-radius: 4px;
   box-shadow: 0 1px 3px var(--accent-glow);
 }
@@ -1100,13 +1116,13 @@ body {
 
 .lb-tab-active {
   background: var(--accent);
-  color: #ffffff;
+  color: var(--text-on-accent);
   box-shadow: 0 2px 6px var(--accent-glow);
 }
 
 .lb-tab-active:hover {
   background: var(--accent);
-  color: #ffffff;
+  color: var(--text-on-accent);
 }
 
 .lb-empty {
@@ -1147,7 +1163,7 @@ body {
 
 .lb-retry-btn:hover {
   background: var(--accent);
-  color: #ffffff;
+  color: var(--text-on-accent);
 }
 
 .lb-list {
@@ -1239,7 +1255,7 @@ body {
 .lb-ghost-cta {
   font-size: 10px;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--text-secondary);
   white-space: nowrap;
   opacity: 0.8;
 }
@@ -1326,7 +1342,7 @@ body {
   text-align: center;
   box-shadow:
     0 12px 40px rgba(0, 0, 0, 0.25),
-    0 0 0 1px rgba(251, 191, 36, 0.15);
+    0 0 0 1px var(--accent-border-medium);
   animation: modalSlideUp 0.35s ease both;
   overflow: hidden;
 }
@@ -1411,8 +1427,8 @@ body {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  background: linear-gradient(135deg, var(--accent-light), var(--accent));
-  color: #ffffff;
+  background: linear-gradient(135deg, var(--bg-button), var(--bg-button-hover));
+  color: var(--text-on-accent);
   border-radius: 20px;
   animation: newBestPulse 0.6s ease;
   box-shadow: 0 2px 6px var(--accent-glow);
@@ -1545,7 +1561,7 @@ body {
 
 /* Success message */
 .modal-success {
-  color: #22c55e;
+  color: var(--color-success);
   font-weight: 600;
   font-size: 13px;
   margin: 0;
@@ -1657,8 +1673,8 @@ body {
   padding: 0 28px;
   border: none;
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--accent-light), var(--accent));
-  color: #ffffff;
+  background: linear-gradient(135deg, var(--bg-button), var(--bg-button-hover));
+  color: var(--text-on-accent);
   font-size: 16px;
   font-weight: 700;
   font-family: inherit;
@@ -1672,7 +1688,7 @@ body {
 }
 
 .modal-btn-play-again:hover {
-  background: linear-gradient(135deg, var(--accent), var(--bg-button-hover));
+  background: var(--bg-button-hover);
   transform: translateY(-1px);
   box-shadow: 0 5px 16px var(--button-shadow);
 }
@@ -1720,7 +1736,7 @@ body {
 .modal-btn-share-copied {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
 }
 
 /* Standard primary action button (for email flow) */
@@ -1734,7 +1750,7 @@ body {
   border: none;
   border-radius: 8px;
   background: var(--bg-button);
-  color: #ffffff;
+  color: var(--text-on-accent);
   font-size: 14px;
   font-weight: 700;
   font-family: inherit;
@@ -1911,9 +1927,9 @@ body {
 .login-prompt {
   margin-top: 8px;
   padding: 10px 14px;
-  background: linear-gradient(135deg, var(--accent-light), var(--accent));
+  background: linear-gradient(135deg, var(--bg-button), var(--bg-button-hover));
   border-radius: 8px;
-  color: #ffffff;
+  color: var(--text-on-accent);
   font-size: 13px;
   font-weight: 700;
   text-align: center;
@@ -1976,7 +1992,7 @@ body {
 
 .grid-size-active {
   background: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
   box-shadow: 0 2px 6px var(--accent-glow);
 }
 
@@ -2035,6 +2051,19 @@ body {
   cursor: pointer;
 }
 
+/* ========== Screen Reader Only ========== */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .confetti-piece,
   .confetti-container {
@@ -2048,6 +2077,13 @@ body {
   * {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
+  }
+  /* Remove expensive backdrop-filter for reduced motion (performance + a11y) */
+  .modal-backdrop,
+  .overlay,
+  .swipe-hint-overlay {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 }
 
@@ -2416,7 +2452,7 @@ button:focus-visible,
   height: 48px;
   min-width: 44px;
   padding: 0 20px;
-  border: 1.5px solid rgba(217, 119, 6, 0.2);
+  border: 1.5px solid var(--bg-card-border);
   border-radius: 10px;
   background: #fff;
   color: #3c4043;
@@ -2434,14 +2470,14 @@ button:focus-visible,
 }
 
 .modal-btn-google:hover {
-  background: #fffbf0;
-  border-color: rgba(217, 119, 6, 0.35);
+  background: var(--accent-bg-subtle);
+  border-color: var(--accent-border-light);
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
   transform: translateY(-1px);
 }
 
 .modal-btn-google:active {
-  background: #fff8e6;
+  background: var(--accent-bg-light);
   transform: translateY(0);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
@@ -2562,7 +2598,7 @@ button:focus-visible,
 }
 
 .swipe-hint-text {
-  color: #fff;
+  color: var(--text-on-accent);
   font-size: 16px;
   font-weight: 700;
   margin: 0;
@@ -2687,8 +2723,8 @@ button:focus-visible,
   padding: 0 28px;
   border: none;
   border-radius: 12px;
-  background: linear-gradient(135deg, var(--accent-light), var(--accent));
-  color: #fff;
+  background: linear-gradient(135deg, var(--bg-button), var(--bg-button-hover));
+  color: var(--text-on-accent);
   font-size: 17px;
   font-weight: 800;
   font-family: inherit;
@@ -2702,7 +2738,7 @@ button:focus-visible,
 }
 
 .mp-find-btn:hover {
-  background: linear-gradient(135deg, var(--accent), var(--bg-button-hover));
+  background: var(--bg-button-hover);
   transform: translateY(-1px);
   box-shadow: 0 5px 18px var(--accent-border-light);
 }
@@ -2746,7 +2782,7 @@ button:focus-visible,
 
 .mp-friend-btn:hover {
   background: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
   transform: translateY(-1px);
   box-shadow: 0 5px 18px var(--accent-border-light);
 }
@@ -2942,11 +2978,11 @@ button:focus-visible,
 }
 
 .mp-stats-pill-win .mp-stats-pill-value {
-  color: #16a34a;
+  color: var(--color-success);
 }
 
 .mp-stats-pill-loss .mp-stats-pill-value {
-  color: #dc2626;
+  color: var(--color-danger);
 }
 
 [data-theme="midnight"] .mp-stats-pill-win {
@@ -2955,11 +2991,11 @@ button:focus-visible,
 }
 
 [data-theme="midnight"] .mp-stats-pill-win .mp-stats-pill-label {
-  color: #4ade80;
+  color: var(--color-success);
 }
 
 [data-theme="midnight"] .mp-stats-pill-win .mp-stats-pill-value {
-  color: #4ade80;
+  color: var(--color-success);
 }
 
 [data-theme="midnight"] .mp-stats-pill-loss {
@@ -2968,11 +3004,11 @@ button:focus-visible,
 }
 
 [data-theme="midnight"] .mp-stats-pill-loss .mp-stats-pill-label {
-  color: #f87171;
+  color: var(--color-danger);
 }
 
 [data-theme="midnight"] .mp-stats-pill-loss .mp-stats-pill-value {
-  color: #f87171;
+  color: var(--color-danger);
 }
 
 /* Bottom row: 2-col secondary stats */
@@ -3057,16 +3093,6 @@ button:focus-visible,
   animation: pulse 1s ease-in-out infinite;
 }
 
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
 /* ------------------------------------------------------------------
    IN-GAME HUD (replaces .match-header)
 ------------------------------------------------------------------ */
@@ -3135,11 +3161,11 @@ button:focus-visible,
 }
 
 .mp-hud-status.connected {
-  color: #059669;
+  color: var(--color-connected);
 }
 
 .mp-hud-status.disconnected {
-  color: #dc2626;
+  color: var(--color-danger);
 }
 
 .mp-hud-status.connecting {
@@ -3164,11 +3190,11 @@ button:focus-visible,
 }
 
 .mp-hud-timer-display.warning {
-  color: #dc2626;
+  color: var(--color-danger);
 }
 
 .mp-hud-timer-display.critical {
-  color: #dc2626;
+  color: var(--color-danger);
   animation: timer-pulse 0.8s ease-in-out infinite;
 }
 
@@ -3327,7 +3353,7 @@ button:focus-visible,
 .mp-leave-bottom-btn:hover {
   background: rgba(220, 38, 38, 0.06);
   border-color: rgba(220, 38, 38, 0.3);
-  color: #dc2626;
+  color: var(--color-danger);
 }
 
 /* ------------------------------------------------------------------
@@ -3403,7 +3429,7 @@ button:focus-visible,
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  color: white;
+  color: var(--text-on-accent);
   font-size: 16px;
   border-radius: 12px;
 }
@@ -3545,7 +3571,7 @@ button:focus-visible,
 
 .mp-opponent-expanded-close:hover {
   background: var(--accent);
-  color: white;
+  color: var(--text-on-accent);
 }
 
 .mp-opponent-expanded-board {
@@ -3674,7 +3700,7 @@ button:focus-visible,
   border: 2px dashed #dc2626;
   border-radius: 6px;
   background: rgba(220, 38, 38, 0.08);
-  color: #dc2626;
+  color: var(--color-danger);
   font-size: 11px;
   font-weight: 700;
   font-family: monospace;
@@ -3720,12 +3746,12 @@ button:focus-visible,
 }
 
 .match-timer-warning {
-  color: #dc2626;
+  color: var(--color-danger);
   background: rgba(220, 38, 38, 0.08);
 }
 
 .match-timer-critical {
-  color: #dc2626;
+  color: var(--color-danger);
   background: rgba(220, 38, 38, 0.1);
   animation: timer-pulse 1s ease-in-out infinite;
 }
@@ -3748,10 +3774,10 @@ button:focus-visible,
 }
 
 .connection-status.connected {
-  color: #059669;
+  color: var(--color-connected);
 }
 .connection-status.disconnected {
-  color: #dc2626;
+  color: var(--color-danger);
 }
 .connection-status.connecting {
   color: var(--accent);
@@ -3914,8 +3940,8 @@ button:focus-visible,
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  background: linear-gradient(135deg, var(--accent-light), var(--accent));
-  color: #fff;
+  background: linear-gradient(135deg, var(--bg-button), var(--bg-button-hover));
+  color: var(--text-on-accent);
   border-radius: 20px;
   animation: newBestPulse 0.6s ease;
 }
@@ -3952,13 +3978,13 @@ button:focus-visible,
 
 .mp-elo-change-positive {
   background: rgba(22, 163, 74, 0.12);
-  color: #16a34a;
+  color: var(--color-success);
   border: 1px solid rgba(22, 163, 74, 0.25);
 }
 
 .mp-elo-change-negative {
   background: rgba(220, 38, 38, 0.1);
-  color: #dc2626;
+  color: var(--color-danger);
   border: 1px solid rgba(220, 38, 38, 0.2);
 }
 
@@ -3989,10 +4015,10 @@ button:focus-visible,
 }
 
 .mp-elo-positive {
-  color: #16a34a;
+  color: var(--color-success);
 }
 .mp-elo-negative {
-  color: #dc2626;
+  color: var(--color-danger);
 }
 
 [data-theme="midnight"] .mp-elo-positive {
@@ -4033,7 +4059,7 @@ button:focus-visible,
 
 .elo-rank-bronze {
   background: #cd7f32;
-  color: #fff;
+  color: var(--text-on-accent);
 }
 .elo-rank-silver {
   background: #c0c0c0;
@@ -4138,10 +4164,10 @@ button:focus-visible,
 }
 
 .player-stat-wins {
-  color: #16a34a;
+  color: var(--color-success);
 }
 .player-stat-losses {
-  color: #dc2626;
+  color: var(--color-danger);
 }
 
 /* ------------------------------------------------------------------
@@ -4172,8 +4198,8 @@ button:focus-visible,
   padding: 14px 20px;
   border: none;
   border-radius: 12px;
-  background: linear-gradient(135deg, var(--accent-light), var(--accent));
-  color: #fff;
+  background: linear-gradient(135deg, var(--bg-button), var(--bg-button-hover));
+  color: var(--text-on-accent);
   font-size: 16px;
   font-weight: 700;
   font-family: inherit;
@@ -4186,7 +4212,7 @@ button:focus-visible,
 }
 
 .mp-result-btn-primary:hover {
-  background: linear-gradient(135deg, var(--accent), var(--bg-button-hover));
+  background: var(--bg-button-hover);
   transform: translateY(-1px);
   box-shadow: 0 5px 18px var(--accent-border-light);
 }
@@ -4577,7 +4603,7 @@ body.mobile-no-scroll {
   height: 36px;
   border-radius: 50%;
   background: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
   font-family: var(--font-fredoka), "Fredoka", sans-serif;
   font-size: 1rem;
   font-weight: 700;
@@ -4619,7 +4645,7 @@ body.mobile-no-scroll {
   border-radius: 10px;
   background: var(--bg-button);
   border: none;
-  color: #fff;
+  color: var(--text-on-accent);
   font-size: 15px;
   font-weight: 700;
   cursor: pointer;
@@ -4666,7 +4692,7 @@ body.mobile-no-scroll {
 
 .mobile-menu-signin-error {
   font-size: 12px;
-  color: #dc2626;
+  color: var(--color-danger);
   margin: 0;
 }
 
@@ -4693,7 +4719,7 @@ body.mobile-no-scroll {
   border-radius: 10px;
   background: var(--bg-button);
   border: none;
-  color: #fff;
+  color: var(--text-on-accent);
   font-size: 15px;
   font-weight: 700;
   cursor: pointer;
@@ -4796,8 +4822,8 @@ body.mobile-no-scroll {
   padding: 8px 20px;
   border: none;
   border-radius: 8px;
-  background: linear-gradient(135deg, var(--accent-light), var(--accent));
-  color: #fff;
+  background: linear-gradient(135deg, var(--bg-button), var(--bg-button-hover));
+  color: var(--text-on-accent);
   font-size: 0.9rem;
   font-weight: 700;
   font-family: inherit;

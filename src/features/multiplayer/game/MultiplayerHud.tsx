@@ -63,14 +63,14 @@ export default function MultiplayerHud({
         </div>
 
         {/* Centre: timer */}
-        <div className="mp-hud-timer">
+        <div className="mp-hud-timer" aria-live="polite" aria-atomic="true">
           {gameStarted ? (
             <>
-              <div className={hudTimerClass}>{formatTime(timeLeft)}</div>
-              <div className="mp-hud-timer-label">remaining</div>
+              <div className={hudTimerClass} aria-label={`${formatTime(timeLeft)} remaining`}>{formatTime(timeLeft)}</div>
+              <div className="mp-hud-timer-label" aria-hidden="true">remaining</div>
             </>
           ) : (
-            <div className="mp-hud-timer-display">—</div>
+            <div className="mp-hud-timer-display" aria-label="Waiting to start">—</div>
           )}
         </div>
 
@@ -85,8 +85,8 @@ export default function MultiplayerHud({
               width: "100%",
             }}
           >
-            <span className={`mp-hud-status ${connectionStatusClass}`} title={connectionLabel}>
-              <span className="blob" />
+            <span className={`mp-hud-status ${connectionStatusClass}`} aria-label={connectionLabel}>
+              <span className="blob" aria-hidden="true" />
             </span>
             <span className="mp-hud-name" style={{ maxWidth: "none", flexShrink: 1 }}>
               {opponentName}
@@ -95,7 +95,7 @@ export default function MultiplayerHud({
           <span className="mp-hud-score">{opponentScore.toLocaleString()}</span>
         </div>
       </div>
-      {statusText && <div className="mp-status-bar">{statusText}</div>}
+      {statusText && <div className="mp-status-bar" role="status" aria-live="polite">{statusText}</div>}
     </>
   );
 }

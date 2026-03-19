@@ -191,7 +191,7 @@ const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProp
       <>
         {/* Confetti overlay */}
         {showConfetti && (
-          <div className="confetti-container">
+          <div className="confetti-container" aria-hidden="true">
             {confettiPieces.map((piece) => (
               <div
                 key={piece.id}
@@ -270,14 +270,14 @@ const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProp
             <>
               <button
                 className="header-new-game-btn"
-                style={{ background: "#16a34a" }}
+                style={{ background: "var(--color-success)" }}
                 onClick={() => devTriggerWinRef.current?.()}
               >
                 DEV: Win Setup
               </button>
               <button
                 className="header-new-game-btn"
-                style={{ background: "#dc2626" }}
+                style={{ background: "var(--color-danger)" }}
                 onClick={() => devEndGameRef.current?.()}
               >
                 DEV: End Game

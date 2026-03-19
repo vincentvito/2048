@@ -59,9 +59,9 @@ export const themes: Record<ThemeName, ThemeColors> = {
     bgCardBorder: "rgba(251, 191, 36, 0.2)",
     bgSegmented: "#78350f",
 
-    bgButton: "#d97706",
-    bgButtonHover: "#b45309",
-    buttonShadow: "rgba(180, 83, 9, 0.25)",
+    bgButton: "#b45309",
+    bgButtonHover: "#92400e",
+    buttonShadow: "rgba(146, 64, 14, 0.3)",
 
     textPrimary: "#78350f",
     textSecondary: "#92400e",
@@ -112,8 +112,8 @@ export const themes: Record<ThemeName, ThemeColors> = {
     bgCardBorder: "rgba(14, 165, 233, 0.2)",
     bgSegmented: "#155e75",
 
-    bgButton: "#0891b2",
-    bgButtonHover: "#0e7490",
+    bgButton: "#0e7490",
+    bgButtonHover: "#155e75",
     buttonShadow: "rgba(14, 116, 144, 0.25)",
 
     textPrimary: "#164e63",
@@ -165,8 +165,8 @@ export const themes: Record<ThemeName, ThemeColors> = {
     bgCardBorder: "rgba(34, 197, 94, 0.2)",
     bgSegmented: "#166534",
 
-    bgButton: "#16a34a",
-    bgButtonHover: "#15803d",
+    bgButton: "#15803d",
+    bgButtonHover: "#166534",
     buttonShadow: "rgba(21, 128, 61, 0.25)",
 
     textPrimary: "#14532d",

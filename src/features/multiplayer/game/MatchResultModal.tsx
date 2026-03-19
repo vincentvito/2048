@@ -104,7 +104,7 @@ export default function MatchResultModal({
       )}
 
       {opponentWantsRematch && !localWantsRematch && (
-        <p className="mp-rematch-hint">{opponentName} wants a rematch!</p>
+        <p className="mp-rematch-hint" role="status" aria-live="polite">{opponentName} wants a rematch!</p>
       )}
 
       <div className="mp-result-actions-stack">

@@ -8,6 +8,7 @@ import ThemeSwitcher from "./ThemeSwitcher";
 import { ThemeName } from "@/lib/themes";
 import { type AppUser, getDisplayName } from "@/features/auth/types";
 import { useParticles } from "./EmojiParticles";
+import { useHapticsEnabled } from "@/hooks/useHapticsEnabled";
 
 interface MobileMenuProps {
   user: AppUser | null;
@@ -32,6 +33,7 @@ export default function MobileMenu({
   const [open, setOpen] = useState(false);
   const [showSignIn, setShowSignIn] = useState(false);
   const { enabled: particlesEnabled, setEnabled: setParticlesEnabled } = useParticles();
+  const { hapticsEnabled, setHapticsEnabled } = useHapticsEnabled();
 
   const close = useCallback(() => {
     setOpen(false);
@@ -143,6 +145,14 @@ export default function MobileMenu({
                 onChange={(e) => setParticlesEnabled(e.target.checked)}
               />
               <span>Emoji Effects</span>
+            </label>
+            <label className="sidebar-toggle">
+              <input
+                type="checkbox"
+                checked={hapticsEnabled}
+                onChange={(e) => setHapticsEnabled(e.target.checked)}
+              />
+              <span>Haptic Feedback</span>
             </label>
           </div>
 

@@ -62,6 +62,8 @@ interface Game2048Props {
   readOnlyState?: GameState | null;
   onStateChange?: (state: GameState) => void;
   onMove?: (direction: number) => void;
+  /** Called after a successful move with the highest merged tile value (0 if no merges). */
+  onMoveFeedback?: (maxMerge: number, moved: boolean) => void;
   disableInputs?: boolean;
   onDevEndGameReady?: (fn: () => void) => void;
   onDevTriggerWinReady?: (fn: () => void) => void;
@@ -80,6 +82,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
     readOnlyState,
     onStateChange,
     onMove,
+    onMoveFeedback,
     disableInputs,
     onDevEndGameReady,
     onDevTriggerWinReady,
@@ -123,6 +126,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
   const onResetReadyRef = useRef(onResetReady);
   const onStateChangeRef = useRef(onStateChange);
   const onMoveRef = useRef(onMove);
+  const onMoveFeedbackRef = useRef(onMoveFeedback);
   const disableInputsRef = useRef(disableInputs);
   const onDevEndGameReadyRef = useRef(onDevEndGameReady);
   const onDevTriggerWinReadyRef = useRef(onDevTriggerWinReady);
@@ -137,6 +141,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
   onResetReadyRef.current = onResetReady;
   onStateChangeRef.current = onStateChange;
   onMoveRef.current = onMove;
+  onMoveFeedbackRef.current = onMoveFeedback;
   disableInputsRef.current = disableInputs;
   disableSaveRef.current = disableSave;
   onDevEndGameReadyRef.current = onDevEndGameReady;
@@ -199,9 +204,13 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
     function recalcCanvas() {
       const maxContainerWidth = SIZE === 4 ? 480 : 640;
       const availableWidth = Math.min(window.innerWidth - 32, maxContainerWidth);
-      const maxCell = Math.floor((availableWidth - (SIZE + 1) * GAP) / SIZE);
+      // Reserve space for header (~200px), buttons below board (~100px), and browser chrome
+      const reservedHeight = 300;
+      const availableHeight = window.innerHeight - reservedHeight;
+      const maxCellW = Math.floor((availableWidth - (SIZE + 1) * GAP) / SIZE);
+      const maxCellH = Math.floor((availableHeight - (SIZE + 1) * GAP) / SIZE);
       const idealCell = SIZE === 4 ? 100 : 64;
-      CELL = Math.min(idealCell, maxCell);
+      CELL = Math.min(idealCell, maxCellW, Math.max(40, maxCellH));
       GRID_SIZE = SIZE * CELL + (SIZE + 1) * GAP;
       canvas.width = GRID_SIZE * dpr;
       canvas.height = GRID_SIZE * dpr;
@@ -531,6 +540,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
 
       tiles.length = 0;
       let moved = false;
+      let maxMerge = 0;
       let dr = 0,
         dc = 0,
         rStart = 0,
@@ -589,6 +599,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
               grid[ni] *= 2;
               score += grid[ni];
               merged[ni] = 1;
+              if (grid[ni] > maxMerge) maxMerge = grid[ni];
               if (grid[ni] === 2048 && !won && !keepPlaying) {
                 won = true;
                 onGameWonRef.current?.(score, SIZE);
@@ -656,6 +667,8 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
         }
         requestAnimationFrame(animate);
       }
+
+      onMoveFeedbackRef.current?.(maxMerge, moved);
 
       return moved;
     }

@@ -17,6 +17,7 @@ import { type AppUser } from "@/features/auth/types";
 import { LeaderboardEntry } from "@/components/Leaderboard";
 import { useParticles } from "@/components/EmojiParticles";
 import { useWebHaptics } from "web-haptics/react";
+import { isHapticsEnabled } from "@/hooks/useHapticsEnabled";
 
 function generateConfettiPieces(count: number) {
   const colors = ["#edc22e", "#f2b179", "#f67c5f", "#e8d4b0", "#8f7a66"];
@@ -55,6 +56,12 @@ const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProp
     const { theme } = useTheme();
     const { burst } = useParticles();
     const haptic = useWebHaptics();
+    const triggerHaptic = useCallback(
+      (preset: "light" | "medium" | "heavy" | "selection" | "success" | "error") => {
+        if (isHapticsEnabled()) haptic.trigger(preset);
+      },
+      [haptic]
+    );
     const gameRef = useRef<Game2048Handle>(null);
     const gameResetRef = useRef<(() => void) | null>(null);
     const devEndGameRef = useRef<(() => void) | null>(null);
@@ -126,13 +133,13 @@ const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProp
         const dailyBest = leaderboardScores.length > 0 ? leaderboardScores[0].score : 0;
         if (score > dailyBest && dailyBest > 0) {
           burst("dailyBest");
-          haptic.trigger("heavy");
+          triggerHaptic("heavy");
         } else {
           burst("gameOver");
-          haptic.trigger("error");
+          triggerHaptic("error");
         }
       },
-      [saveScoreToSupabase, captureBoardScreenshot, onScoreChange, leaderboardScores, burst, haptic]
+      [saveScoreToSupabase, captureBoardScreenshot, onScoreChange, leaderboardScores, burst, triggerHaptic]
     );
 
     const handleGameWon = useCallback(
@@ -146,9 +153,23 @@ const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProp
         unsavedWinRef.current = { score, gridSize };
 
         burst("win");
-        haptic.trigger("success");
+        triggerHaptic("success");
       },
-      [captureBoardScreenshot, onScoreChange, burst, haptic]
+      [captureBoardScreenshot, onScoreChange, burst, triggerHaptic]
+    );
+
+    const handleMoveFeedback = useCallback(
+      (maxMerge: number, moved: boolean) => {
+        if (!moved) return;
+        if (maxMerge >= 256) {
+          triggerHaptic("medium");
+        } else if (maxMerge > 0) {
+          triggerHaptic("selection");
+        } else {
+          triggerHaptic("light");
+        }
+      },
+      [triggerHaptic]
     );
 
     /** Save the unsaved winning score (if any) before starting a new game. */
@@ -203,6 +224,7 @@ const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProp
             ref={gameRef}
             onGameOver={handleGameOver}
             onGameWon={handleGameWon}
+            onMoveFeedback={handleMoveFeedback}
             onResetReady={handleResetReady}
             initialSize={activeGridSize}
             themeName={theme}

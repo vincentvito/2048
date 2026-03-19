@@ -8,6 +8,7 @@ import ThemeSwitcher from "./ThemeSwitcher";
 import { ThemeName } from "@/lib/themes";
 import { type AppUser, getDisplayName } from "@/features/auth/types";
 import { useParticles } from "./EmojiParticles";
+import { useHapticsEnabled } from "@/hooks/useHapticsEnabled";
 
 interface DesktopSidebarProps {
   user: AppUser | null;
@@ -32,6 +33,7 @@ export default function DesktopSidebar({
 }: DesktopSidebarProps): React.ReactElement {
   const [showSignIn, setShowSignIn] = useState(false);
   const { enabled: particlesEnabled, setEnabled: setParticlesEnabled } = useParticles();
+  const { hapticsEnabled, setHapticsEnabled } = useHapticsEnabled();
 
   const displayName = user ? getDisplayName(user) : null;
 
@@ -82,6 +84,14 @@ export default function DesktopSidebar({
                 onChange={(e) => setParticlesEnabled(e.target.checked)}
               />
               <span>Emoji Effects</span>
+            </label>
+            <label className="sidebar-toggle">
+              <input
+                type="checkbox"
+                checked={hapticsEnabled}
+                onChange={(e) => setHapticsEnabled(e.target.checked)}
+              />
+              <span>Haptic Feedback</span>
             </label>
           </div>
 

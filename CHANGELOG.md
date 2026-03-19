@@ -74,12 +74,15 @@
 
 ### Features
 - Added emoji particle burst system (`EmojiParticles.tsx`) — canvas-based particle engine with physics (gravity, drag, rotation, scale easing) and pre-cached emoji rendering
-- Added haptic feedback via `web-haptics` — triggers on win, game over, and leaderboard achievements. Silently no-ops on unsupported platforms.
+- Added haptic feedback via `web-haptics` — triggers on every move (light tap for slides, selection tick for merges, medium for big merges 256+), plus win/game over/daily best events. Silently no-ops on unsupported platforms.
 - Emoji burst + haptic events: win (🎉🏆⭐ + success), beat daily leaderboard (👑🥇🏆 + heavy), game over (💀😵🫠 + error)
-- Added "Emoji Effects" toggle in both desktop sidebar and mobile menu — persisted to localStorage
+- Added "Emoji Effects" and "Haptic Feedback" toggles in both desktop sidebar and mobile menu — both persisted to localStorage, both enabled by default
 - Replaced broken SVG swipe hint with animated `👆` emoji that swipes in 4 directions with semi-transparent backdrop
 - Added skeleton loading placeholder for the game board — prevents layout shift (small square → full board) on page load by reserving the correct dimensions with a pulsing placeholder until the canvas initializes
 - Fixed board not centered in sidebar layout — safe-area `padding-left` rule was overriding the sidebar offset; removed conflicting rule
+- Fixed board overflowing viewport on mobile — canvas size now constrained by both width AND height (reserves 300px for header/buttons/browser chrome), uses `100dvh` for dynamic viewport height
+- Fixed hamburger menu overlapping game board — moved above install banner with safe-area-inset-bottom offset
+- Fixed install banner covered by browser toolbar — raised z-index and padding for safe area
 
 ### PWA & SEO
 - Made the app a Progressive Web App — web app manifest (`manifest.ts`), service worker with network-first caching, and install banner for "Add to Home Screen"

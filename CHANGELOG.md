@@ -8,6 +8,8 @@
 - Guest play support — non-authenticated users can play friendly matches (no ELO, stats, or leaderboard scores saved)
 - `src/lib/room-code.ts` — shared room code utilities (generate, validate, build invite URL)
 - "Share Invite Link" button on match result modal when opponent disconnects in friendly mode — lets the remaining player re-send the invite
+- `useGameFeedback` hook — centralized haptic + emoji particle feedback (replaces duplicated code in SinglePlayerScreen and MultiplayerView)
+- Haptic feedback and emoji particle animations now work in multiplayer matches (merge haptics, game over/win bursts)
 
 ### Changed
 - "Play with a Friend" is now one click — immediately generates room + shareable link (no more Create/Join menu)

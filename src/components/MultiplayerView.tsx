@@ -24,6 +24,7 @@ import OpponentPreview, {
 } from "@/features/multiplayer/game/OpponentPreview";
 
 import { generateRoomCode, buildInviteUrl } from "@/lib/room-code";
+import { useGameFeedback } from "@/hooks/useGameFeedback";
 
 type LobbyScreen = "main" | "create-room";
 
@@ -63,6 +64,7 @@ export default function MultiplayerView({
   );
 
   const { theme: themeName } = useTheme();
+  const { onMoveFeedback, onGameOverFeedback, onWinFeedback } = useGameFeedback();
 
   // Auth State - using Better Auth
   const { data: sessionData, isPending: sessionLoading } = useSession();
@@ -323,11 +325,13 @@ export default function MultiplayerView({
 
   const handleLocalGameOver = useCallback((score: number) => {
     setLocalGameResult({ won: false, score, gameOver: true });
-  }, []);
+    onGameOverFeedback();
+  }, [onGameOverFeedback]);
 
   const handleLocalGameWon = useCallback((score: number) => {
     setLocalGameResult({ won: true, score, gameOver: true });
-  }, []);
+    onWinFeedback();
+  }, [onWinFeedback]);
 
   const handleLocalStateChange = useCallback((state: GameState) => {
     if (suppressStateRef.current) return;
@@ -341,6 +345,7 @@ export default function MultiplayerView({
     },
     [sendMove]
   );
+
 
   const handleResetReady = useCallback((resetFn: () => void) => {
     localGameResetRef.current = resetFn;
@@ -964,6 +969,7 @@ export default function MultiplayerView({
               onResetReady={handleResetReady}
               onStateChange={handleLocalStateChange}
               onMove={handleLocalMove}
+              onMoveFeedback={onMoveFeedback}
               disableInputs={disableLocalInputs}
               onDevEndGameReady={isDev ? handleDevEndGameReady : undefined}
               hideScore

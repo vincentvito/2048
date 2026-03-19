@@ -17,9 +17,7 @@ import { saveScore } from "@/lib/score-service";
 import { useTheme } from "@/features/theme/ThemeProvider";
 import { type AppUser } from "@/features/auth/types";
 import { LeaderboardEntry } from "@/components/Leaderboard";
-import { useParticles } from "@/components/EmojiParticles";
-import { useWebHaptics } from "web-haptics/react";
-import { isHapticsEnabled } from "@/hooks/useHapticsEnabled";
+import { useGameFeedback } from "@/hooks/useGameFeedback";
 
 function generateConfettiPieces(count: number) {
   const colors = ["#edc22e", "#f2b179", "#f67c5f", "#e8d4b0", "#8f7a66"];
@@ -56,14 +54,7 @@ const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProp
     ref
   ) {
     const { theme } = useTheme();
-    const { burst } = useParticles();
-    const haptic = useWebHaptics();
-    const triggerHaptic = useCallback(
-      (preset: "light" | "medium" | "heavy" | "selection" | "success" | "error") => {
-        if (isHapticsEnabled()) haptic.trigger(preset);
-      },
-      [haptic]
-    );
+    const { onMoveFeedback, onGameOverFeedback, onWinFeedback } = useGameFeedback();
     const gameRef = useRef<Game2048Handle>(null);
     const gameResetRef = useRef<(() => void) | null>(null);
     const devEndGameRef = useRef<(() => void) | null>(null);
@@ -135,21 +126,14 @@ const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProp
 
         // Check if this score beats today's leaderboard best
         const dailyBest = leaderboardScores.length > 0 ? leaderboardScores[0].score : 0;
-        if (score > dailyBest && dailyBest > 0) {
-          burst("dailyBest");
-          triggerHaptic("heavy");
-        } else {
-          burst("gameOver");
-          triggerHaptic("error");
-        }
+        onGameOverFeedback({ isDailyBest: score > dailyBest && dailyBest > 0 });
       },
       [
         saveScoreToSupabase,
         captureBoardScreenshot,
         onScoreChange,
         leaderboardScores,
-        burst,
-        triggerHaptic,
+        onGameOverFeedback,
       ]
     );
 
@@ -163,24 +147,18 @@ const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProp
         // Track it so we can save if they reset without hitting game over.
         unsavedWinRef.current = { score, gridSize };
 
-        burst("win");
-        triggerHaptic("success");
+        onWinFeedback();
       },
-      [captureBoardScreenshot, onScoreChange, burst, triggerHaptic]
+      [captureBoardScreenshot, onScoreChange, onWinFeedback]
     );
 
     const handleMoveFeedback = useCallback(
       (maxMerge: number, moved: boolean) => {
         if (!moved) return;
         currentScoreRef.current += maxMerge; // rough proxy — exact value doesn't matter
-        if (maxMerge === 0) return;
-        if (maxMerge >= 256) {
-          triggerHaptic("medium");
-        } else {
-          triggerHaptic("selection");
-        }
+        onMoveFeedback(maxMerge, moved);
       },
-      [triggerHaptic]
+      [onMoveFeedback]
     );
 
     /** Save the unsaved winning score (if any) before starting a new game. */

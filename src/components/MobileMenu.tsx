@@ -134,6 +134,19 @@ export default function MobileMenu({
 
           <div className="mobile-menu-divider" />
 
+          {/* Leaderboard */}
+          <div className="mobile-menu-section">
+            <h3 className="mobile-menu-section-title">Leaderboard</h3>
+            <Leaderboard
+              refreshTrigger={refreshTrigger}
+              currentScore={currentScore}
+              gridSize={activeGridSize}
+              isSignedIn={!!user}
+            />
+          </div>
+
+          <div className="mobile-menu-divider" />
+
           {/* Theme */}
           <div className="mobile-menu-section">
             <h3 className="mobile-menu-section-title">Theme</h3>
@@ -154,19 +167,6 @@ export default function MobileMenu({
               />
               <span>Haptic Feedback</span>
             </label>
-          </div>
-
-          <div className="mobile-menu-divider" />
-
-          {/* Leaderboard */}
-          <div className="mobile-menu-section">
-            <h3 className="mobile-menu-section-title">Leaderboard</h3>
-            <Leaderboard
-              refreshTrigger={refreshTrigger}
-              currentScore={currentScore}
-              gridSize={activeGridSize}
-              isSignedIn={!!user}
-            />
           </div>
 
           <div className="mobile-menu-divider" />

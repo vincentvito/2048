@@ -8,6 +8,8 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 const DISMISSED_KEY = "2048_install_dismissed";
+const INSTALLED_KEY = "2048_install_accepted";
+const DISMISS_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 export default function InstallBanner(): React.ReactElement | null {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
@@ -24,13 +26,17 @@ export default function InstallBanner(): React.ReactElement | null {
     const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) && !("MSStream" in window);
     setIsIOS(ios);
 
-    // Check if user previously dismissed
+    // Don't show if user previously installed
+    try {
+      if (localStorage.getItem(INSTALLED_KEY) === "1") return;
+    } catch { /* noop */ }
+
+    // Don't show if user dismissed within cooldown period
     try {
       const d = localStorage.getItem(DISMISSED_KEY);
       if (d) {
         const ago = Date.now() - Number(d);
-        // Show again after 7 days
-        if (ago < 7 * 24 * 60 * 60 * 1000) return;
+        if (ago < DISMISS_COOLDOWN_MS) return;
       }
     } catch {
       /* noop */
@@ -83,9 +89,13 @@ export default function InstallBanner(): React.ReactElement | null {
     if (!deferredPrompt) return;
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
+    setDeferredPrompt(null);
+    setDismissed(true);
     if (outcome === "accepted") {
-      setDeferredPrompt(null);
-      setDismissed(true);
+      try { localStorage.setItem(INSTALLED_KEY, "1"); } catch { /* noop */ }
+    } else {
+      // User dismissed the native prompt — treat as a dismiss
+      try { localStorage.setItem(DISMISSED_KEY, String(Date.now())); } catch { /* noop */ }
     }
   }, [deferredPrompt]);
 

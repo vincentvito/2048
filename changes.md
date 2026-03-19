@@ -1,3 +1,24 @@
+# Changes: Mobile Menu, Emoji Fix, Install Banner
+
+## Mobile Menu — Leaderboard Priority
+- Swapped Leaderboard and Theme sections in the mobile drawer so Leaderboard appears first
+- **File**: `src/components/MobileMenu.tsx`
+
+## Emoji Particle Fix
+- Root cause: canvas emoji cache used `serif` font, which doesn't trigger emoji glyph fallback on many Android devices and Linux systems — emojis rendered as invisible
+- Fixed font to explicit emoji stack: `"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla", sans-serif`
+- Added `prefers-reduced-motion: reduce` check in `burst()` — particles now respect OS motion sensitivity
+- **File**: `src/components/EmojiParticles.tsx`
+
+## Install Banner Improvements
+- Dismiss cooldown increased from 7 days to **30 days**
+- New `"2048_install_accepted"` localStorage key — if user installs, banner **never** shows again
+- If user clicks Install but dismisses the native browser prompt, treated as a regular dismiss (30-day cooldown)
+- Already-installed detection (`display-mode: standalone`) was already correct — no change needed
+- **File**: `src/components/InstallBanner.tsx`
+
+---
+
 # Changes: OTP Input Overflow Fix & New Game Confirmation
 
 ## OTP Input Overflow Fix

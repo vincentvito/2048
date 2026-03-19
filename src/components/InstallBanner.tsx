@@ -29,7 +29,9 @@ export default function InstallBanner(): React.ReactElement | null {
     // Don't show if user previously installed
     try {
       if (localStorage.getItem(INSTALLED_KEY) === "1") return;
-    } catch { /* noop */ }
+    } catch {
+      /* noop */
+    }
 
     // Don't show if user dismissed within cooldown period
     try {
@@ -92,10 +94,18 @@ export default function InstallBanner(): React.ReactElement | null {
     setDeferredPrompt(null);
     setDismissed(true);
     if (outcome === "accepted") {
-      try { localStorage.setItem(INSTALLED_KEY, "1"); } catch { /* noop */ }
+      try {
+        localStorage.setItem(INSTALLED_KEY, "1");
+      } catch {
+        /* noop */
+      }
     } else {
       // User dismissed the native prompt — treat as a dismiss
-      try { localStorage.setItem(DISMISSED_KEY, String(Date.now())); } catch { /* noop */ }
+      try {
+        localStorage.setItem(DISMISSED_KEY, String(Date.now()));
+      } catch {
+        /* noop */
+      }
     }
   }, [deferredPrompt]);
 

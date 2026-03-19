@@ -242,7 +242,9 @@ function GhostEntry({ rank, score }: { rank: number; score: number }): React.Rea
       <span className="lb-rank lb-rank-ghost">{rankDisplay(rank)}</span>
       <span className="lb-name lb-name-ghost">You</span>
       <span className="lb-ghost-cta">
-        {isTopThree ? `You'd be ${rank === 1 ? "1st" : rank === 2 ? "2nd" : "3rd"}! Sign in` : "Sign in to claim"}
+        {isTopThree
+          ? `You'd be ${rank === 1 ? "1st" : rank === 2 ? "2nd" : "3rd"}! Sign in`
+          : "Sign in to claim"}
       </span>
       <span className="lb-score lb-score-ghost">{score.toLocaleString()}</span>
     </div>

@@ -23,18 +23,9 @@ import OpponentPreview, {
   ExpandedGrid,
 } from "@/features/multiplayer/game/OpponentPreview";
 
-// Characters that avoid ambiguity (no 0/O, 1/I/l)
-const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+import { generateRoomCode, buildInviteUrl } from "@/lib/room-code";
 
-function generateRoomCode(): string {
-  let code = "";
-  for (let i = 0; i < 6; i++) {
-    code += ROOM_CODE_CHARS[Math.floor(Math.random() * ROOM_CODE_CHARS.length)];
-  }
-  return code;
-}
-
-type LobbyScreen = "main" | "friend-menu" | "create-room" | "join-room";
+type LobbyScreen = "main" | "create-room";
 
 // MiniGrid, ExpandedGrid imported from OpponentPreview
 
@@ -45,11 +36,13 @@ interface MultiplayerViewProps {
     gameMode: "ranked" | "friendly";
     friendRoomCode?: string;
   } | null;
+  autoJoinCode?: string | null;
 }
 
 export default function MultiplayerView({
   onMatchActiveChange,
   reconnectSession,
+  autoJoinCode,
 }: MultiplayerViewProps) {
   const {
     state: matchmakingState,
@@ -87,7 +80,10 @@ export default function MultiplayerView({
   const [localEloAfter, setLocalEloAfter] = useState<number | null>(null);
   const [eloProcessed, setEloProcessed] = useState(false);
 
-  const myName = useMemo(() => getDisplayName(user), [user]);
+  // Guest support for friendly mode
+  const guestId = useRef(`guest_${crypto.randomUUID()}`);
+  const myName = useMemo(() => (user ? getDisplayName(user) : "Guest"), [user]);
+  const effectiveId = user?.id || guestId.current;
 
   // Fetch player stats when user is available
   useEffect(() => {
@@ -108,10 +104,11 @@ export default function MultiplayerView({
   const [lobbyScreen, setLobbyScreen] = useState<LobbyScreen>("main");
   const [friendRoomId, setFriendRoomId] = useState<string | null>(null);
   const [friendRoomCode, setFriendRoomCode] = useState<string>("");
-  const [joinRoomInput, setJoinRoomInput] = useState("");
   const [gameMode, setGameMode] = useState<GameMode>("ranked");
   const [codeCopied, setCodeCopied] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
+  const [isAutoJoining, setIsAutoJoining] = useState(false);
+  const [autoJoinError, setAutoJoinError] = useState<string | null>(null);
 
   // Restore session from reconnect prop
   useEffect(() => {
@@ -128,6 +125,33 @@ export default function MultiplayerView({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Auto-join from invite link
+  const autoJoinHandled = useRef(false);
+  useEffect(() => {
+    if (!autoJoinCode || autoJoinHandled.current || reconnectSession) return;
+    autoJoinHandled.current = true;
+    setIsAutoJoining(true);
+    setAutoJoinError(null);
+    setFriendRoomCode(autoJoinCode);
+    setFriendRoomId(`friend_${autoJoinCode}`);
+    setGameMode("friendly");
+  }, [autoJoinCode, reconnectSession]);
+
+  // Auto-join timeout: if room doesn't start within 10s, show error
+  useEffect(() => {
+    if (!isAutoJoining || !friendRoomId) return;
+    const timeout = setTimeout(() => {
+      if (!gameStartedRef.current) {
+        setIsAutoJoining(false);
+        setAutoJoinError("Room not found or expired");
+        setFriendRoomId(null);
+        setFriendRoomCode("");
+        setGameMode("ranked");
+      }
+    }, 10000);
+    return () => clearTimeout(timeout);
+  }, [isAutoJoining, friendRoomId]);
 
   // Compute effective room ID — friend room takes priority when in friendly mode
   const effectiveRoomId = gameMode === "friendly" ? friendRoomId : roomId;
@@ -172,15 +196,17 @@ export default function MultiplayerView({
     gameStarted,
     forfeitWin,
     serverResult,
-  } = useMultiplayerGame(
-    effectiveRoomId,
-    myId,
-    user?.id || null,
-    myName,
-    myElo,
-    gameMode,
-    botOpponent
-  );
+  } = useMultiplayerGame(effectiveRoomId, myId, effectiveId, myName, myElo, gameMode, botOpponent);
+
+  // Track gameStarted for auto-join timeout ref
+  const gameStartedRef = useRef(false);
+  useEffect(() => {
+    gameStartedRef.current = gameStarted;
+    if (gameStarted && isAutoJoining) {
+      setIsAutoJoining(false);
+      setAutoJoinError(null);
+    }
+  }, [gameStarted, isAutoJoining]);
 
   // Clear reconnecting flag once the game has started
   useEffect(() => {
@@ -366,11 +392,11 @@ export default function MultiplayerView({
     cancelMatchmaking();
     setFriendRoomId(null);
     setFriendRoomCode("");
-    setJoinRoomInput("");
     setGameMode("ranked");
     setLobbyScreen("main");
     setCodeCopied(false);
     setLocalGameResult(null);
+    setAutoJoinError(null);
 
     confettiFiredRef.current = false;
     setLocalEloDelta(null);
@@ -546,6 +572,56 @@ export default function MultiplayerView({
     }
   }, [rematchStarted, clearRematchStarted]);
 
+  // One-click "Play with a Friend" — generate code + link immediately
+  const handlePlayWithFriend = () => {
+    const code = generateRoomCode();
+    setFriendRoomCode(code);
+    setFriendRoomId(`friend_${code}`);
+    setGameMode("friendly");
+    setLobbyScreen("create-room");
+  };
+
+  // Auto-join "Connecting..." screen
+  if (isAutoJoining && friendRoomId && !gameStarted) {
+    return (
+      <div className="mp-lobby">
+        <h2 className="mp-lobby-title">Joining Game</h2>
+        <div className="loader" style={{ margin: "20px auto" }}></div>
+        <p className="hint">Connecting...</p>
+        <button
+          className="mp-back-btn"
+          onClick={() => {
+            setIsAutoJoining(false);
+            setFriendRoomId(null);
+            setFriendRoomCode("");
+            setGameMode("ranked");
+          }}
+        >
+          Cancel
+        </button>
+      </div>
+    );
+  }
+
+  // Auto-join error screen
+  if (autoJoinError) {
+    return (
+      <div className="mp-lobby">
+        <h2 className="mp-lobby-title">Could not join</h2>
+        <p className="mp-lobby-subtitle">{autoJoinError}</p>
+        <button
+          className="mp-find-btn"
+          onClick={() => {
+            setAutoJoinError(null);
+            setLobbyScreen("main");
+          }}
+        >
+          Go to Lobby
+        </button>
+      </div>
+    );
+  }
+
   if (
     matchmakingState === "idle" &&
     !(gameMode === "friendly" && friendRoomId && (gameStarted || isReconnecting))
@@ -558,78 +634,89 @@ export default function MultiplayerView({
       );
     }
 
-    if (!user && isSupabaseConfigured()) {
-      return (
-        <div className="matchmaking-container">
-          <h2>Login to play Multiplayer</h2>
-          <p>You need an account to be matched with online players.</p>
+    // Auth gate only for ranked play — guests can play friendly
+    if (!user && isSupabaseConfigured() && gameMode !== "friendly") {
+      // If they navigated to friend menu, let them through
+      if (lobbyScreen !== "create-room") {
+        return (
+          <div className="matchmaking-container">
+            <h2>Login to play Multiplayer</h2>
+            <p>You need an account to be matched with online players.</p>
 
-          <div
-            style={{
-              marginTop: "20px",
-              display: "flex",
-              flexDirection: "column",
-              gap: "10px",
-              alignItems: "center",
-            }}
-          >
-            {!showSignIn ? (
-              <button
-                type="button"
-                className="modal-btn-leaderboard"
-                style={{ width: "100%", maxWidth: "300px" }}
-                onClick={() => setShowSignIn(true)}
-              >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  className="modal-btn-icon"
-                >
-                  <path
-                    d="M4 12V10M8 12V8M12 12V6M2 4L8 2L14 4"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                Sign in with email
-              </button>
-            ) : (
-              <EmailSignIn
-                variant="inline"
-                maxWidth="300px"
-                onCancel={() => setShowSignIn(false)}
-              />
-            )}
+            <div
+              style={{
+                marginTop: "20px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "10px",
+                alignItems: "center",
+              }}
+            >
+              {!showSignIn ? (
+                <>
+                  <button
+                    type="button"
+                    className="modal-btn-leaderboard"
+                    style={{ width: "100%", maxWidth: "300px" }}
+                    onClick={() => setShowSignIn(true)}
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      className="modal-btn-icon"
+                    >
+                      <path
+                        d="M4 12V10M8 12V8M12 12V6M2 4L8 2L14 4"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                    Sign in with email
+                  </button>
+                  <button
+                    className="mp-friend-btn"
+                    style={{ width: "100%", maxWidth: "300px" }}
+                    onClick={handlePlayWithFriend}
+                  >
+                    Play with a Friend
+                  </button>
+                </>
+              ) : (
+                <EmailSignIn
+                  variant="inline"
+                  maxWidth="300px"
+                  onCancel={() => setShowSignIn(false)}
+                />
+              )}
+            </div>
           </div>
-        </div>
-      );
+        );
+      }
     }
 
     const eloRank = playerStats ? getEloRank(playerStats.elo) : null;
 
-    const handleCreateRoom = () => {
-      const code = generateRoomCode();
-      setFriendRoomCode(code);
-      setFriendRoomId(`friend_${code}`);
-      setGameMode("friendly");
-      setLobbyScreen("create-room");
-    };
+    const inviteUrl = friendRoomCode ? buildInviteUrl(friendRoomCode) : "";
 
-    const handleJoinRoom = () => {
-      const code = joinRoomInput.trim().toUpperCase();
-      if (code.length !== 6) return;
-      setFriendRoomCode(code);
-      setFriendRoomId(`friend_${code}`);
-      setGameMode("friendly");
-    };
-
-    const handleCopyCode = async () => {
+    const handleShareInvite = async () => {
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: "Join my 2048 match!",
+            text: "Click to join my 2048 match",
+            url: inviteUrl,
+          });
+          return;
+        } catch {
+          // User cancelled or share failed — fall through to clipboard
+        }
+      }
       try {
-        await navigator.clipboard.writeText(friendRoomCode);
+        await navigator.clipboard.writeText(inviteUrl);
         setCodeCopied(true);
         setTimeout(() => setCodeCopied(false), 2000);
       } catch {
@@ -641,24 +728,24 @@ export default function MultiplayerView({
       if (user?.id) clearMultiplayerSession();
       setFriendRoomId(null);
       setFriendRoomCode("");
-      setJoinRoomInput("");
       setGameMode("ranked");
       setLobbyScreen("main");
       setCodeCopied(false);
     };
 
-    // Friend mode: waiting for opponent after creating room
+    // Friend mode: waiting for opponent — share invite link
     if (lobbyScreen === "create-room" && friendRoomId && !gameStarted) {
       return (
         <div className="mp-lobby">
-          <h2 className="mp-lobby-title">Waiting for Friend</h2>
-          <p className="mp-lobby-subtitle">Share this code with your friend</p>
+          <h2 className="mp-lobby-title">Invite a Friend</h2>
+          <p className="mp-lobby-subtitle">Share this link with your friend</p>
 
-          <div className="mp-room-code-display">
-            <span className="mp-room-code">{friendRoomCode}</span>
-            <button className="mp-copy-btn" onClick={handleCopyCode}>
-              {codeCopied ? "Copied!" : "Copy"}
-            </button>
+          <button className="mp-find-btn" onClick={handleShareInvite} style={{ marginTop: 16 }}>
+            {codeCopied ? "Link Copied!" : "Share Invite Link"}
+          </button>
+
+          <div className="mp-invite-url-display">
+            <span className="mp-invite-url">{inviteUrl}</span>
           </div>
 
           <div className="loader" style={{ margin: "20px auto" }}></div>
@@ -670,87 +757,34 @@ export default function MultiplayerView({
       );
     }
 
-    // Friend mode: join room screen (only show while game hasn't started)
-    if (lobbyScreen === "join-room" && !gameStarted) {
-      return (
-        <div className="mp-lobby">
-          <h2 className="mp-lobby-title">Join a Friend</h2>
-          <p className="mp-lobby-subtitle">Enter the 6-character room code</p>
-
-          <div className="mp-room-code-input-wrapper">
-            <input
-              className="mp-room-code-input"
-              type="text"
-              maxLength={6}
-              placeholder="ABCDEF"
-              value={joinRoomInput}
-              onChange={(e) =>
-                setJoinRoomInput(e.target.value.toUpperCase().replace(/[^A-Z2-9]/g, ""))
-              }
-              autoFocus
-            />
-          </div>
-
-          <button
-            className="mp-find-btn"
-            style={{ marginTop: 16 }}
-            onClick={handleJoinRoom}
-            disabled={joinRoomInput.trim().length !== 6}
-          >
-            Join Game
-          </button>
-          <button
-            className="mp-back-btn"
-            onClick={() => {
-              setJoinRoomInput("");
-              setLobbyScreen("friend-menu");
-            }}
-          >
-            Back
-          </button>
-        </div>
-      );
-    }
-
-    // Friend mode: choose create or join
-    if (lobbyScreen === "friend-menu") {
-      return (
-        <div className="mp-lobby">
-          <h2 className="mp-lobby-title">Multiplayer</h2>
-          <p className="mp-lobby-subtitle">Create a room or join one with a code</p>
-
-          <div className="mp-lobby-buttons">
-            <button className="mp-find-btn" onClick={handleCreateRoom}>
-              Create Room
-            </button>
-            <button className="mp-friend-btn" onClick={() => setLobbyScreen("join-room")}>
-              Join Room
-            </button>
-          </div>
-
-          <button className="mp-back-btn" onClick={() => setLobbyScreen("main")}>
-            Back
-          </button>
-        </div>
-      );
-    }
-
     return (
       <div className="mp-lobby">
         <h2 className="mp-lobby-title">Multiplayer</h2>
         <p className="mp-lobby-subtitle">Play against an online opponent in real-time!</p>
 
         <div className="mp-lobby-buttons">
-          <button
-            className="mp-find-btn"
-            onClick={() => user?.id && startMatchmaking(user.id, myName, myElo)}
-          >
-            Play Online
-          </button>
-          <button className="mp-friend-btn" onClick={() => setLobbyScreen("friend-menu")}>
+          {user ? (
+            <button
+              className="mp-find-btn"
+              onClick={() => user.id && startMatchmaking(user.id, myName, myElo)}
+            >
+              Play Online
+            </button>
+          ) : (
+            <button className="mp-find-btn" onClick={() => setShowSignIn(true)}>
+              Sign in to Play Online
+            </button>
+          )}
+          <button className="mp-friend-btn" onClick={handlePlayWithFriend}>
             Play with a Friend
           </button>
         </div>
+
+        {!user && showSignIn && (
+          <div style={{ marginTop: 16, width: "100%", maxWidth: "300px" }}>
+            <EmailSignIn variant="inline" maxWidth="300px" onCancel={() => setShowSignIn(false)} />
+          </div>
+        )}
 
         {statsLoading && (
           <div className="mp-stats-card" style={{ marginTop: 20 }}>

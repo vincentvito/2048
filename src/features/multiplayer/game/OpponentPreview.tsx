@@ -96,7 +96,12 @@ export default function OpponentPreview({
       <div
         className="mp-opponent-mini-preview"
         onClick={() => onToggleExpanded(true)}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggleExpanded(true); } }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onToggleExpanded(true);
+          }
+        }}
         role="button"
         tabIndex={0}
         aria-label={`View ${opponentName}'s board`}

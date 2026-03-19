@@ -21,7 +21,12 @@ function getGameOverQuip(score: number, personalBest: number, isNewBest: boolean
   if (score >= 10000) return "Solid game!";
   if (score >= 5000) return "Getting the hang of it!";
   if (score >= 2000) return "Keep at it, you're improving!";
-  const starters = ["One more try?", "You've got this!", "Almost there!", "Try a different strategy!"];
+  const starters = [
+    "One more try?",
+    "You've got this!",
+    "Almost there!",
+    "Try a different strategy!",
+  ];
   return starters[score % starters.length];
 }
 

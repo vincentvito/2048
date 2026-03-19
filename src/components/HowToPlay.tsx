@@ -21,7 +21,12 @@ export default function HowToPlay(): React.ReactElement {
 
   return (
     <div className="how-to-play">
-      <button onClick={() => setOpen(!open)} className="how-to-play-toggle" aria-expanded={open} aria-controls="how-to-play-content">
+      <button
+        onClick={() => setOpen(!open)}
+        className="how-to-play-toggle"
+        aria-expanded={open}
+        aria-controls="how-to-play-content"
+      >
         <span>How to Play</span>
         <svg
           className={`toggle-icon ${open ? "open" : ""}`}

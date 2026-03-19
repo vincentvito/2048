@@ -266,7 +266,9 @@ export default function EmailSignIn({
       <div className={cls.section} style={wrapperStyle}>
         {variant === "mobile" && <p className={cls.label}>Enter your email</p>}
         {variant === "modal" && <div className="modal-divider">sign in with email</div>}
-        <label htmlFor="signin-email" className="sr-only">Email address</label>
+        <label htmlFor="signin-email" className="sr-only">
+          Email address
+        </label>
         <input
           id="signin-email"
           type="email"
@@ -280,7 +282,11 @@ export default function EmailSignIn({
           autoFocus
           aria-describedby={otpError ? "signin-email-error" : undefined}
         />
-        {otpError && <p id="signin-email-error" className={cls.error} role="alert">{otpError}</p>}
+        {otpError && (
+          <p id="signin-email-error" className={cls.error} role="alert">
+            {otpError}
+          </p>
+        )}
         <div className={cls.actions}>
           <button type="button" className={cls.btnBack} onClick={handleBack}>
             Cancel
@@ -307,7 +313,11 @@ export default function EmailSignIn({
         onComplete={handleVerifyOtp}
         disabled={verifying}
       />
-      {otpError && <p id="signin-otp-error" className={cls.error} role="alert">{otpError}</p>}
+      {otpError && (
+        <p id="signin-otp-error" className={cls.error} role="alert">
+          {otpError}
+        </p>
+      )}
       <div className={cls.actions}>
         <button type="button" className={cls.btnBack} onClick={handleBack}>
           Back

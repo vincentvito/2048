@@ -67,7 +67,12 @@ export default function MobileMenu({
   return (
     <>
       {/* Hamburger trigger — mobile only */}
-      <button className="mobile-menu-trigger" onClick={() => setOpen(true)} aria-label="Menu" aria-expanded={open}>
+      <button
+        className="mobile-menu-trigger"
+        onClick={() => setOpen(true)}
+        aria-label="Menu"
+        aria-expanded={open}
+      >
         <span />
         <span />
         <span />

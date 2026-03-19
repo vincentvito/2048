@@ -94,7 +94,9 @@ export default function UsernamePrompt(): React.ReactElement | null {
           This is how you&apos;ll appear on the leaderboard and to opponents.
         </p>
 
-        <label htmlFor="username-input" className="sr-only">Username</label>
+        <label htmlFor="username-input" className="sr-only">
+          Username
+        </label>
         <input
           id="username-input"
           ref={inputRef}

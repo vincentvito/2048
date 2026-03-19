@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback, useRef, useEffect, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import SinglePlayerScreen, {
   type SinglePlayerHandle,
 } from "@/features/single-player/SinglePlayerScreen";
@@ -15,10 +16,21 @@ import { useSession, signOut } from "@/lib/auth-client";
 import { type AppUser } from "@/features/auth/types";
 import { LeaderboardEntry } from "@/components/Leaderboard";
 import { getMultiplayerSession, clearMultiplayerSession } from "@/lib/multiplayer-session";
+import { isValidRoomCode } from "@/lib/room-code";
 import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
 
 export default function Home(): React.ReactElement {
+  return (
+    <Suspense>
+      <HomeInner />
+    </Suspense>
+  );
+}
+
+function HomeInner(): React.ReactElement {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [leaderboardScores, setLeaderboardScores] = useState<LeaderboardEntry[]>([]);
   const [currentScore, setCurrentScore] = useState(0);
@@ -38,6 +50,23 @@ export default function Home(): React.ReactElement {
   // Auth session
   const { data: sessionData } = useSession();
   const user = (sessionData?.user as AppUser | undefined) ?? null;
+
+  // Read ?join=CODE from URL
+  const [autoJoinCode, setAutoJoinCode] = useState<string | null>(null);
+  useEffect(() => {
+    const joinParam = searchParams.get("join");
+    if (joinParam) {
+      const upper = joinParam.toUpperCase();
+      if (isValidRoomCode(upper)) {
+        setAutoJoinCode(upper);
+        setGameMode("multi");
+        setActiveGridSize(4);
+      }
+      router.replace("/", { scroll: false });
+    }
+    // Only run on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Check for active multiplayer session on load
   useEffect(() => {
@@ -158,7 +187,11 @@ export default function Home(): React.ReactElement {
             leaderboardScores={leaderboardScores}
           />
         ) : (
-          <MultiplayerView onMatchActiveChange={setMatchActive} reconnectSession={pendingSession} />
+          <MultiplayerView
+            onMatchActiveChange={setMatchActive}
+            reconnectSession={pendingSession}
+            autoJoinCode={autoJoinCode}
+          />
         )}
 
         <p className="game-hint desktop-hint">

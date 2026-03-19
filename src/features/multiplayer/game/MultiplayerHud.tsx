@@ -66,11 +66,17 @@ export default function MultiplayerHud({
         <div className="mp-hud-timer" aria-live="polite" aria-atomic="true">
           {gameStarted ? (
             <>
-              <div className={hudTimerClass} aria-label={`${formatTime(timeLeft)} remaining`}>{formatTime(timeLeft)}</div>
-              <div className="mp-hud-timer-label" aria-hidden="true">remaining</div>
+              <div className={hudTimerClass} aria-label={`${formatTime(timeLeft)} remaining`}>
+                {formatTime(timeLeft)}
+              </div>
+              <div className="mp-hud-timer-label" aria-hidden="true">
+                remaining
+              </div>
             </>
           ) : (
-            <div className="mp-hud-timer-display" aria-label="Waiting to start">—</div>
+            <div className="mp-hud-timer-display" aria-label="Waiting to start">
+              —
+            </div>
           )}
         </div>
 
@@ -95,7 +101,11 @@ export default function MultiplayerHud({
           <span className="mp-hud-score">{opponentScore.toLocaleString()}</span>
         </div>
       </div>
-      {statusText && <div className="mp-status-bar" role="status" aria-live="polite">{statusText}</div>}
+      {statusText && (
+        <div className="mp-status-bar" role="status" aria-live="polite">
+          {statusText}
+        </div>
+      )}
     </>
   );
 }

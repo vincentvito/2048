@@ -143,7 +143,14 @@ const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProp
           triggerHaptic("error");
         }
       },
-      [saveScoreToSupabase, captureBoardScreenshot, onScoreChange, leaderboardScores, burst, triggerHaptic]
+      [
+        saveScoreToSupabase,
+        captureBoardScreenshot,
+        onScoreChange,
+        leaderboardScores,
+        burst,
+        triggerHaptic,
+      ]
     );
 
     const handleGameWon = useCallback(
@@ -329,7 +336,10 @@ const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProp
           labelledBy="new-game-confirm-title"
         >
           <div style={{ textAlign: "center", padding: "4px 0" }}>
-            <h2 id="new-game-confirm-title" style={{ margin: "0 0 8px", fontSize: "1.4rem", color: "var(--text-primary)" }}>
+            <h2
+              id="new-game-confirm-title"
+              style={{ margin: "0 0 8px", fontSize: "1.4rem", color: "var(--text-primary)" }}
+            >
               Start New Game?
             </h2>
             <p style={{ margin: "0 0 20px", color: "var(--text-secondary)", fontSize: "0.95rem" }}>

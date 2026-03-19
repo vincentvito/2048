@@ -1,6 +1,23 @@
 # Changelog
 
-## [Unreleased] - 2026-03-18
+## [Unreleased] - 2026-03-19
+
+### Added
+- Shareable invite links for "Play with a Friend" — click to generate a link, share it, friend opens it and auto-joins
+- `/play/[code]` route with OG metadata for rich link previews ("Join my 2048 match!")
+- Guest play support — non-authenticated users can play friendly matches (scores not saved)
+- `src/lib/room-code.ts` — shared room code utilities (generate, validate, build invite URL)
+
+### Changed
+- "Play with a Friend" is now one click — immediately generates room + shareable link (no more Create/Join menu)
+- Joining a friend's game is link-only — removed manual room code input
+- Auth gate allows guests through for friendly mode
+
+### Removed
+- Room code display and manual code entry UI (replaced by invite links)
+- "Create Room" / "Join Room" choice screen (friend-menu)
+
+## [Previous] - 2026-03-18
 
 ### Security
 - All API mutation routes now resolve user from session cookies instead of client-provided `userId`

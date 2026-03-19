@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useRef, useEffect, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import SinglePlayerScreen, {
   type SinglePlayerHandle,
 } from "@/features/single-player/SinglePlayerScreen";
@@ -30,7 +30,6 @@ export default function Home(): React.ReactElement {
 
 function HomeInner(): React.ReactElement {
   const searchParams = useSearchParams();
-  const router = useRouter();
 
   const joinParam = searchParams.get("join");
   const autoJoinCode = joinParam ? joinParam.toUpperCase() : null;
@@ -40,7 +39,9 @@ function HomeInner(): React.ReactElement {
   const [leaderboardScores, setLeaderboardScores] = useState<LeaderboardEntry[]>([]);
   const [currentScore, setCurrentScore] = useState(0);
   const [activeGridSize, setActiveGridSize] = useState(4);
-  const [gameMode, setGameMode] = useState<"single" | "multi">("single");
+  const [gameMode, setGameMode] = useState<"single" | "multi">(
+    validAutoJoinCode ? "multi" : "single"
+  );
   const [matchActive, setMatchActive] = useState(false);
   const [pendingSession, setPendingSession] = useState<{
     roomId: string;
@@ -61,13 +62,6 @@ function HomeInner(): React.ReactElement {
       setGameMode("multi");
     }
   }, [validAutoJoinCode]);
-
-  // Clean ?join= from URL after capturing it
-  useEffect(() => {
-    if (validAutoJoinCode) {
-      router.replace("/", { scroll: false });
-    }
-  }, [validAutoJoinCode, router]);
 
   // Check for active multiplayer session on load
   useEffect(() => {

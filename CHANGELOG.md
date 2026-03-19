@@ -5,13 +5,14 @@
 ### Added
 - Shareable invite links for "Play with a Friend" — click to generate a link, share it, friend opens it and auto-joins
 - `/play/[code]` route with OG metadata for rich link previews ("Join my 2048 match!")
-- Guest play support — non-authenticated users can play friendly matches (scores not saved)
+- Guest play support — non-authenticated users can play friendly matches (no ELO, stats, or leaderboard scores saved)
 - `src/lib/room-code.ts` — shared room code utilities (generate, validate, build invite URL)
+- "Share Invite Link" button on match result modal when opponent disconnects in friendly mode — lets the remaining player re-send the invite
 
 ### Changed
 - "Play with a Friend" is now one click — immediately generates room + shareable link (no more Create/Join menu)
 - Joining a friend's game is link-only — removed manual room code input
-- Auth gate allows guests through for friendly mode
+- Auth gate allows guests through for friendly mode (ranked still requires sign-in)
 
 ### Removed
 - Room code display and manual code entry UI (replaced by invite links)

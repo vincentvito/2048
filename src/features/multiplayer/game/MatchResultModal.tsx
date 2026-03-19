@@ -37,7 +37,10 @@ interface MatchResultModalProps {
   localEloRank: { name: string } | null;
   localWantsRematch: boolean;
   opponentWantsRematch: boolean;
+  opponentConnected: boolean;
+  inviteUrl?: string;
   onRequestRematch: () => void;
+  onShareInvite?: () => void;
   onNewOpponent: () => void;
   onLeave: () => void;
 }
@@ -60,7 +63,10 @@ export default function MatchResultModal({
   localEloRank,
   localWantsRematch,
   opponentWantsRematch,
+  opponentConnected,
+  inviteUrl,
   onRequestRematch,
+  onShareInvite,
   onNewOpponent,
   onLeave,
 }: MatchResultModalProps) {
@@ -156,6 +162,14 @@ export default function MatchResultModal({
               : "Waiting for opponent..."
             : "Rematch"}
         </Button>
+        {localWantsRematch && !opponentConnected && gameMode === "friendly" && onShareInvite && (
+          <>
+            <p className="mp-rematch-hint">Opponent left — share the link to invite them back</p>
+            <Button variant="secondary" fullWidth onClick={onShareInvite}>
+              Share Invite Link
+            </Button>
+          </>
+        )}
         <div className="mp-result-actions-row">
           {gameMode === "ranked" && (
             <Button variant="secondary" onClick={onNewOpponent}>

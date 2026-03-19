@@ -100,7 +100,9 @@ export function usePartyGame(
   useEffect(() => {
     if (!roomId || !userIdRef.current || !myNameRef.current || initializedRef.current) return;
 
-    console.log(`[usePartyGame] Connecting to room=${roomId} userId=${userIdRef.current} name=${myNameRef.current}`);
+    console.log(
+      `[usePartyGame] Connecting to room=${roomId} userId=${userIdRef.current} name=${myNameRef.current}`
+    );
     initializedRef.current = true;
 
     const socket = new PartySocket({
@@ -153,7 +155,10 @@ export function usePartyGame(
     socket.onmessage = (event) => {
       try {
         const message: GameServerMessage = JSON.parse(event.data);
-        console.log(`[usePartyGame] Received: ${message.type}`, message.type === "opponent_state" ? `score=${message.state.score}` : "");
+        console.log(
+          `[usePartyGame] Received: ${message.type}`,
+          message.type === "opponent_state" ? `score=${message.state.score}` : ""
+        );
 
         switch (message.type) {
           case "player_joined":
@@ -180,6 +185,28 @@ export function usePartyGame(
               setOpponentIsBot(!!opp.isBot);
               setOpponentConnected(true);
               setOpponentEverConnected(true);
+            }
+            const localState = message.states?.find(
+              (state) => state.id === userIdRef.current
+            )?.state;
+            if (localState) {
+              setInitialServerState({
+                grid: localState.grid || Array(16).fill(0),
+                score: localState.score,
+                gameOver: localState.gameOver,
+                won: localState.won,
+              });
+            }
+            const opponentState = message.states?.find(
+              (state) => state.id !== userIdRef.current
+            )?.state;
+            if (opponentState) {
+              setOpponentState({
+                grid: opponentState.grid || Array(16).fill(0),
+                score: opponentState.score,
+                gameOver: opponentState.gameOver,
+                won: opponentState.won,
+              });
             }
             if (message.timeRemaining !== undefined) {
               gameDurationRef.current = message.duration;

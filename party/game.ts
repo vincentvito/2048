@@ -151,6 +151,7 @@ export default class GameServer implements Party.Server {
     if (existing) {
       existing.connectionId = sender.id;
       existing.lastSeen = Date.now();
+      this.ensureHumanPlayerState(existing);
 
       this.broadcastToOthers(sender.id, {
         type: "opponent_connected",
@@ -172,6 +173,9 @@ export default class GameServer implements Party.Server {
 
       if (this.state.gameStarted) {
         const players = Array.from(this.state.players.values());
+        for (const player of players) {
+          this.ensureHumanPlayerState(player);
+        }
         const duration = this.state.mode === "friendly" ? FRIENDLY_DURATION : RANKED_DURATION;
         let timeRemaining: number | undefined;
         if (this.state.gameStartedAt) {
@@ -187,6 +191,15 @@ export default class GameServer implements Party.Server {
               username: p.username,
               elo: p.elo,
               isBot: p.isBot,
+            })),
+            states: players.map((p) => ({
+              id: p.userId,
+              state: {
+                grid: p.engineState.grid,
+                score: p.engineState.score,
+                gameOver: p.engineState.gameOver,
+                won: p.engineState.won,
+              },
             })),
             duration,
             timeRemaining,
@@ -254,6 +267,9 @@ export default class GameServer implements Party.Server {
     );
 
     if (playerCount === 2 && !this.state.gameStarted) {
+      for (const player of players) {
+        this.ensureHumanPlayerState(player);
+      }
       this.state.gameStarted = true;
       this.state.gameStartedAt = Date.now();
 
@@ -266,6 +282,15 @@ export default class GameServer implements Party.Server {
             username: p.username,
             elo: p.elo,
             isBot: p.isBot,
+          })),
+          states: players.map((p) => ({
+            id: p.userId,
+            state: {
+              grid: p.engineState.grid,
+              score: p.engineState.score,
+              gameOver: p.engineState.gameOver,
+              won: p.engineState.won,
+            },
           })),
           duration,
           mode: this.state.mode,
@@ -819,6 +844,13 @@ export default class GameServer implements Party.Server {
         conn.send(msgStr);
       }
     }
+  }
+
+  private ensureHumanPlayerState(player: Player) {
+    if (player.isBot) return;
+    if (player.engineState.grid.some((value) => value !== 0)) return;
+    player.engineState = createInitialState(GAME_SIZE);
+    log(`[Game ${this.room.id}] Regenerated empty board for ${player.username}`);
   }
 
   private async saveState() {

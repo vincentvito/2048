@@ -158,19 +158,17 @@ export default class GameServer implements Party.Server {
       });
 
       // Send the player's server-authoritative state back for reconnection
-      if (existing.engineState.grid.some((v) => v !== 0)) {
-        sender.send(
-          JSON.stringify({
-            type: "your_state",
-            state: {
-              grid: existing.engineState.grid,
-              score: existing.engineState.score,
-              gameOver: existing.engineState.gameOver,
-              won: existing.engineState.won,
-            },
-          })
-        );
-      }
+      sender.send(
+        JSON.stringify({
+          type: "your_state",
+          state: {
+            grid: existing.engineState.grid,
+            score: existing.engineState.score,
+            gameOver: existing.engineState.gameOver,
+            won: existing.engineState.won,
+          },
+        })
+      );
 
       if (this.state.gameStarted) {
         const players = Array.from(this.state.players.values());

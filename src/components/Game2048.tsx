@@ -108,12 +108,20 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
   const toggleSizeFnRef = useRef<(newSize: number) => void>(() => {});
   const getSizeFnRef = useRef<() => number>(() => 4);
   const rerenderFnRef = useRef<() => void>(() => {});
+  const isGameReadyRef = useRef(false);
+  const pendingExternalStateRef = useRef<GameState | null>(null);
 
   useImperativeHandle(
     ref,
     () => ({
       init: () => initFnRef.current(),
-      updateState: (state: GameState) => updateStateFnRef.current(state),
+      updateState: (state: GameState) => {
+        if (!isGameReadyRef.current) {
+          pendingExternalStateRef.current = state;
+          return;
+        }
+        updateStateFnRef.current(state);
+      },
       keepPlaying: () => keepPlayingFnRef.current(),
       toggleSize: (newSize: number) => toggleSizeFnRef.current(newSize),
       getSize: () => getSizeFnRef.current(),
@@ -162,6 +170,10 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
   // Hook to handle readOnlyState changes
   useEffect(() => {
     if (readOnlyState) {
+      if (!isGameReadyRef.current) {
+        pendingExternalStateRef.current = readOnlyState;
+        return;
+      }
       updateStateFnRef.current(readOnlyState);
     }
   }, [readOnlyState]);
@@ -833,6 +845,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
     (container as unknown as Record<string, (s: number) => void>)._toggleSize =
       toggleSizeFnRef.current;
     (container as unknown as Record<string, () => number>)._getSize = getSizeFnRef.current;
+    isGameReadyRef.current = true;
 
     const keys = new Set<string>();
     let lastMove = 0;
@@ -995,6 +1008,12 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
     }
     setCanvasReady(true);
 
+    if (pendingExternalStateRef.current) {
+      const pendingState = pendingExternalStateRef.current;
+      pendingExternalStateRef.current = null;
+      updateStateImpl(pendingState);
+    }
+
     // Dev-only: fill board with random tiles and end the game
     function devEndGame() {
       const values = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024];
@@ -1131,6 +1150,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
     onResetReadyRef.current?.(init);
 
     return () => {
+      isGameReadyRef.current = false;
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("keyup", onKeyUp);
       if (!initialReadOnlyRef.current) {

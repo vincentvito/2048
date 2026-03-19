@@ -43,6 +43,10 @@ interface Particle {
 const emojiCache = new Map<string, HTMLCanvasElement>();
 const CACHE_SIZE = 64;
 
+/** Emoji-compatible font stack — ensures emoji glyphs render on all platforms */
+const EMOJI_FONT =
+  '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla", sans-serif';
+
 function getEmojiCanvas(emoji: string, dpr: number): HTMLCanvasElement {
   const key = emoji;
   if (emojiCache.has(key)) return emojiCache.get(key)!;
@@ -52,7 +56,7 @@ function getEmojiCanvas(emoji: string, dpr: number): HTMLCanvasElement {
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext("2d")!;
-  ctx.font = `${size * 0.75}px serif`;
+  ctx.font = `${size * 0.75}px ${EMOJI_FONT}`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText(emoji, size / 2, size / 2 + size * 0.05);
@@ -183,6 +187,8 @@ export function ParticleProvider({ children }: { children: React.ReactNode }) {
     (preset: BurstPreset, x?: number, y?: number) => {
       // Check enabled at call time via ref-like pattern (reads current state)
       if (!getStoredEnabled()) return;
+      // Respect OS-level motion sensitivity preference
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
       const config = PRESETS[preset];
       if (!config) return;

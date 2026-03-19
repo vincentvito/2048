@@ -1,3 +1,61 @@
+# Changes: Faster Direction Switching During Rapid Play
+
+## Reduced Input Blocking on Merge Animation
+
+- **Problem**: Each move blocked input for 120ms (full pulse/wobble duration), even though the tile slide only takes 50ms. During rapid direction changes, the player's next input arrived in that 70ms gap and was silently dropped — felt like lag.
+- **Fix**: Input now unlocks after the slide completes (50ms) instead of waiting for the cosmetic pulse to finish (120ms). The merge wobble continues visually but no longer blocks the next move.
+- Input-blocking window reduced from 120ms to 50ms (**58% reduction**)
+- Game state (add tile, check game over, save) commits at slide-complete so the next move operates on the correct board
+- **File**: `src/components/Game2048.tsx` — `animate()` function restructured
+
+---
+
+# Changes: Mobile Menu, Emoji Fix, Install Banner
+
+## Mobile Menu — Leaderboard Priority
+
+- Swapped Leaderboard and Theme sections in the mobile drawer so Leaderboard appears first
+- **File**: `src/components/MobileMenu.tsx`
+
+## Emoji Particle Fix
+
+- Root cause: canvas emoji cache used `serif` font, which doesn't trigger emoji glyph fallback on many Android devices and Linux systems — emojis rendered as invisible
+- Fixed font to explicit emoji stack: `"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla", sans-serif`
+- Added `prefers-reduced-motion: reduce` check in `burst()` — particles now respect OS motion sensitivity
+- **File**: `src/components/EmojiParticles.tsx`
+
+## Install Banner Improvements
+
+- Dismiss cooldown increased from 7 days to **30 days**
+- New `"2048_install_accepted"` localStorage key — if user installs, banner **never** shows again
+- If user clicks Install but dismisses the native browser prompt, treated as a regular dismiss (30-day cooldown)
+- Already-installed detection (`display-mode: standalone`) was already correct — no change needed
+- **File**: `src/components/InstallBanner.tsx`
+
+---
+
+# Changes: OTP Input Overflow Fix & New Game Confirmation
+
+## OTP Input Overflow Fix
+
+- OTP digit boxes now scale responsively using `clamp()` instead of fixed `50px` width
+  - Width: `clamp(38px, 12vw, 50px)`, Height: `clamp(46px, 14vw, 58px)`
+  - Gap: `clamp(6px, 2vw, 10px)`, Font: `clamp(20px, 7vw, 28px)`
+  - Container gets `max-width: 100%` to prevent horizontal overflow
+- **Files**: `src/app/globals.css` (`.otp-boxes`, `.otp-box`)
+
+## New Game Confirmation Modal
+
+- Clicking "New Game" while a game is in progress now shows a confirmation dialog
+- Tracks game-in-progress state via move feedback (any successful move marks the game as active)
+- Modal uses existing `Modal` + `Button` components with proper `aria-labelledby` and focus trap
+- "Keep Playing" (secondary) and "New Game" (primary) actions
+- No confirmation shown if the board is freshly initialized or game already ended
+- Score ref resets on new game start and on Play Again from game-over modal
+- **Files**: `src/features/single-player/SinglePlayerScreen.tsx`
+
+---
+
 # Changes: Design Audit, Quality Fixes & Delight
 
 ## Overview
@@ -7,24 +65,29 @@ Full design audit across accessibility, performance, theming, and responsive des
 ## Colorize — Contrast & Theme Fixes
 
 ### Button Contrast (WCAG AA — was failing in 3/4 themes)
+
 - **Classic**: Button gradient darkened `#f59e0b→#d97706` → `#b45309→#92400e` (3.19:1 → 5.02–7.09:1)
 - **Ocean**: `#22d3ee→#0891b2` → `#0e7490→#155e75` (3.68:1 → 5.36–7.27:1)
 - **Forest**: `#4ade80→#16a34a` → `#15803d→#166534` (3.30:1 → 5.02–7.13:1)
 - All button gradients changed from `accent-light→accent` to `bg-button→bg-button-hover`
 
 ### Semantic Color Variables (new)
+
 Added per-theme CSS variables for consistent semantic colors:
+
 - `--color-danger`: `#dc2626` (light) / `#f87171` (midnight) — fixes 3.03:1 failure on dark bg
 - `--color-success`: `#15803d` (light) / `#4ade80` (midnight) — fixes 2.20:1 failure on Classic
 - `--color-connected`: `#047857` (light) / `#34d399` (midnight) — fixes 3.38:1 failure
 - `--text-on-accent`: `#ffffff` (all themes) — single variable for text on colored surfaces
 
 ### Midnight Theme Toned Down
+
 - `--accent-glow` opacity: 0.3 → 0.15
 - `--title-glow` opacity: 0.5 → 0.3
 - Title gradient: removed pink (`#ec4899`), now purple-only (`#8b5cf6`, `#c4b5fd`)
 
 ### Hardcoded Colors Replaced
+
 - 18× `#dc2626` → `var(--color-danger)`
 - 4× `#059669` → `var(--color-connected)`
 - 4× `#16a34a` → `var(--color-success)`
@@ -37,6 +100,7 @@ Added per-theme CSS variables for consistent semantic colors:
 - Win/loss stat pill Midnight overrides: hardcoded hex → `var(--color-success/danger)`
 
 ### Files Changed
+
 - `src/app/globals.css` — theme variables, button gradients, semantic colors
 - `src/lib/themes.ts` — bgButton/bgButtonHover values for Classic, Ocean, Forest
 - `src/features/multiplayer/game/LeaveWarningModal.tsx` — inline danger color
@@ -47,15 +111,18 @@ Added per-theme CSS variables for consistent semantic colors:
 ## Harden — Accessibility Fixes (22 issues)
 
 ### Form Labels & Error Association
+
 - **EmailSignIn.tsx**: `<label htmlFor="signin-email">`, `aria-describedby` on inputs → error messages, `role="alert"` on errors, `aria-busy` on verify button, `<fieldset>`+`<legend>` wrapping OTP boxes, `aria-label` per digit
 - **UsernamePrompt.tsx**: `<label htmlFor="username-input">`, `aria-describedby="username-error"`, `role="alert"` on error
 
 ### aria-live Regions
+
 - **MultiplayerHud.tsx**: `aria-live="polite" aria-atomic="true"` on timer, `role="status" aria-live="polite"` on status bar
 - **OpponentPreview.tsx**: `role="status" aria-live="assertive"` on disconnection overlay
 - **MatchResultModal.tsx**: `role="status" aria-live="polite"` on rematch notification
 
 ### Keyboard & ARIA
+
 - **OpponentPreview.tsx**: `onKeyDown` handler for Enter/Space on mini preview, `aria-label="Close opponent board"` on close button, `role="dialog" aria-modal="true"` on expanded view
 - **MultiplayerHud.tsx**: `title` → `aria-label` on connection status, `aria-hidden` on decorative blob
 - **MobileMenu.tsx**: `aria-expanded={open}` on hamburger trigger
@@ -63,9 +130,11 @@ Added per-theme CSS variables for consistent semantic colors:
 - **HowToPlay.tsx**: `aria-controls="how-to-play-content"` + matching `id`, `aria-hidden="true"` on all 3 instruction SVGs
 
 ### Decorative Elements
+
 - **SinglePlayerScreen.tsx**: `aria-hidden="true"` on confetti container
 
 ### Infrastructure
+
 - **globals.css**: Added `.sr-only` utility class
 
 ---
@@ -88,23 +157,27 @@ Added per-theme CSS variables for consistent semantic colors:
 ## Delight — Moments of Joy
 
 ### Game Over Personality
+
 - Encouraging quips on loss based on performance: "So close to your best!", "Incredible run!", "Keep at it!", "Try a different strategy!"
 - Context-aware: detects near-personal-best (90%+), high scores (20k+), and varies by score tier
 - **File**: `GameOverModal.tsx` — new `getGameOverQuip()` function + `.modal-result-quip` CSS
 
 ### Enhanced Merge Feel
+
 - **Bigger pulse for high-value merges**: 15% scale for small merges → 20% for 128+ → 25% for 512+
 - **Screen shake on 512+ merges**: Subtle CSS `boardShake` animation (0.3s) triggered on the game container when a 512+ tile is created
 - Respects `prefers-reduced-motion`
 - **Files**: `Game2048.tsx` (pulse intensity + shake trigger), `globals.css` (`@keyframes boardShake`)
 
 ### Multiplayer Win Confetti
+
 - Confetti burst (30 pieces) when winning a multiplayer match — same CSS system as single-player confetti
 - Uses varied colors (`#fbbf24`, `#34d399`, `#60a5fa`, `#f472b6`, `#a78bfa`)
 - `aria-hidden="true"` for accessibility
 - **File**: `MatchResultModal.tsx` — inline confetti generation + rendering
 
 ### Leaderboard Personality
+
 - **Animated empty state**: Star icon gently floats and rotates (`starFloat 3s infinite`)
 - **Ghost entry celebrates close calls**: "You'd be 1st! Sign in" / "You'd be 2nd! Sign in" for top-3 placements instead of generic "Sign in to claim"
 - **Files**: `Leaderboard.tsx` (ghost entry copy), `globals.css` (`@keyframes starFloat`)
@@ -139,18 +212,18 @@ Client                          Supabase Auth                    Edge Function  
 
 ### New Files
 
-| File | Purpose |
-|------|---------|
+| File                                     | Purpose                                                                                    |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------ |
 | `supabase/functions/send-email/index.ts` | Edge Function — receives Auth hook webhook, builds game-themed email, sends via Resend API |
 
 ### Modified Files
 
-| File | Change |
-|------|--------|
-| `src/components/GameOverModal.tsx` | Removed Google OAuth, replaced magic link with OTP code entry UI, added error handling |
-| `src/components/MultiplayerView.tsx` | Same auth changes for multiplayer login screen |
-| `src/app/globals.css` | Added `.modal-error` style |
-| `src/app/page.tsx` | Hides "4x4 Multi" button when Supabase is not configured |
+| File                                 | Change                                                                                 |
+| ------------------------------------ | -------------------------------------------------------------------------------------- |
+| `src/components/GameOverModal.tsx`   | Removed Google OAuth, replaced magic link with OTP code entry UI, added error handling |
+| `src/components/MultiplayerView.tsx` | Same auth changes for multiplayer login screen                                         |
+| `src/app/globals.css`                | Added `.modal-error` style                                                             |
+| `src/app/page.tsx`                   | Hides "4x4 Multi" button when Supabase is not configured                               |
 
 ### Removed
 
@@ -214,11 +287,11 @@ The OTP email matches the game's visual identity:
 
 ## Why Auth Hook vs API Routes
 
-| | Auth Hook (current) | Custom API Routes |
-|---|---|---|
-| Resend key location | Supabase secret | `.env.local` |
-| OTP management | Supabase handles it | Manual (DB table, hashing, expiry) |
-| Email sending | Edge Function | Next.js API route |
-| Extra dependencies | None in Next.js | `resend` npm package |
-| DB changes needed | None | `otp_codes` table |
-| Code complexity | 1 file (Edge Function) | 2 API routes + DB schema |
+|                     | Auth Hook (current)    | Custom API Routes                  |
+| ------------------- | ---------------------- | ---------------------------------- |
+| Resend key location | Supabase secret        | `.env.local`                       |
+| OTP management      | Supabase handles it    | Manual (DB table, hashing, expiry) |
+| Email sending       | Edge Function          | Next.js API route                  |
+| Extra dependencies  | None in Next.js        | `resend` npm package               |
+| DB changes needed   | None                   | `otp_codes` table                  |
+| Code complexity     | 1 file (Edge Function) | 2 API routes + DB schema           |

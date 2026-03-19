@@ -265,6 +265,7 @@ export default function MultiplayerView({
     if (!restoredLocalState) return;
     const applyRestore = () => {
       if (localGameRef.current) {
+        const shouldRelayRestore = suppressStateRef.current;
         localGameRef.current.updateState(restoredLocalState);
         setLocalGameResult({
           won: restoredLocalState.won,
@@ -272,7 +273,9 @@ export default function MultiplayerView({
           gameOver: restoredLocalState.gameOver,
         });
         suppressStateRef.current = false;
-        sendGameState(restoredLocalState);
+        if (shouldRelayRestore) {
+          sendGameState(restoredLocalState);
+        }
         return true;
       }
       return false;

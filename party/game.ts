@@ -142,6 +142,8 @@ export default class GameServer implements Party.Server {
   ) {
     const { userId, username, elo } = data;
 
+    this.resetAbandonedRoomIfNoActivePlayers();
+
     if (this.state.players.size === 0 && data.mode) {
       this.state.mode = data.mode;
     }
@@ -242,6 +244,18 @@ export default class GameServer implements Party.Server {
       };
 
       this.state.players.set(userId, player);
+
+      sender.send(
+        JSON.stringify({
+          type: "your_state",
+          state: {
+            grid: player.engineState.grid,
+            score: player.engineState.score,
+            gameOver: player.engineState.gameOver,
+            won: player.engineState.won,
+          },
+        })
+      );
     }
 
     const isBotGame = this.room.id.startsWith("bot_");
@@ -439,6 +453,10 @@ export default class GameServer implements Party.Server {
         );
         log(`[Game] ${player.username} removed (timeout)`);
       }
+    }
+
+    if (this.state.players.size === 0) {
+      this.resetMatchState();
     }
 
     if (this.state.botState && !this.state.resultSent && this.state.gameStarted) {
@@ -844,6 +862,34 @@ export default class GameServer implements Party.Server {
         conn.send(msgStr);
       }
     }
+  }
+
+  private resetAbandonedRoomIfNoActivePlayers() {
+    if (this.state.players.size === 0) return;
+
+    for (const player of this.state.players.values()) {
+      if (this.room.getConnection(player.connectionId)) {
+        return;
+      }
+    }
+
+    this.resetMatchState();
+    log(`[Game ${this.room.id}] Cleared abandoned room state before join`);
+  }
+
+  private resetMatchState() {
+    if (this.state.botMoveInterval) {
+      clearInterval(this.state.botMoveInterval);
+      this.state.botMoveInterval = undefined;
+    }
+
+    this.state.players.clear();
+    this.state.gameStarted = false;
+    this.state.gameStartedAt = null;
+    this.state.resultSent = false;
+    this.state.mode = "ranked";
+    this.state.botState = undefined;
+    this.state.nextSlowMoveAt = undefined;
   }
 
   private ensureHumanPlayerState(player: Player) {

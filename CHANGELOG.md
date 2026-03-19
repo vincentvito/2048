@@ -19,6 +19,9 @@
 - `usePartyGame` hook no longer tears down WebSocket when ELO/name/gameMode changes — only reconnects on room change. Prevents opponent state messages from being lost during unnecessary reconnections
 - Moved reconnection state sync from `onConnect` to `handleJoin` — server now sends game state only after the player identifies themselves, preventing premature/duplicate `game_start` messages
 - Server rejects moves before game starts or with fewer than 2 players (`handleMove` guard)
+- Fixed abandoned room state persisting after all players disconnect — server now resets match state (players, bot intervals, flags) when the last player leaves and clears stale state on new join if no active connections remain
+- Server sends `your_state` to reconnecting players immediately after re-join — restores their grid/score without waiting for the next move
+- Fixed restored local game state being re-sent to server on every render — `sendGameState` is now only called once during the initial restore (guarded by `suppressStateRef`)
 
 ### Changed
 - "Play with a Friend" is now one click — immediately generates room + shareable link (no more Create/Join menu)

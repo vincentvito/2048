@@ -36,11 +36,17 @@ export default function InstallBanner(): React.ReactElement | null {
       /* noop */
     }
 
-    setDismissed(false);
+    // On iOS, show immediately since there's no beforeinstallprompt event
+    if (ios) {
+      setDismissed(false);
+      return;
+    }
 
+    // On other platforms, only show when the browser fires beforeinstallprompt
     function handlePrompt(e: Event) {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
+      setDismissed(false);
     }
 
     window.addEventListener("beforeinstallprompt", handlePrompt);

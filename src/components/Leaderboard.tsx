@@ -236,11 +236,14 @@ function rankDisplay(rank: number): React.ReactNode {
 
 /** Ghost entry: shows where the user's score would rank */
 function GhostEntry({ rank, score }: { rank: number; score: number }): React.ReactElement {
+  const isTopThree = rank <= 3;
   return (
     <div className="lb-row lb-row-ghost">
       <span className="lb-rank lb-rank-ghost">{rankDisplay(rank)}</span>
       <span className="lb-name lb-name-ghost">You</span>
-      <span className="lb-ghost-cta">Sign in to claim</span>
+      <span className="lb-ghost-cta">
+        {isTopThree ? `You'd be ${rank === 1 ? "1st" : rank === 2 ? "2nd" : "3rd"}! Sign in` : "Sign in to claim"}
+      </span>
       <span className="lb-score lb-score-ghost">{score.toLocaleString()}</span>
     </div>
   );

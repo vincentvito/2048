@@ -13,6 +13,18 @@ import EmailSignIn from "./EmailSignIn";
 import { LeaderboardEntry } from "./Leaderboard";
 import Modal from "@/components/ui/Modal";
 
+/** Pick an encouraging quip based on performance */
+function getGameOverQuip(score: number, personalBest: number, isNewBest: boolean): string {
+  if (isNewBest) return "New personal best though!";
+  if (personalBest > 0 && score >= personalBest * 0.9) return "So close to your best!";
+  if (score >= 20000) return "Incredible run!";
+  if (score >= 10000) return "Solid game!";
+  if (score >= 5000) return "Getting the hang of it!";
+  if (score >= 2000) return "Keep at it, you're improving!";
+  const starters = ["One more try?", "You've got this!", "Almost there!", "Try a different strategy!"];
+  return starters[score % starters.length];
+}
+
 interface GameOverModalProps {
   open: boolean;
   won: boolean;
@@ -149,6 +161,9 @@ export default function GameOverModal({
         <h2 id="game-result-title" className="modal-result">
           {won ? "You Win!" : "Game Over"}
         </h2>
+        {!won && (
+          <p className="modal-result-quip">{getGameOverQuip(score, personalBest, isNewBest)}</p>
+        )}
       </div>
 
       <div id="game-result-score" className="modal-score">

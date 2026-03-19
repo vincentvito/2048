@@ -432,7 +432,9 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
         } else if (tile.merged) {
           const elapsed = performance.now() - animStart;
           const pulseT = Math.min(1, elapsed / PULSE_DURATION);
-          scale = 1 + 0.15 * Math.sin(Math.PI * pulseT);
+          // Bigger pulse for higher-value merges: 15% for small, up to 25% for 512+
+          const pulseIntensity = tile.value >= 512 ? 0.25 : tile.value >= 128 ? 0.2 : 0.15;
+          scale = 1 + pulseIntensity * Math.sin(Math.PI * pulseT);
         }
 
         const colors = theme.tiles[tile.value] || [theme.bgButton, "#fff"];
@@ -669,6 +671,12 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
       }
 
       onMoveFeedbackRef.current?.(maxMerge, moved);
+
+      // Screen shake for big merges (512+)
+      if (moved && maxMerge >= 512 && container) {
+        container.classList.add("board-shake");
+        setTimeout(() => container.classList.remove("board-shake"), 300);
+      }
 
       return moved;
     }

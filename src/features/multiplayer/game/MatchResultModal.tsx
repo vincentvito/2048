@@ -1,8 +1,23 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
+
+/** Generate confetti pieces for win celebration */
+function generateConfetti(count: number) {
+  const colors = ["#fbbf24", "#f59e0b", "#34d399", "#60a5fa", "#f472b6", "#a78bfa"];
+  return Array.from({ length: count }, (_, i) => ({
+    id: i,
+    left: Math.random() * 100,
+    color: colors[Math.floor(Math.random() * colors.length)],
+    size: 5 + Math.random() * 5,
+    rotation: Math.random() * 360,
+    delay: Math.random() * 1.2,
+    drift: -25 + Math.random() * 50,
+    duration: 1.8 + Math.random() * 1,
+  }));
+}
 
 interface MatchResultModalProps {
   show: boolean;
@@ -55,8 +70,32 @@ export default function MatchResultModal({
       ? "mp-elo-change mp-elo-change-positive"
       : "mp-elo-change mp-elo-change-negative";
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const confettiPieces = useMemo(() => generateConfetti(30), [show, localWon]);
+
   return (
     <Modal open={show} labelledBy="match-result-title" className="mp-result-card-inner">
+      {localWon && !isTie && (
+        <div className="confetti-container" aria-hidden="true">
+          {confettiPieces.map((p) => (
+            <div
+              key={p.id}
+              className="confetti-piece"
+              style={{
+                left: `${p.left}%`,
+                width: `${p.size}px`,
+                height: `${p.size * 1.5}px`,
+                backgroundColor: p.color,
+                transform: `rotate(${p.rotation}deg)`,
+                animationDelay: `${p.delay}s`,
+                animationDuration: `${p.duration}s`,
+                // @ts-expect-error CSS custom property for drift
+                "--confetti-drift": `${p.drift}px`,
+              }}
+            />
+          ))}
+        </div>
+      )}
       <div className={`mp-result-banner ${resultBannerClass}`}>
         <h2 id="match-result-title" className="mp-result-title">
           {resultTitle}

@@ -1,4 +1,4 @@
-# Changes: Design Audit & Comprehensive Quality Fixes
+# Changes: Design Audit, Quality Fixes & Delight
 
 ## Overview
 
@@ -82,6 +82,32 @@ Added per-theme CSS variables for consistent semantic colors:
 - **Leaderboard.tsx**: Realtime subscription stabilized with ref pattern (no longer recreates on tab/trigger change), INSERT events debounced at 500ms
 - **globals.css**: `backdrop-filter: none` added to `prefers-reduced-motion: reduce` for modals/overlays (removes expensive GPU compositing)
 - **globals.css**: `boardGlow` changed from infinite to single play (reduces continuous paint cost)
+
+---
+
+## Delight — Moments of Joy
+
+### Game Over Personality
+- Encouraging quips on loss based on performance: "So close to your best!", "Incredible run!", "Keep at it!", "Try a different strategy!"
+- Context-aware: detects near-personal-best (90%+), high scores (20k+), and varies by score tier
+- **File**: `GameOverModal.tsx` — new `getGameOverQuip()` function + `.modal-result-quip` CSS
+
+### Enhanced Merge Feel
+- **Bigger pulse for high-value merges**: 15% scale for small merges → 20% for 128+ → 25% for 512+
+- **Screen shake on 512+ merges**: Subtle CSS `boardShake` animation (0.3s) triggered on the game container when a 512+ tile is created
+- Respects `prefers-reduced-motion`
+- **Files**: `Game2048.tsx` (pulse intensity + shake trigger), `globals.css` (`@keyframes boardShake`)
+
+### Multiplayer Win Confetti
+- Confetti burst (30 pieces) when winning a multiplayer match — same CSS system as single-player confetti
+- Uses varied colors (`#fbbf24`, `#34d399`, `#60a5fa`, `#f472b6`, `#a78bfa`)
+- `aria-hidden="true"` for accessibility
+- **File**: `MatchResultModal.tsx` — inline confetti generation + rendering
+
+### Leaderboard Personality
+- **Animated empty state**: Star icon gently floats and rotates (`starFloat 3s infinite`)
+- **Ghost entry celebrates close calls**: "You'd be 1st! Sign in" / "You'd be 2nd! Sign in" for top-3 placements instead of generic "Sign in to claim"
+- **Files**: `Leaderboard.tsx` (ghost entry copy), `globals.css` (`@keyframes starFloat`)
 
 ---
 

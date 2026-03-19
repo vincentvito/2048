@@ -674,6 +674,20 @@ body {
   user-select: none;
 }
 
+/* Screen shake for big merges (512+) */
+.board-shake {
+  animation: boardShake 0.3s ease;
+}
+
+@keyframes boardShake {
+  0%, 100% { transform: translate(0, 0); }
+  15% { transform: translate(-3px, 1px); }
+  30% { transform: translate(2px, -2px); }
+  45% { transform: translate(-2px, 2px); }
+  60% { transform: translate(3px, -1px); }
+  75% { transform: translate(-1px, 1px); }
+}
+
 .game-canvas {
   border-radius: 16px;
   display: block;
@@ -1277,6 +1291,12 @@ body {
 
 .lb-empty-icon svg {
   display: inline-block;
+  animation: starFloat 3s ease-in-out infinite;
+}
+
+@keyframes starFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-4px) rotate(8deg); }
 }
 
 .lb-empty-title {
@@ -1371,6 +1391,15 @@ body {
 
 .modal-result-lose {
   background: linear-gradient(180deg, var(--accent-bg-subtle) 0%, transparent 100%);
+}
+
+/* Encouraging quip on game over */
+.modal-result-quip {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 6px 0 0;
+  line-height: 1.4;
 }
 
 /* Result text: "You Win!" or "Game Over" */

@@ -329,6 +329,18 @@ export default function MultiplayerView({
     return () => clearInterval(interval);
   }, [initialServerState]);
 
+  // Sync server-authoritative state after each move to keep client and server grids aligned.
+  // Without this, random tile placement diverges and scores differ at game end.
+  useEffect(() => {
+    if (!serverGameState || !localGameRef.current) return;
+    localGameRef.current.updateState(serverGameState);
+    setLocalGameResult({
+      won: serverGameState.won,
+      score: serverGameState.score,
+      gameOver: serverGameState.gameOver,
+    });
+  }, [serverGameState]);
+
   const handleLocalGameOver = useCallback((score: number) => {
     setLocalGameResult({ won: false, score, gameOver: true });
     onGameOverFeedback();

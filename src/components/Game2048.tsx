@@ -509,9 +509,10 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
       renderBoard(ease);
       renderPopups();
 
-      if (moveT < 1 || pulseT < 1) {
-        requestAnimationFrame(animate);
-      } else {
+      // Unlock input as soon as the slide finishes — don't wait for the
+      // cosmetic pulse to complete. This eliminates the perceived lag when
+      // rapidly switching directions during bulk merges.
+      if (moveT >= 1 && animating) {
         animating = false;
         addTile();
         updateScore();
@@ -524,12 +525,18 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
         if (won && !keepPlaying) {
           announce("You reached 2048!");
         }
+        onStateChangeRef.current?.({ grid: Array.from(grid), score, gameOver, won });
+        saveState();
+      }
+
+      // Keep rendering while the pulse animation plays (purely cosmetic)
+      if (pulseT < 1) {
+        requestAnimationFrame(animate);
+      } else {
         // Final static draw — if popups are still live, renderPopups will
         // schedule popupLoop to keep them animated.
         renderBoard(1);
         renderPopups();
-        onStateChangeRef.current?.({ grid: Array.from(grid), score, gameOver, won });
-        saveState();
       }
     }
 

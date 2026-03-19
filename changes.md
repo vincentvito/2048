@@ -1,3 +1,14 @@
+# Changes: Faster Direction Switching During Rapid Play
+
+## Reduced Input Blocking on Merge Animation
+- **Problem**: Each move blocked input for 120ms (full pulse/wobble duration), even though the tile slide only takes 50ms. During rapid direction changes, the player's next input arrived in that 70ms gap and was silently dropped — felt like lag.
+- **Fix**: Input now unlocks after the slide completes (50ms) instead of waiting for the cosmetic pulse to finish (120ms). The merge wobble continues visually but no longer blocks the next move.
+- Input-blocking window reduced from 120ms to 50ms (**58% reduction**)
+- Game state (add tile, check game over, save) commits at slide-complete so the next move operates on the correct board
+- **File**: `src/components/Game2048.tsx` — `animate()` function restructured
+
+---
+
 # Changes: Mobile Menu, Emoji Fix, Install Banner
 
 ## Mobile Menu — Leaderboard Priority

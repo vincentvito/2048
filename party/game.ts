@@ -272,7 +272,7 @@ export default class GameServer implements Party.Server {
         })
       );
 
-      // Send each player their server-generated initial board
+      // Send each player their initial board + opponent's initial state
       for (const player of players) {
         if (!player.isBot) {
           const conn = this.room.getConnection(player.connectionId);
@@ -288,6 +288,25 @@ export default class GameServer implements Party.Server {
                 },
               })
             );
+
+            // Send the opponent's initial state so both boards render immediately
+            const opponent = players.find((p) => p.userId !== player.userId);
+            if (opponent) {
+              conn.send(
+                JSON.stringify({
+                  type: "opponent_state",
+                  state: {
+                    grid: opponent.engineState.grid,
+                    score: opponent.engineState.score,
+                    gameOver: opponent.engineState.gameOver,
+                    won: opponent.engineState.won,
+                  },
+                  username: opponent.username,
+                  elo: opponent.elo,
+                  isBot: opponent.isBot,
+                })
+              );
+            }
           }
         }
       }

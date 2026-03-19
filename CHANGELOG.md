@@ -11,6 +11,11 @@
 - `useGameFeedback` hook — centralized haptic + emoji particle feedback (replaces duplicated code in SinglePlayerScreen and MultiplayerView)
 - Haptic feedback and emoji particle animations now work in multiplayer matches (merge haptics, game over/win bursts)
 
+### Fixed
+- Server now sends opponent's initial board state at game start — opponent board no longer appears empty until their first move
+- Auto-join via invite link waits for session to load — logged-in users no longer briefly connect as "Guest" with wrong identity
+- HUD scores initialize from server state immediately — no longer shows 0 until first move
+
 ### Changed
 - "Play with a Friend" is now one click — immediately generates room + shareable link (no more Create/Join menu)
 - Joining a friend's game is link-only — removed manual room code input

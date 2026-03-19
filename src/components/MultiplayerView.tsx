@@ -128,17 +128,17 @@ export default function MultiplayerView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-join from invite link
+  // Auto-join from invite link — wait for session to load so we use the correct identity
   const autoJoinHandled = useRef(false);
   useEffect(() => {
-    if (!autoJoinCode || autoJoinHandled.current || reconnectSession) return;
+    if (!autoJoinCode || autoJoinHandled.current || reconnectSession || !sessionLoaded) return;
     autoJoinHandled.current = true;
     setIsAutoJoining(true);
     setAutoJoinError(null);
     setFriendRoomCode(autoJoinCode);
     setFriendRoomId(`friend_${autoJoinCode}`);
     setGameMode("friendly");
-  }, [autoJoinCode, reconnectSession]);
+  }, [autoJoinCode, reconnectSession, sessionLoaded]);
 
   // Auto-join timeout: if room doesn't start within 10s, show error
   useEffect(() => {
@@ -308,6 +308,12 @@ export default function MultiplayerView({
   // Load server-generated initial board when a new game starts
   useEffect(() => {
     if (!initialServerState) return;
+    // Sync localGameResult so HUD shows correct score immediately
+    setLocalGameResult({
+      won: initialServerState.won,
+      score: initialServerState.score,
+      gameOver: initialServerState.gameOver,
+    });
     const applyInitial = () => {
       if (localGameRef.current) {
         localGameRef.current.updateState(initialServerState);

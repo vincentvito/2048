@@ -32,21 +32,15 @@ function HomeInner(): React.ReactElement {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  // Read ?join=CODE at init time so first render is already on multiplayer
-  const [autoJoinCode] = useState<string | null>(() => {
-    const joinParam = searchParams.get("join");
-    if (joinParam) {
-      const upper = joinParam.toUpperCase();
-      if (isValidRoomCode(upper)) return upper;
-    }
-    return null;
-  });
+  const joinParam = searchParams.get("join");
+  const autoJoinCode = joinParam ? joinParam.toUpperCase() : null;
+  const validAutoJoinCode = autoJoinCode && isValidRoomCode(autoJoinCode) ? autoJoinCode : null;
 
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [leaderboardScores, setLeaderboardScores] = useState<LeaderboardEntry[]>([]);
   const [currentScore, setCurrentScore] = useState(0);
   const [activeGridSize, setActiveGridSize] = useState(4);
-  const [gameMode, setGameMode] = useState<"single" | "multi">(autoJoinCode ? "multi" : "single");
+  const [gameMode, setGameMode] = useState<"single" | "multi">("single");
   const [matchActive, setMatchActive] = useState(false);
   const [pendingSession, setPendingSession] = useState<{
     roomId: string;
@@ -62,13 +56,18 @@ function HomeInner(): React.ReactElement {
   const { data: sessionData } = useSession();
   const user = (sessionData?.user as AppUser | undefined) ?? null;
 
+  useEffect(() => {
+    if (validAutoJoinCode) {
+      setGameMode("multi");
+    }
+  }, [validAutoJoinCode]);
+
   // Clean ?join= from URL after capturing it
   useEffect(() => {
-    if (searchParams.get("join")) {
+    if (validAutoJoinCode) {
       router.replace("/", { scroll: false });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [validAutoJoinCode, router]);
 
   // Check for active multiplayer session on load
   useEffect(() => {
@@ -192,7 +191,7 @@ function HomeInner(): React.ReactElement {
           <MultiplayerView
             onMatchActiveChange={setMatchActive}
             reconnectSession={pendingSession}
-            autoJoinCode={autoJoinCode}
+            autoJoinCode={validAutoJoinCode}
           />
         )}
 

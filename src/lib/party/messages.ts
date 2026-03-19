@@ -58,6 +58,7 @@ export type GameServerMessage =
   | {
       type: "game_start";
       players: Array<{ id: string; username: string; elo: number; isBot?: boolean }>;
+      states?: Array<{ id: string; state: GameStateMessage }>;
       duration: number;
       timeRemaining?: number;
       mode: GameMode;

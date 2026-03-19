@@ -1,3 +1,23 @@
+# Changes: OTP Input Overflow Fix & New Game Confirmation
+
+## OTP Input Overflow Fix
+- OTP digit boxes now scale responsively using `clamp()` instead of fixed `50px` width
+  - Width: `clamp(38px, 12vw, 50px)`, Height: `clamp(46px, 14vw, 58px)`
+  - Gap: `clamp(6px, 2vw, 10px)`, Font: `clamp(20px, 7vw, 28px)`
+  - Container gets `max-width: 100%` to prevent horizontal overflow
+- **Files**: `src/app/globals.css` (`.otp-boxes`, `.otp-box`)
+
+## New Game Confirmation Modal
+- Clicking "New Game" while a game is in progress now shows a confirmation dialog
+- Tracks game-in-progress state via move feedback (any successful move marks the game as active)
+- Modal uses existing `Modal` + `Button` components with proper `aria-labelledby` and focus trap
+- "Keep Playing" (secondary) and "New Game" (primary) actions
+- No confirmation shown if the board is freshly initialized or game already ended
+- Score ref resets on new game start and on Play Again from game-over modal
+- **Files**: `src/features/single-player/SinglePlayerScreen.tsx`
+
+---
+
 # Changes: Design Audit & Comprehensive Quality Fixes
 
 ## Overview

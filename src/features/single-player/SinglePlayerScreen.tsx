@@ -11,6 +11,8 @@ import React, {
 } from "react";
 import Game2048, { type Game2048Handle } from "@/components/Game2048";
 import GameOverModal from "@/components/GameOverModal";
+import Modal from "@/components/ui/Modal";
+import Button from "@/components/ui/Button";
 import { saveScore } from "@/lib/score-service";
 import { useTheme } from "@/features/theme/ThemeProvider";
 import { type AppUser } from "@/features/auth/types";
@@ -89,6 +91,8 @@ const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProp
     const unsavedWinRef = useRef<{ score: number; gridSize: number } | null>(null);
     const [showConfetti, setShowConfetti] = useState(false);
     const [showSwipeHint, setShowSwipeHint] = useState(false);
+    const [showNewGameConfirm, setShowNewGameConfirm] = useState(false);
+    const currentScoreRef = useRef(0);
 
     // Show swipe hint on first mobile visit (always in dev for debugging)
     useEffect(() => {
@@ -160,7 +164,9 @@ const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProp
 
     const handleMoveFeedback = useCallback(
       (maxMerge: number, moved: boolean) => {
-        if (!moved || maxMerge === 0) return;
+        if (!moved) return;
+        currentScoreRef.current += maxMerge; // rough proxy — exact value doesn't matter
+        if (maxMerge === 0) return;
         if (maxMerge >= 256) {
           triggerHaptic("medium");
         } else {
@@ -178,6 +184,24 @@ const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProp
         saveScoreToSupabase(pending.score, pending.gridSize);
       }
     }, [saveScoreToSupabase]);
+
+    const handleNewGame = useCallback(() => {
+      // If a game is in progress (player has made moves, game not over), confirm first
+      if (currentScoreRef.current > 0 && !gameResult) {
+        setShowNewGameConfirm(true);
+        return;
+      }
+      flushUnsavedWin();
+      currentScoreRef.current = 0;
+      gameResetRef.current?.();
+    }, [gameResult, flushUnsavedWin]);
+
+    const confirmNewGame = useCallback(() => {
+      setShowNewGameConfirm(false);
+      flushUnsavedWin();
+      currentScoreRef.current = 0;
+      gameResetRef.current?.();
+    }, [flushUnsavedWin]);
 
     useEffect(() => {
       if (!showConfetti) return;
@@ -255,13 +279,7 @@ const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProp
         </div>
 
         <div className="below-board-controls">
-          <button
-            className="header-new-game-btn"
-            onClick={() => {
-              flushUnsavedWin();
-              gameResetRef.current?.();
-            }}
-          >
+          <button className="header-new-game-btn" onClick={handleNewGame}>
             New Game
           </button>
           {isDev && (
@@ -294,6 +312,7 @@ const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProp
             onPlayAgain={() => {
               flushUnsavedWin();
               setGameResult(null);
+              currentScoreRef.current = 0;
               gameResetRef.current?.();
             }}
             onKeepPlaying={gameResult.won ? () => setGameResult(null) : undefined}
@@ -303,6 +322,29 @@ const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProp
             currentUsername={user?.username || user?.email?.split("@")[0]}
           />
         )}
+
+        <Modal
+          open={showNewGameConfirm}
+          onClose={() => setShowNewGameConfirm(false)}
+          labelledBy="new-game-confirm-title"
+        >
+          <div style={{ textAlign: "center", padding: "4px 0" }}>
+            <h2 id="new-game-confirm-title" style={{ margin: "0 0 8px", fontSize: "1.4rem", color: "var(--text-primary)" }}>
+              Start New Game?
+            </h2>
+            <p style={{ margin: "0 0 20px", color: "var(--text-secondary)", fontSize: "0.95rem" }}>
+              Your current game progress will be lost.
+            </p>
+            <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+              <Button variant="secondary" onClick={() => setShowNewGameConfirm(false)}>
+                Keep Playing
+              </Button>
+              <Button variant="primary" onClick={confirmNewGame}>
+                New Game
+              </Button>
+            </div>
+          </div>
+        </Modal>
       </>
     );
   }

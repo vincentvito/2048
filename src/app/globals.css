@@ -1597,19 +1597,20 @@ body {
 /* ---- OTP Digit Boxes (tile-style) ---- */
 .otp-boxes {
   display: flex;
-  gap: 10px;
+  gap: clamp(6px, 2vw, 10px);
   justify-content: center;
   margin: 10px 0;
+  max-width: 100%;
 }
 
 .otp-box {
-  width: 50px;
-  height: 58px;
+  width: clamp(38px, 12vw, 50px);
+  height: clamp(46px, 14vw, 58px);
   border: 2px solid var(--otp-border);
   border-radius: 12px;
   background: var(--otp-bg);
   color: var(--text-primary);
-  font-size: 28px;
+  font-size: clamp(20px, 7vw, 28px);
   font-weight: 800;
   font-family: inherit;
   text-align: center;

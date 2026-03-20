@@ -10,7 +10,7 @@
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
     "db:status": "supabase status",
-    "build": "next build && partykit deploy",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,css}\" \"party/**/*.ts\"",

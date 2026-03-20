@@ -67,10 +67,44 @@ Single-player works with just `npm run dev`, but multiplayer requires PartyKit r
 
 ### Deploy
 
-```bash
-npm run build           # Build Next.js
-npm run party:deploy    # Deploy PartyKit server
-```
+The app has **two separate deployments** that need to stay in sync:
+
+1. **Vercel** — hosts the website (Next.js). Deploys automatically on every push to `main`.
+2. **PartyKit** — hosts the multiplayer server (WebSocket). Must be deployed **manually** when files in the `party/` folder change.
+
+#### Deploying the website (Vercel)
+
+This happens automatically when you push to `main`. No extra steps needed.
+
+#### Deploying the multiplayer server (PartyKit)
+
+**When to deploy:** Any time you (or a developer) change files inside the `party/` folder (`party/game.ts`, `party/lobby.ts`, `party/bot-game.ts`). If only website files changed (anything in `src/`), you do NOT need to redeploy PartyKit.
+
+**How to deploy:**
+
+1. Open a terminal in the project folder
+2. Run:
+   ```bash
+   npm run party:deploy
+   ```
+3. The first time, a browser window will open asking you to log in with GitHub. Grant access and the deploy will proceed.
+4. After a successful deploy, you'll see a URL like:
+   ```
+   Deployed to https://twenty48-multiplayer.YOUR_GITHUB_USERNAME.partykit.dev
+   ```
+5. **Important:** The URL must match the `NEXT_PUBLIC_PARTYKIT_HOST` environment variable on Vercel. If the PartyKit URL changes (e.g., a different person deploys), update the Vercel env var:
+   - Go to your Vercel project → **Settings** → **Environment Variables**
+   - Find `NEXT_PUBLIC_PARTYKIT_HOST`
+   - Set it to the domain from step 4 (without `https://`), e.g.: `twenty48-multiplayer.yourname.partykit.dev`
+   - **Redeploy the Vercel site** for the change to take effect
+
+#### Quick reference
+
+| What changed? | What to deploy? |
+|---------------|----------------|
+| Files in `src/`, `public/`, or config files | Push to `main` — Vercel auto-deploys |
+| Files in `party/` | Run `npm run party:deploy` from your terminal |
+| Both | Push to `main` AND run `npm run party:deploy` |
 
 ## Architecture
 

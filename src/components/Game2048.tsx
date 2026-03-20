@@ -110,6 +110,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
   const rerenderFnRef = useRef<() => void>(() => {});
   const isGameReadyRef = useRef(false);
   const pendingExternalStateRef = useRef<GameState | null>(null);
+  const pendingAuthoritativeMoveRef = useRef(false);
 
   useImperativeHandle(
     ref,
@@ -563,6 +564,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
     function move(dir: number) {
       if (gameOver || animating) return false;
       if (serverAuthoritativeRef.current) {
+        pendingAuthoritativeMoveRef.current = true;
         onMoveRef.current?.(dir);
         return true;
       }
@@ -717,6 +719,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
       gameOver = false;
       won = false;
       keepPlaying = false;
+      pendingAuthoritativeMoveRef.current = false;
       prevGrid.fill(0);
       prevScore = 0;
       if (serverAuthoritativeRef.current) {
@@ -744,13 +747,38 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
       const scoreDiff = state.score - oldScore;
       const wasGameOver = gameOver;
       const hadWon = won;
+      let moved = false;
+      const previousValueCounts = new Map<number, number>();
+      const nextValueCounts = new Map<number, number>();
 
       // Detect merged tiles by comparing old vs new grid
       const mergedPositions = new Set<number>();
       for (let i = 0; i < state.grid.length; i++) {
+        if (state.grid[i] !== prevGrid[i]) {
+          moved = true;
+        }
+        if (prevGrid[i] !== 0) {
+          previousValueCounts.set(prevGrid[i], (previousValueCounts.get(prevGrid[i]) ?? 0) + 1);
+        }
+        if (state.grid[i] !== 0) {
+          nextValueCounts.set(state.grid[i], (nextValueCounts.get(state.grid[i]) ?? 0) + 1);
+        }
         // A tile merged if its value increased (and wasn't 0 before, or is now higher than any single tile could be from new spawn)
         if (state.grid[i] > 0 && prevGrid[i] > 0 && state.grid[i] > prevGrid[i]) {
           mergedPositions.add(i);
+        }
+      }
+
+      let maxMerge = 0;
+      if (scoreDiff > 0) {
+        for (const [value, count] of nextValueCounts) {
+          if (value < 8) continue;
+          if (count > (previousValueCounts.get(value) ?? 0) && value > maxMerge) {
+            maxMerge = value;
+          }
+        }
+        if (maxMerge === 0) {
+          maxMerge = scoreDiff >= 256 ? 256 : 4;
         }
       }
 
@@ -809,6 +837,11 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
       // Start score popup animation if not already running
       if (scorePopups.length > 0 && !popupAnimFrame) {
         popupAnimFrame = requestAnimationFrame(popupLoop);
+      }
+
+      if (serverAuthoritativeRef.current && pendingAuthoritativeMoveRef.current) {
+        pendingAuthoritativeMoveRef.current = false;
+        onMoveFeedbackRef.current?.(maxMerge, moved);
       }
 
       if (!hadWon && state.won) {

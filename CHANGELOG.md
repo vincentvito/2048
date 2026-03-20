@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased] - 2026-03-19
+## [Unreleased] - 2026-03-20
 
 ### Added
 - Shareable invite links for "Play with a Friend" — click to generate a link, share it, friend opens it and auto-joins
@@ -22,6 +22,11 @@
 - Fixed abandoned room state persisting after all players disconnect — server now resets match state (players, bot intervals, flags) when the last player leaves and clears stale state on new join if no active connections remain
 - Server sends `your_state` to reconnecting players immediately after re-join — restores their grid/score without waiting for the next move
 - Fixed restored local game state being re-sent to server on every render — `sendGameState` is now only called once during the initial restore (guarded by `suppressStateRef`)
+- Added merge detection for server-authoritative multiplayer moves — `Game2048` now diffs previous/next grid to compute `maxMerge` and fires `onMoveFeedback` for haptic feedback in multiplayer
+- Reverted build script to `next build` only — PartyKit deploys separately via `npm run party:deploy` (requires GitHub auth, cannot run in Vercel CI)
+
+### Documentation
+- Expanded README deploy section with detailed PartyKit instructions — explains when to deploy, how GitHub auth works, and how to keep `NEXT_PUBLIC_PARTYKIT_HOST` in sync between PartyKit and Vercel
 
 ### Changed
 - "Play with a Friend" is now one click — immediately generates room + shareable link (no more Create/Join menu)

@@ -4840,57 +4840,46 @@ body.mobile-no-scroll {
 
 .stats-page {
   min-height: 100dvh;
-  padding: 24px 16px 48px;
-  background:
-    radial-gradient(circle at top, var(--accent-bg-light), transparent 40%), var(--bg-page);
+  padding: 20px 16px 40px;
+  background: var(--bg-page);
 }
 
 .stats-shell {
-  max-width: 1180px;
+  max-width: 1080px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 18px;
-}
-
-.stats-hero,
-.stats-rank-card,
-.stats-highlight-card,
-.stats-kpi-card,
-.stats-panel,
-.stats-best-day-card {
-  background: var(--bg-card);
-  border: 1px solid var(--bg-card-border);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.08);
+  gap: 0;
 }
 
 .stats-hero {
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  padding: 24px;
-  border-radius: 28px;
+  gap: 14px;
+  padding: 0 0 18px;
 }
 
 .stats-hero-identity {
   display: flex;
-  align-items: center;
-  gap: 16px;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: 0;
 }
 
 .stats-hero-avatar {
-  width: 72px;
-  height: 72px;
-  border-radius: 24px;
+  width: 68px;
+  height: 68px;
+  border-radius: 20px;
   background: linear-gradient(135deg, var(--bg-button), var(--bg-button-hover));
   color: var(--text-on-accent);
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--font-fredoka), "Fredoka", sans-serif;
-  font-size: 1.9rem;
+  font-size: 1.75rem;
   font-weight: 700;
-  box-shadow: 0 16px 30px var(--button-shadow);
+  flex-shrink: 0;
+  box-shadow: 0 8px 20px var(--button-shadow);
 }
 
 .stats-eyebrow,
@@ -4906,8 +4895,8 @@ body.mobile-no-scroll {
 .stats-title {
   margin: 6px 0 8px;
   font-family: var(--font-fredoka), "Fredoka", sans-serif;
-  font-size: clamp(2rem, 3vw, 3.5rem);
-  line-height: 0.98;
+  font-size: clamp(1.85rem, 3vw, 3rem);
+  line-height: 1;
   color: var(--text-primary);
 }
 
@@ -4920,6 +4909,7 @@ body.mobile-no-scroll {
   color: var(--text-secondary);
   font-size: 0.98rem;
   font-weight: 600;
+  min-width: 0;
 }
 
 .stats-subtitle-dot {
@@ -4939,12 +4929,13 @@ body.mobile-no-scroll {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 44px;
-  padding: 0 16px;
-  border-radius: 999px;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 8px;
   border: 1px solid var(--accent-border-medium);
   background: transparent;
   color: var(--text-secondary);
+  font-size: 0.92rem;
   font-weight: 700;
   text-decoration: none;
 }
@@ -4957,12 +4948,16 @@ body.mobile-no-scroll {
 .stats-rank-panel,
 .stats-main-grid {
   display: grid;
-  gap: 18px;
+  gap: 0;
+  border-top: 1px solid var(--accent-border-medium);
+  padding-top: 20px;
+  margin-top: 20px;
 }
 
 .stats-rank-card {
-  border-radius: 24px;
-  padding: 20px;
+  border-radius: 0;
+  padding: 0 0 18px;
+  border-bottom: 1px solid var(--accent-border-medium);
 }
 
 .stats-rank-row {
@@ -4973,15 +4968,15 @@ body.mobile-no-scroll {
 }
 
 .stats-rank-badge {
-  margin-top: 6px;
+  margin-top: 4px;
   font-family: var(--font-fredoka), "Fredoka", sans-serif;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 700;
 }
 
 .stats-rank-score {
   font-family: var(--font-fredoka), "Fredoka", sans-serif;
-  font-size: 2.6rem;
+  font-size: 2.2rem;
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1;
@@ -5003,15 +4998,15 @@ body.mobile-no-scroll {
 .stats-kpi-grid,
 .stats-split-grid {
   display: grid;
-  gap: 14px;
+  gap: 0;
 }
 
 .stats-highlight-card,
 .stats-kpi-card,
 .stats-panel,
 .stats-best-day-card {
-  border-radius: 24px;
-  padding: 20px;
+  border-radius: 0;
+  padding: 16px 0;
 }
 
 .stats-highlight-value,
@@ -5020,7 +5015,7 @@ body.mobile-no-scroll {
 .stats-best-day-title,
 .stats-split-item strong {
   display: block;
-  margin-top: 10px;
+  margin-top: 6px;
   color: var(--text-primary);
   font-family: var(--font-fredoka), "Fredoka", sans-serif;
   font-weight: 700;
@@ -5028,16 +5023,16 @@ body.mobile-no-scroll {
 }
 
 .stats-highlight-value {
-  font-size: 2rem;
+  font-size: 1.6rem;
 }
 
 .stats-highlight-text {
-  font-size: 1.25rem;
+  font-size: 1.05rem;
   line-height: 1.2;
 }
 
 .stats-kpi-value {
-  font-size: 2.2rem;
+  font-size: 1.7rem;
 }
 
 .stats-panel-wide {
@@ -5047,14 +5042,14 @@ body.mobile-no-scroll {
 .stats-panel-header {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 14px;
+  gap: 6px;
+  margin-bottom: 12px;
 }
 
 .stats-panel-title {
-  margin: 6px 0 0;
+  margin: 2px 0 0;
   font-family: var(--font-fredoka), "Fredoka", sans-serif;
-  font-size: 1.35rem;
+  font-size: 1.15rem;
   line-height: 1.15;
   color: var(--text-primary);
 }
@@ -5066,16 +5061,17 @@ body.mobile-no-scroll {
 }
 
 .stats-chart-card {
-  margin-top: 14px;
-  border-radius: 22px;
-  padding: 18px;
-  background: linear-gradient(180deg, var(--accent-bg-light), transparent);
+  margin-top: 10px;
+  border-radius: 12px;
+  padding: 14px;
+  border: 1px solid var(--accent-border-medium);
+  background: color-mix(in srgb, var(--accent-bg-subtle) 55%, transparent 45%);
   color: var(--accent);
 }
 
 .stats-chart {
   width: 100%;
-  height: 170px;
+  height: 150px;
   display: block;
   overflow: visible;
 }
@@ -5096,16 +5092,17 @@ body.mobile-no-scroll {
 .stats-activity-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0;
 }
 
 .stats-goal-item,
 .stats-activity-item,
 .stats-split-item {
-  border-radius: 18px;
-  border: 1px solid var(--bg-card-border);
-  background: color-mix(in srgb, var(--bg-card) 80%, white 20%);
-  padding: 16px;
+  border-radius: 0;
+  border: none;
+  border-bottom: 1px solid var(--accent-border-medium);
+  background: transparent;
+  padding: 12px 0;
 }
 
 .stats-goal-title,
@@ -5116,30 +5113,30 @@ body.mobile-no-scroll {
 }
 
 .stats-goal-value {
-  font-size: 1.8rem;
+  font-size: 1.45rem;
 }
 
 .stats-split-item strong {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
 }
 
 .stats-split-item-win {
-  background: rgba(22, 163, 74, 0.08);
-  border-color: rgba(22, 163, 74, 0.2);
+  border-left: 3px solid rgba(22, 163, 74, 0.55);
+  padding-left: 12px;
 }
 
 .stats-split-item-loss {
-  background: rgba(220, 38, 38, 0.08);
-  border-color: rgba(220, 38, 38, 0.18);
+  border-left: 3px solid rgba(220, 38, 38, 0.5);
+  padding-left: 12px;
 }
 
 .stats-activity-layout {
   display: grid;
-  gap: 14px;
+  gap: 4px;
 }
 
 .stats-best-day-title {
-  font-size: 1.4rem;
+  font-size: 1.2rem;
   line-height: 1.15;
 }
 
@@ -5148,6 +5145,29 @@ body.mobile-no-scroll {
   align-items: center;
   justify-content: space-between;
   gap: 14px;
+}
+
+.stats-highlight-card:last-child,
+.stats-kpi-card:last-child,
+.stats-goal-item:last-child,
+.stats-activity-item:last-child,
+.stats-split-item:last-child {
+  border-bottom: none;
+}
+
+.stats-highlight-card,
+.stats-kpi-card {
+  border-bottom: 1px solid var(--accent-border-medium);
+}
+
+.stats-panel {
+  border-top: 1px solid var(--accent-border-medium);
+  padding-top: 18px;
+  margin-top: 18px;
+}
+
+.stats-panel:first-child {
+  margin-top: 0;
 }
 
 .stats-activity-title {
@@ -5175,11 +5195,12 @@ body.mobile-no-scroll {
   flex-direction: column;
   gap: 6px;
   justify-content: center;
-  min-height: 170px;
+  min-height: 120px;
 }
 
 .stats-empty-state-inline {
   min-height: 0;
+  padding: 12px 0 0;
 }
 
 .stats-empty-title {
@@ -5191,24 +5212,32 @@ body.mobile-no-scroll {
 
 @media (min-width: 720px) {
   .stats-page {
-    padding: 32px 24px 56px;
+    padding: 24px 24px 52px;
   }
 
   .stats-hero-grid,
   .stats-kpi-grid,
   .stats-split-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 24px;
   }
 
   .stats-activity-layout,
   .stats-rank-panel {
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.9fr);
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    column-gap: 28px;
+  }
+
+  .stats-highlight-card:nth-last-child(-n + 2),
+  .stats-kpi-card:nth-last-child(-n + 2),
+  .stats-split-item:nth-last-child(-n + 2) {
+    border-bottom: none;
   }
 }
 
 @media (min-width: 1024px) {
   .stats-page {
-    padding: 40px 32px 72px;
+    padding: 28px 32px 64px;
   }
 
   .stats-hero {
@@ -5220,10 +5249,12 @@ body.mobile-no-scroll {
   .stats-kpi-grid,
   .stats-hero-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+    column-gap: 24px;
   }
 
   .stats-main-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 32px;
   }
 
   .stats-panel-wide {
@@ -5235,24 +5266,54 @@ body.mobile-no-scroll {
     align-items: flex-start;
     justify-content: space-between;
   }
+
+  .stats-highlight-card,
+  .stats-kpi-card {
+    border-bottom: none;
+  }
 }
 
 @media (max-width: 719px) {
   .stats-hero-identity {
-    align-items: flex-start;
+    align-items: center;
+    gap: 16px;
   }
 
   .stats-hero-avatar {
-    width: 60px;
-    height: 60px;
-    border-radius: 18px;
-    font-size: 1.6rem;
+    width: 72px;
+    height: 72px;
+    border-radius: 20px;
+    font-size: 1.8rem;
+  }
+
+  .stats-hero {
+    padding-bottom: 16px;
+  }
+
+  .stats-title {
+    font-size: 1.9rem;
+  }
+
+  .stats-subtitle {
+    gap: 8px;
+    font-size: 0.9rem;
+  }
+
+  .stats-rank-panel,
+  .stats-main-grid,
+  .stats-kpi-grid {
+    margin-top: 16px;
+    padding-top: 16px;
   }
 
   .stats-rank-row,
   .stats-activity-item {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .stats-panel-meta {
+    display: block;
   }
 }
 

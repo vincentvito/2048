@@ -23,9 +23,6 @@
 ## [Previous] - 2026-03-20
 
 ### Added
-- Player stats dashboard, "My Stats" navigation links, score service `user_id` fix, CSS refinements, line ending normalization — see Unreleased above
-
-### Added
 - Shareable invite links for "Play with a Friend" — click to generate a link, share it, friend opens it and auto-joins
 - `/play/[code]` route with OG metadata for rich link previews ("Join my 2048 match!")
 - Guest play support — non-authenticated users can play friendly matches (no ELO, stats, or leaderboard scores saved)

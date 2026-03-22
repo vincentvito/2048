@@ -1,6 +1,29 @@
 # Changelog
 
-## [Unreleased] - 2026-03-20
+## [Unreleased] - 2026-03-22
+
+### Added
+- Player stats dashboard (`/stats`) — server-rendered page showing profile, ELO rank/tier, KPIs (games played, time played, best score, win rate, favorite mode), score momentum sparkline, next milestones, multiplayer W/L/T snapshot, single-player run library by grid size, best day highlight, and recent activity feed
+- `src/features/stats/get-player-stats-dashboard.ts` — server-side data aggregation across `player_stats` and `scores` tables (includes trend analysis, time estimation, and milestone tracking)
+- "My Stats" link in DesktopSidebar and MobileMenu for authenticated users (navigates to `/stats`)
+
+### Fixed
+- Re-added `user_id` to score inserts in `score-service.ts` — stats page queries by user ID, so scores need the FK populated
+- Added missing `ease` keyword to sidebar sign-in/sign-out button transitions
+- Removed stale `line-height` and `text-align` overrides on mobile menu buttons
+- Removed unused `.modal-btn-share svg` rule
+- Changed mobile sign-out trigger from `:active` to `:hover` for consistency
+- Removed `:active` scale transform on opponent mini preview (no longer interactive)
+
+### Changed
+- Multiplayer stats score color now uses `--accent` instead of `--text-primary`
+- Slightly increased `.mp-stats-pill-win` border opacity (0.2 → 0.25)
+- Normalized line endings (CRLF → LF) across config and documentation files
+
+## [Previous] - 2026-03-20
+
+### Added
+- Player stats dashboard, "My Stats" navigation links, score service `user_id` fix, CSS refinements, line ending normalization — see Unreleased above
 
 ### Added
 - Shareable invite links for "Play with a Friend" — click to generate a link, share it, friend opens it and auto-joins

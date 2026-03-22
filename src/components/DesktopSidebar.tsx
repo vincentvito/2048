@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import React, { useState } from "react";
 import Leaderboard, { LeaderboardEntry } from "./Leaderboard";
 import HowToPlay from "./HowToPlay";
@@ -54,9 +55,14 @@ export default function DesktopSidebar({
                   <div className="sidebar-avatar">{(displayName?.[0] ?? "P").toUpperCase()}</div>
                   <span className="sidebar-username">{displayName}</span>
                 </div>
-                <button className="sidebar-signout" onClick={onSignOut}>
-                  Sign Out
-                </button>
+                <div className="sidebar-auth-actions">
+                  <Link href="/stats" className="sidebar-profile-link">
+                    My Stats
+                  </Link>
+                  <button className="sidebar-signout" onClick={onSignOut}>
+                    Sign Out
+                  </button>
+                </div>
               </>
             ) : !showSignIn ? (
               <button className="sidebar-signin" onClick={() => setShowSignIn(true)}>

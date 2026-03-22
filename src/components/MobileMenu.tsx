@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import React, { useState, useEffect, useCallback } from "react";
 import Leaderboard from "./Leaderboard";
 import HowToPlay from "./HowToPlay";
@@ -114,15 +115,20 @@ export default function MobileMenu({
                   </div>
                   <span className="mobile-menu-username">{displayName}</span>
                 </div>
-                <button
-                  className="mobile-menu-signout"
-                  onClick={() => {
-                    onSignOut();
-                    close();
-                  }}
-                >
-                  Sign Out
-                </button>
+                <div className="mobile-menu-auth-actions">
+                  <Link href="/stats" className="mobile-menu-profile-link" onClick={close}>
+                    My Stats
+                  </Link>
+                  <button
+                    className="mobile-menu-signout"
+                    onClick={() => {
+                      onSignOut();
+                      close();
+                    }}
+                  >
+                    Sign Out
+                  </button>
+                </div>
               </>
             ) : !showSignIn ? (
               <button className="mobile-menu-signin" onClick={() => setShowSignIn(true)}>

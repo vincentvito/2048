@@ -8,6 +8,8 @@
 - "My Stats" link in DesktopSidebar and MobileMenu for authenticated users (navigates to `/stats`)
 
 ### Fixed
+- Fixed double divider above "Score momentum" panel on stats page — first `.stats-panel` inside `.stats-main-grid` no longer adds its own `border-top` when the grid already provides one
+- Fixed missing divider between "Favorite mode" and "Win rate" sections — `.stats-kpi-grid` now has the same `border-top` separator as the other stat sections
 - Re-added `user_id` to score inserts in `score-service.ts` — stats page queries by user ID, so scores need the FK populated
 - Added missing `ease` keyword to sidebar sign-in/sign-out button transitions
 - Removed stale `line-height` and `text-align` overrides on mobile menu buttons

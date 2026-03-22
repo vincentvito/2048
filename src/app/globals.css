@@ -4946,6 +4946,7 @@ body.mobile-no-scroll {
 }
 
 .stats-rank-panel,
+.stats-kpi-grid,
 .stats-main-grid {
   display: grid;
   gap: 0;
@@ -5167,6 +5168,8 @@ body.mobile-no-scroll {
 }
 
 .stats-panel:first-child {
+  border-top: none;
+  padding-top: 0;
   margin-top: 0;
 }
 

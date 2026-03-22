@@ -6,6 +6,7 @@
 - Player stats dashboard (`/stats`) — server-rendered page showing profile, ELO rank/tier, KPIs (games played, time played, best score, win rate, favorite mode), score momentum sparkline, next milestones, multiplayer W/L/T snapshot, single-player run library by grid size, best day highlight, and recent activity feed
 - `src/features/stats/get-player-stats-dashboard.ts` — server-side data aggregation across `player_stats` and `scores` tables (includes trend analysis, time estimation, and milestone tracking)
 - "My Stats" link in DesktopSidebar and MobileMenu for authenticated users (navigates to `/stats`)
+- Client-side move preview for server-authoritative multiplayer — plays the tile slide animation locally while waiting for server confirmation, then applies the authoritative state once the animation completes. Prevents premature win triggers, haptic feedback, and screen shake during preview moves
 
 ### Fixed
 - Fixed double divider above "Score momentum" panel on stats page — first `.stats-panel` inside `.stats-main-grid` no longer adds its own `border-top` when the grid already provides one
@@ -16,11 +17,17 @@
 - Removed unused `.modal-btn-share svg` rule
 - Changed mobile sign-out trigger from `:active` to `:hover` for consistency
 - Removed `:active` scale transform on opponent mini preview (no longer interactive)
+- Gated `usePartyGame` WebSocket console.log calls behind `IS_DEV` — production no longer logs every message
 
 ### Changed
 - Multiplayer stats score color now uses `--accent` instead of `--text-primary`
 - Slightly increased `.mp-stats-pill-win` border opacity (0.2 → 0.25)
 - Normalized line endings (CRLF → LF) across config and documentation files
+- Multiplayer layout is now single-board — removed opponent board (desktop expanded view and mini preview), centered the player board with a 640px max-width instead of the side-by-side 200%-width split
+
+### Removed
+- Opponent board from multiplayer view — removed `OpponentPreview` component usage, desktop expanded grid, mini preview, and related state (`showOpponentExpanded`, `emptyOpponentState`, `localBoardRef`, `opponentDone`)
+- Unused `ThemeName` import from MultiplayerView
 
 ## [Previous] - 2026-03-20
 

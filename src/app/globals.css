@@ -3292,6 +3292,9 @@ button:focus-visible,
   display: flex;
   flex-direction: column;
   gap: 12px;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
 }
 
 /* ------------------------------------------------------------------
@@ -3601,12 +3604,17 @@ button:focus-visible,
   margin-top: 20px;
   padding-top: 20px;
   width: 100%;
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .boards-split {
   display: flex;
   flex-direction: column;
-  gap: 30px;
+  gap: 0;
+  align-items: center;
+  justify-content: center;
 }
 
 @media (max-width: 767px) {
@@ -3619,13 +3627,9 @@ button:focus-visible,
 
 @media (min-width: 768px) {
   .multiplayer-boards-container {
-    width: 200%;
-    margin-left: -50%;
-    margin-top: 50px;
-  }
-  .boards-split {
-    flex-direction: row;
-    justify-content: center;
+    width: 100%;
+    max-width: 640px;
+    margin: 32px auto 0;
   }
 }
 

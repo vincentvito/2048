@@ -111,6 +111,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
   const isGameReadyRef = useRef(false);
   const pendingExternalStateRef = useRef<GameState | null>(null);
   const pendingAuthoritativeMoveRef = useRef(false);
+  const pendingAuthoritativeStateRef = useRef<GameState | null>(null);
 
   useImperativeHandle(
     ref,
@@ -535,19 +536,28 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
       // rapidly switching directions during bulk merges.
       if (moveT >= 1 && animating) {
         animating = false;
-        addTile();
-        updateScore();
-        announce("Score: " + score);
-        if (!canMove()) {
-          gameOver = true;
-          onGameOverRef.current?.(score, SIZE);
-          announce("Game over");
+        if (serverAuthoritativeRef.current && pendingAuthoritativeMoveRef.current) {
+          const pendingState = pendingAuthoritativeStateRef.current;
+          pendingAuthoritativeStateRef.current = null;
+          if (pendingState) {
+            updateStateFnRef.current(pendingState);
+            return;
+          }
+        } else {
+          addTile();
+          updateScore();
+          announce("Score: " + score);
+          if (!canMove()) {
+            gameOver = true;
+            onGameOverRef.current?.(score, SIZE);
+            announce("Game over");
+          }
+          if (won && !keepPlaying) {
+            announce("You reached 2048!");
+          }
+          onStateChangeRef.current?.({ grid: Array.from(grid), score, gameOver, won });
+          saveState();
         }
-        if (won && !keepPlaying) {
-          announce("You reached 2048!");
-        }
-        onStateChangeRef.current?.({ grid: Array.from(grid), score, gameOver, won });
-        saveState();
       }
 
       // Keep rendering while the pulse animation plays (purely cosmetic)
@@ -562,12 +572,13 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
     }
 
     function move(dir: number) {
-      if (gameOver || animating) return false;
-      if (serverAuthoritativeRef.current) {
-        pendingAuthoritativeMoveRef.current = true;
-        onMoveRef.current?.(dir);
-        return true;
-      }
+      if (
+        gameOver ||
+        animating ||
+        (serverAuthoritativeRef.current && pendingAuthoritativeMoveRef.current)
+      )
+        return false;
+      const isAuthoritativePreview = !!serverAuthoritativeRef.current;
       // Notify parent of move direction (for server-authoritative multiplayer)
       onMoveRef.current?.(dir);
 
@@ -633,7 +644,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
               score += grid[ni];
               merged[ni] = 1;
               if (grid[ni] > maxMerge) maxMerge = grid[ni];
-              if (grid[ni] === 2048 && !won && !keepPlaying) {
+              if (grid[ni] === 2048 && !won && !keepPlaying && !isAuthoritativePreview) {
                 won = true;
                 onGameWonRef.current?.(score, SIZE);
               }
@@ -690,6 +701,10 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
       }
 
       if (moved) {
+        if (isAuthoritativePreview) {
+          pendingAuthoritativeMoveRef.current = true;
+          pendingAuthoritativeStateRef.current = null;
+        }
         animating = true;
         animStart = performance.now();
         // Cancel any standalone popup rAF loop — the animate() loop takes over
@@ -699,12 +714,17 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
           popupAnimFrame = null;
         }
         requestAnimationFrame(animate);
+      } else if (isAuthoritativePreview) {
+        pendingAuthoritativeMoveRef.current = false;
+        pendingAuthoritativeStateRef.current = null;
       }
 
-      onMoveFeedbackRef.current?.(maxMerge, moved);
+      if (!isAuthoritativePreview) {
+        onMoveFeedbackRef.current?.(maxMerge, moved);
+      }
 
       // Screen shake for big merges (512+)
-      if (moved && maxMerge >= 512 && container) {
+      if (!isAuthoritativePreview && moved && maxMerge >= 512 && container) {
         container.classList.add("board-shake");
         setTimeout(() => container.classList.remove("board-shake"), 300);
       }
@@ -720,6 +740,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
       won = false;
       keepPlaying = false;
       pendingAuthoritativeMoveRef.current = false;
+      pendingAuthoritativeStateRef.current = null;
       prevGrid.fill(0);
       prevScore = 0;
       if (serverAuthoritativeRef.current) {
@@ -743,6 +764,10 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
     const prevGrid = new Uint16Array(SIZE * SIZE);
     let prevScore = 0;
     const updateStateImpl = (state: GameState) => {
+      if (serverAuthoritativeRef.current && pendingAuthoritativeMoveRef.current && animating) {
+        pendingAuthoritativeStateRef.current = state;
+        return;
+      }
       const oldScore = prevScore;
       const scoreDiff = state.score - oldScore;
       const wasGameOver = gameOver;

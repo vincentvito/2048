@@ -5,6 +5,7 @@ import type { GameServerMessage, GameMode } from "@/lib/party/messages";
 
 const GAME_DURATION = 5 * 60;
 const HEARTBEAT_INTERVAL = 5000;
+const IS_DEV = process.env.NODE_ENV === "development";
 
 const PARTYKIT_HOST = process.env.NEXT_PUBLIC_PARTYKIT_HOST || "localhost:1999";
 
@@ -100,9 +101,11 @@ export function usePartyGame(
   useEffect(() => {
     if (!roomId || !userIdRef.current || !myNameRef.current || initializedRef.current) return;
 
-    console.log(
-      `[usePartyGame] Connecting to room=${roomId} userId=${userIdRef.current} name=${myNameRef.current}`
-    );
+    if (IS_DEV) {
+      console.log(
+        `[usePartyGame] Connecting to room=${roomId} userId=${userIdRef.current} name=${myNameRef.current}`
+      );
+    }
     initializedRef.current = true;
 
     const socket = new PartySocket({
@@ -155,10 +158,12 @@ export function usePartyGame(
     socket.onmessage = (event) => {
       try {
         const message: GameServerMessage = JSON.parse(event.data);
-        console.log(
-          `[usePartyGame] Received: ${message.type}`,
-          message.type === "opponent_state" ? `score=${message.state.score}` : ""
-        );
+        if (IS_DEV) {
+          console.log(
+            `[usePartyGame] Received: ${message.type}`,
+            message.type === "opponent_state" ? `score=${message.state.score}` : ""
+          );
+        }
 
         switch (message.type) {
           case "player_joined":

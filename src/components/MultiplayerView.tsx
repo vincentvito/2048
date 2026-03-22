@@ -11,24 +11,18 @@ import { usePartyMatchmaking as useMatchmaking } from "../hooks/usePartyMatchmak
 import { usePartyGame as useMultiplayerGame } from "../hooks/usePartyGame";
 import { saveMultiplayerSession, clearMultiplayerSession } from "@/lib/multiplayer-session";
 import { calculateElo, getEloRank, DEFAULT_ELO } from "@/lib/elo";
-import { themes, ThemeName } from "@/lib/themes";
+import { themes } from "@/lib/themes";
 import { useTheme } from "@/features/theme/ThemeProvider";
 import { getOrCreatePlayerStats, updateStatsAfterGame, PlayerStats } from "@/lib/player-stats";
 import type { GameMode } from "@/lib/party/messages";
 import MatchResultModal from "@/features/multiplayer/game/MatchResultModal";
 import LeaveWarningModal from "@/features/multiplayer/game/LeaveWarningModal";
 import MultiplayerHud from "@/features/multiplayer/game/MultiplayerHud";
-import OpponentPreview, {
-  MiniGrid,
-  ExpandedGrid,
-} from "@/features/multiplayer/game/OpponentPreview";
 
 import { generateRoomCode, buildInviteUrl } from "@/lib/room-code";
 import { useGameFeedback } from "@/hooks/useGameFeedback";
 
 type LobbyScreen = "main" | "create-room";
-
-// MiniGrid, ExpandedGrid imported from OpponentPreview
 
 interface MultiplayerViewProps {
   onMatchActiveChange?: (isActive: boolean) => void;
@@ -241,22 +235,11 @@ export default function MultiplayerView({
     score: number;
     gameOver: boolean;
   } | null>(null);
-  // showResultModal is derived from isMatchResolved (computed below)
-  const [showOpponentExpanded, setShowOpponentExpanded] = useState(false);
   const [showLeaveWarning, setShowLeaveWarning] = useState(false);
   const localGameResetRef = useRef<(() => void) | null>(null);
   const devEndGameRef = useRef<(() => void) | null>(null);
   const confettiFiredRef = useRef(false);
   const isDev = process.env.NODE_ENV === "development";
-
-  // Final fallback state for opponent
-  const emptyOpponentState: GameState = {
-    grid: Array(16).fill(0),
-    score: 0,
-    gameOver: false,
-    won: false,
-  };
-  const localBoardRef = useRef<HTMLDivElement>(null);
   const localGameRef = useRef<Game2048Handle>(null);
   const suppressStateRef = useRef(!!reconnectSession);
 
@@ -439,7 +422,6 @@ export default function MultiplayerView({
 
   // Derive match resolution state (must be before early returns so hooks are stable)
   const localDone = !!(localGameResult?.gameOver || localGameResult?.won);
-  const opponentDone = !!(opponentState?.gameOver || opponentState?.won);
   const someoneWon2048 = !!(localGameResult?.won || opponentState?.won);
   const timerExpired = timeLeft === 0 && gameStarted;
   const hasForfeit = !!forfeitWin;
@@ -951,23 +933,8 @@ export default function MultiplayerView({
           statusText={statusText}
         />
 
-        <OpponentPreview
-          opponentState={opponentState}
-          opponentName={displayOpponentName}
-          opponentConnected={opponentConnected}
-          opponentEverConnected={opponentEverConnected}
-          opponentDone={opponentDone}
-          timerExpired={timerExpired}
-          hasForfeit={hasForfeit}
-          themeName={themeName}
-          showExpanded={showOpponentExpanded}
-          onToggleExpanded={setShowOpponentExpanded}
-        />
-
         <div className="boards-split">
-          {/* Local board */}
           <div
-            ref={localBoardRef}
             className={`mp-board-slot ${localDone || timerExpired || hasForfeit ? "dimmed" : ""}`}
           >
             <Game2048
@@ -990,26 +957,6 @@ export default function MultiplayerView({
                 DEV: End Game
               </button>
             )}
-          </div>
-
-          {/* Opponent board (desktop only - hidden on mobile) */}
-          <div
-            className={`mp-board-slot mp-opponent-desktop ${opponentDone || timerExpired || hasForfeit ? "dimmed" : ""}`}
-          >
-            <div className="opponent-game-container">
-              {!opponentConnected && (
-                <div className="offline-overlay">
-                  {opponentEverConnected ? "Opponent disconnected..." : "Connecting..."}
-                </div>
-              )}
-              <Game2048
-                readOnlyState={opponentState || emptyOpponentState}
-                disableInputs={true}
-                hideScore
-                themeName={themeName}
-                disableSave
-              />
-            </div>
           </div>
         </div>
 

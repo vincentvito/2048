@@ -7,8 +7,10 @@
 - `src/features/stats/get-player-stats-dashboard.ts` — server-side data aggregation across `player_stats` and `scores` tables (includes trend analysis, time estimation, and milestone tracking)
 - "My Stats" link in DesktopSidebar and MobileMenu for authenticated users (navigates to `/stats`)
 - Client-side move preview for server-authoritative multiplayer — plays the tile slide animation locally while waiting for server confirmation, then applies the authoritative state once the animation completes. Prevents premature win triggers, haptic feedback, and screen shake during preview moves
+- Authoritative move rollback — if the server doesn't respond within 1.5s, the client restores the pre-move snapshot (grid, score, tiles) so the board never gets stuck in a pending state
 
 ### Fixed
+- Server now always sends `your_game_state` back to the mover, even for no-op moves — client preview needs the acknowledgment to resolve pending state. Opponent broadcast and match resolution only fire when state actually changed (`party/game.ts` — **requires PartyKit deploy**)
 - Fixed double divider above "Score momentum" panel on stats page — first `.stats-panel` inside `.stats-main-grid` no longer adds its own `border-top` when the grid already provides one
 - Fixed missing divider between "Favorite mode" and "Win rate" sections — `.stats-kpi-grid` now has the same `border-top` separator as the other stat sections
 - Re-added `user_id` to score inserts in `score-service.ts` — stats page queries by user ID, so scores need the FK populated

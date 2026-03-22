@@ -211,6 +211,8 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
     let popupAnimFrame: number | null = null;
     let animating = false;
     let animStart = 0;
+    let authoritativeFallbackTimer: ReturnType<typeof setTimeout> | null = null;
+    let authoritativeSnapshot: GameState | null = null;
 
     function cellPos(i: number) {
       return GAP + i * (CELL + GAP);
@@ -540,6 +542,11 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
           const pendingState = pendingAuthoritativeStateRef.current;
           pendingAuthoritativeStateRef.current = null;
           if (pendingState) {
+            if (authoritativeFallbackTimer) {
+              clearTimeout(authoritativeFallbackTimer);
+              authoritativeFallbackTimer = null;
+            }
+            authoritativeSnapshot = null;
             updateStateFnRef.current(pendingState);
             return;
           }
@@ -569,6 +576,31 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
         renderBoard(1);
         renderPopups();
       }
+    }
+
+    function restoreAuthoritativeSnapshot() {
+      if (!authoritativeSnapshot) return;
+      score = authoritativeSnapshot.score;
+      gameOver = authoritativeSnapshot.gameOver;
+      won = authoritativeSnapshot.won;
+      grid = new Uint16Array(authoritativeSnapshot.grid);
+      prevScore = authoritativeSnapshot.score;
+      prevGrid.fill(0);
+      for (let i = 0; i < authoritativeSnapshot.grid.length; i++) {
+        prevGrid[i] = authoritativeSnapshot.grid[i];
+      }
+      tiles.length = 0;
+      scorePopups.length = 0;
+      for (let i = 0; i < grid.length; i++) {
+        if (grid[i] !== 0) {
+          const r = (i / SIZE) | 0;
+          const c = i % SIZE;
+          tiles.push({ value: grid[i], r, c, fromR: r, fromC: c, scale: 1, merged: false });
+        }
+      }
+      updateScore();
+      render(1);
+      authoritativeSnapshot = null;
     }
 
     function move(dir: number) {
@@ -702,8 +734,24 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
 
       if (moved) {
         if (isAuthoritativePreview) {
+          authoritativeSnapshot = {
+            grid: Array.from(prevGrid),
+            score: prevScore,
+            gameOver,
+            won,
+          };
           pendingAuthoritativeMoveRef.current = true;
           pendingAuthoritativeStateRef.current = null;
+          if (authoritativeFallbackTimer) {
+            clearTimeout(authoritativeFallbackTimer);
+          }
+          authoritativeFallbackTimer = setTimeout(() => {
+            if (!pendingAuthoritativeMoveRef.current) return;
+            pendingAuthoritativeMoveRef.current = false;
+            pendingAuthoritativeStateRef.current = null;
+            animating = false;
+            restoreAuthoritativeSnapshot();
+          }, 1500);
         }
         animating = true;
         animStart = performance.now();
@@ -717,6 +765,11 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
       } else if (isAuthoritativePreview) {
         pendingAuthoritativeMoveRef.current = false;
         pendingAuthoritativeStateRef.current = null;
+        authoritativeSnapshot = null;
+        if (authoritativeFallbackTimer) {
+          clearTimeout(authoritativeFallbackTimer);
+          authoritativeFallbackTimer = null;
+        }
       }
 
       if (!isAuthoritativePreview) {
@@ -741,6 +794,11 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
       keepPlaying = false;
       pendingAuthoritativeMoveRef.current = false;
       pendingAuthoritativeStateRef.current = null;
+      authoritativeSnapshot = null;
+      if (authoritativeFallbackTimer) {
+        clearTimeout(authoritativeFallbackTimer);
+        authoritativeFallbackTimer = null;
+      }
       prevGrid.fill(0);
       prevScore = 0;
       if (serverAuthoritativeRef.current) {
@@ -764,6 +822,11 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
     const prevGrid = new Uint16Array(SIZE * SIZE);
     let prevScore = 0;
     const updateStateImpl = (state: GameState) => {
+      if (authoritativeFallbackTimer) {
+        clearTimeout(authoritativeFallbackTimer);
+        authoritativeFallbackTimer = null;
+      }
+      authoritativeSnapshot = null;
       if (serverAuthoritativeRef.current && pendingAuthoritativeMoveRef.current && animating) {
         pendingAuthoritativeStateRef.current = state;
         return;
@@ -1224,6 +1287,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
       if (resizeTimer) clearTimeout(resizeTimer);
       if (repeatTimeout) clearTimeout(repeatTimeout);
       if (popupAnimFrame) cancelAnimationFrame(popupAnimFrame);
+      if (authoritativeFallbackTimer) clearTimeout(authoritativeFallbackTimer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

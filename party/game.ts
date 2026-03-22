@@ -533,40 +533,43 @@ export default class GameServer implements Party.Server {
 
     if (!player || player.engineState.gameOver || player.engineState.won) return;
 
-    // Compute new state server-side
     const newState = applyMove(player.engineState, direction);
-    if (newState === player.engineState) return; // Move didn't change anything
+    const stateChanged = newState !== player.engineState;
 
-    player.engineState = newState;
+    if (stateChanged) {
+      player.engineState = newState;
+    }
     player.lastSeen = Date.now();
 
-    // Send authoritative state back to the mover
+    const authoritativeState = player.engineState;
+
     sender.send(
       JSON.stringify({
         type: "your_game_state",
         state: {
-          grid: newState.grid,
-          score: newState.score,
-          gameOver: newState.gameOver,
-          won: newState.won,
+          grid: authoritativeState.grid,
+          score: authoritativeState.score,
+          gameOver: authoritativeState.gameOver,
+          won: authoritativeState.won,
         },
       })
     );
 
-    // Broadcast to opponent
+    if (!stateChanged) return;
+
     this.broadcastToOthers(sender.id, {
       type: "opponent_state",
       state: {
-        grid: newState.grid,
-        score: newState.score,
-        gameOver: newState.gameOver,
-        won: newState.won,
+        grid: authoritativeState.grid,
+        score: authoritativeState.score,
+        gameOver: authoritativeState.gameOver,
+        won: authoritativeState.won,
       },
       username: player.username,
       elo: player.elo,
     });
 
-    await this.tryResolveMatch(newState.won ? "2048" : "score");
+    await this.tryResolveMatch(authoritativeState.won ? "2048" : "score");
     await this.saveState();
   }
 

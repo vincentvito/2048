@@ -907,6 +907,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
       prevScore = state.score;
       gameOver = state.gameOver;
       won = state.won;
+      const shouldAnimateMergedTiles = !serverAuthoritativeRef.current && mergedPositions.size > 0;
       for (let i = 0; i < state.grid.length; i++) {
         prevGrid[i] = state.grid[i];
         grid[i] = state.grid[i];
@@ -915,7 +916,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
       tiles.length = 0;
       for (let i = 0; i < grid.length; i++) {
         if (grid[i] !== 0) {
-          const isMerged = mergedPositions.has(i);
+          const isMerged = shouldAnimateMergedTiles && mergedPositions.has(i);
           const r = (i / SIZE) | 0;
           const c = i % SIZE;
           tiles.push({
@@ -947,7 +948,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
       updateScore();
 
       // Animate merged tiles with pulse
-      if (mergedPositions.size > 0) {
+      if (shouldAnimateMergedTiles) {
         animating = true;
         animStart = performance.now();
         requestAnimationFrame(animate);

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import React, { useState, useCallback, useRef, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import SinglePlayerScreen, {
@@ -139,10 +140,14 @@ function HomeInner(): React.ReactElement {
         {/* Title - hidden during active match */}
         {!matchActive && (
           <div className="title-section">
-            <h1 className="game-title">2048</h1>
-            <p className="game-intro">
-              Join the tiles, get to <strong>2048!</strong>
-            </p>
+            <Image
+              src="/2048-brand-nobg.png"
+              alt="2048 League"
+              width={280}
+              height={200}
+              className="brand-logo"
+              priority
+            />
           </div>
         )}
 

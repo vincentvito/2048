@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased] - 2026-03-22
+## [Unreleased] - 2026-03-23
 
 ### Added
 - Player stats dashboard (`/stats`) — server-rendered page showing profile, ELO rank/tier, KPIs (games played, time played, best score, win rate, favorite mode), score momentum sparkline, next milestones, multiplayer W/L/T snapshot, single-player run library by grid size, best day highlight, and recent activity feed
@@ -20,8 +20,15 @@
 - Changed mobile sign-out trigger from `:active` to `:hover` for consistency
 - Removed `:active` scale transform on opponent mini preview (no longer interactive)
 - Gated `usePartyGame` WebSocket console.log calls behind `IS_DEV` — production no longer logs every message
+- Fixed game board pushed right by left sidebar — safe-area `padding-right` rule was overriding the desktop sidebar offset; scoped to mobile-only
 
 ### Changed
+- Desktop layout split into two sidebars — Leaderboard on the left, Menu (auth, themes, toggles, how to play) on the right. 296px wide each with 24px edge inset and gutter, shown at `min-width: 1080px`. No vertical border lines — sidebars float with padding. Mobile menu extended to cover up to 1079px
+- Replaced text title (`h1` "2048" + subtitle) with transparent brand logo (`/2048-brand-nobg.png`) via `next/image`
+- Replaced brand image and regenerated all icons/favicons from `2048-brand-nobg.png` (transparent background) — updated PWA icons (512, 192), apple-touch-icon, favicons (32, 16), Next.js icon, and OG brand image
+- Game board now centers between both sidebars via `margin: 0 auto` on container (removed flex centering on page-layout)
+- Safe-area padding scoped to `max-width: 1079px` so it doesn't override desktop sidebar offsets
+- Modal and install banner centering now accounts for both sidebars
 - Multiplayer stats score color now uses `--accent` instead of `--text-primary`
 - Slightly increased `.mp-stats-pill-win` border opacity (0.2 → 0.25)
 - Normalized line endings (CRLF → LF) across config and documentation files

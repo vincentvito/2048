@@ -40,12 +40,29 @@ export default function DesktopSidebar({
 
   return (
     <>
-      <aside className="desktop-sidebar" aria-label="Game menu">
-        {/* Header with title */}
+      {/* Left sidebar — Leaderboard */}
+      <aside className="desktop-sidebar desktop-sidebar-left" aria-label="Leaderboard">
+        <div className="sidebar-header">
+          <span className="sidebar-header-title">Leaderboard</span>
+        </div>
+        <div className="desktop-sidebar-inner">
+          <div className="sidebar-section">
+            <Leaderboard
+              refreshTrigger={refreshTrigger}
+              onScoresLoaded={onScoresLoaded}
+              currentScore={currentScore}
+              gridSize={activeGridSize}
+              isSignedIn={!!user}
+            />
+          </div>
+        </div>
+      </aside>
+
+      {/* Right sidebar — Menu */}
+      <aside className="desktop-sidebar desktop-sidebar-right" aria-label="Game menu">
         <div className="sidebar-header">
           <span className="sidebar-header-title">Menu</span>
         </div>
-
         <div className="desktop-sidebar-inner">
           {/* Auth section */}
           <div className="sidebar-auth">
@@ -99,20 +116,6 @@ export default function DesktopSidebar({
               />
               <span>Haptic Feedback</span>
             </label>
-          </div>
-
-          <div className="sidebar-divider" />
-
-          {/* Leaderboard */}
-          <div className="sidebar-section">
-            <h3 className="sidebar-section-title">Leaderboard</h3>
-            <Leaderboard
-              refreshTrigger={refreshTrigger}
-              onScoresLoaded={onScoresLoaded}
-              currentScore={currentScore}
-              gridSize={activeGridSize}
-              isSignedIn={!!user}
-            />
           </div>
 
           <div className="sidebar-divider" />

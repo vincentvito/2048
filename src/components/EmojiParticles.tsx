@@ -15,10 +15,10 @@ const PRESETS: Record<
   BurstPreset,
   { emojis: string[]; count: number; spread: number; gravity: number; life: number }
 > = {
-  win: { emojis: EMOJI_WIN, count: 16, spread: 12, gravity: 0.12, life: 100 },
-  personalBest: { emojis: EMOJI_PERSONAL_BEST, count: 10, spread: 10, gravity: 0.12, life: 90 },
-  dailyBest: { emojis: EMOJI_DAILY_BEST, count: 12, spread: 11, gravity: 0.12, life: 95 },
-  gameOver: { emojis: EMOJI_GAME_OVER, count: 5, spread: 6, gravity: 0.18, life: 60 },
+  win: { emojis: EMOJI_WIN, count: 16, spread: 12, gravity: 0.12, life: 200 },
+  personalBest: { emojis: EMOJI_PERSONAL_BEST, count: 10, spread: 10, gravity: 0.12, life: 180 },
+  dailyBest: { emojis: EMOJI_DAILY_BEST, count: 12, spread: 11, gravity: 0.12, life: 190 },
+  gameOver: { emojis: EMOJI_GAME_OVER, count: 5, spread: 6, gravity: 0.18, life: 120 },
 };
 
 // ── Particle type ──
@@ -208,8 +208,8 @@ export function ParticleProvider({ children }: { children: React.ReactNode }) {
         size: 24 + Math.random() * 20,
         rotation: Math.random() * Math.PI * 2,
         rotationSpeed: (Math.random() - 0.5) * 0.15,
-        life: config.life + Math.floor(Math.random() * 20),
-        maxLife: config.life + 20,
+        life: config.life + Math.floor(Math.random() * 40),
+        maxLife: config.life + 40,
         scale: 0,
         gravity: config.gravity,
       });

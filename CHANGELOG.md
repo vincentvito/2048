@@ -28,6 +28,7 @@
 - Fixed multiplayer pre-game/invite alignment regression — lobby, friend invite, and matchmaking screens no longer inherit board-layout overrides meant only for the in-game view
 - Fixed service worker asset caching so generated CSS/JS chunks are no longer cached cache-first — prevents stale multiplayer layouts from persisting in Firefox and other browsers after deploys
 - Fixed multiplayer opponent board occasionally showing stale or fabricated tiles — reconnect restores no longer relay legacy client snapshots to the other player, and read-only opponent boards now render incoming authoritative grid snapshots directly instead of inferring merge animations between network updates
+- Doubled emoji particle celebration duration — win (100→200), personal best (90→180), daily best (95→190), and game over (60→120) bursts all last 2x longer
 
 ### Changed
 

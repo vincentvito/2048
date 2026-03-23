@@ -1,10 +1,11 @@
 // Service Worker for 2048 PWA
 // Handles push notifications and basic offline caching
 
-const CACHE_NAME = "2048-v2";
+const CACHE_NAME = "2048-v3";
 
 // Only cache static assets — never cache HTML or API responses
 const STATIC_ASSETS = ["/icon-192x192.png", "/icon-512x512.png", "/brand.png"];
+const STATIC_ASSET_PATHS = new Set(STATIC_ASSETS);
 
 // Cache essential assets on install
 self.addEventListener("install", (event) => {
@@ -37,9 +38,16 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
   const url = new URL(event.request.url);
+  const isSameOrigin = url.origin === self.location.origin;
+  const isImageRequest =
+    event.request.destination === "image" || STATIC_ASSET_PATHS.has(url.pathname);
 
   // Never cache API routes or HTML pages
   if (url.pathname.startsWith("/api/") || event.request.headers.get("accept")?.includes("text/html")) {
+    return;
+  }
+
+  if (!isSameOrigin || !isImageRequest) {
     return;
   }
 

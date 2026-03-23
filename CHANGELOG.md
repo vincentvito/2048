@@ -3,6 +3,7 @@
 ## [Unreleased] - 2026-03-23
 
 ### Added
+
 - Player stats dashboard (`/stats`) — server-rendered page showing profile, ELO rank/tier, KPIs (games played, time played, best score, win rate, favorite mode), score momentum sparkline, next milestones, multiplayer W/L/T snapshot, single-player run library by grid size, best day highlight, and recent activity feed
 - `src/features/stats/get-player-stats-dashboard.ts` — server-side data aggregation across `player_stats` and `scores` tables (includes trend analysis, time estimation, and milestone tracking)
 - "My Stats" link in DesktopSidebar and MobileMenu for authenticated users (navigates to `/stats`)
@@ -10,6 +11,7 @@
 - Authoritative move rollback — if the server doesn't respond within 1.5s, the client restores the pre-move snapshot (grid, score, tiles) so the board never gets stuck in a pending state
 
 ### Fixed
+
 - Server now always sends `your_game_state` back to the mover, even for no-op moves — client preview needs the acknowledgment to resolve pending state. Opponent broadcast and match resolution only fire when state actually changed (`party/game.ts` — **requires PartyKit deploy**)
 - Fixed double divider above "Score momentum" panel on stats page — first `.stats-panel` inside `.stats-main-grid` no longer adds its own `border-top` when the grid already provides one
 - Fixed missing divider between "Favorite mode" and "Win rate" sections — `.stats-kpi-grid` now has the same `border-top` separator as the other stat sections
@@ -21,8 +23,14 @@
 - Removed `:active` scale transform on opponent mini preview (no longer interactive)
 - Gated `usePartyGame` WebSocket console.log calls behind `IS_DEV` — production no longer logs every message
 - Fixed game board pushed right by left sidebar — safe-area `padding-right` rule was overriding the desktop sidebar offset; scoped to mobile-only
+- Restored multiplayer opponent boards without reverting to the older lag-prone rendering path — desktop now shows a read-only opponent board beside the local board, and mobile shows an inline opponent preview below the main board
+- Fixed multiplayer HUD/timer regression after the opponent-board restore — the in-game timer, names, scores, and status layout now use the intended multiplayer styling again
+- Fixed multiplayer pre-game/invite alignment regression — lobby, friend invite, and matchmaking screens no longer inherit board-layout overrides meant only for the in-game view
+- Fixed service worker asset caching so generated CSS/JS chunks are no longer cached cache-first — prevents stale multiplayer layouts from persisting in Firefox and other browsers after deploys
+- Fixed multiplayer opponent board occasionally showing stale or fabricated tiles — reconnect restores no longer relay legacy client snapshots to the other player, and read-only opponent boards now render incoming authoritative grid snapshots directly instead of inferring merge animations between network updates
 
 ### Changed
+
 - Desktop layout split into two sidebars — Leaderboard on the left, Menu (auth, themes, toggles, how to play) on the right. 296px wide each with 24px edge inset and gutter, shown at `min-width: 1080px`. No vertical border lines — sidebars float with padding. Mobile menu extended to cover up to 1079px
 - Replaced text title (`h1` "2048" + subtitle) with transparent brand logo (`/2048-brand-nobg.png`) via `next/image`
 - Replaced brand image and regenerated all icons/favicons from `2048-brand-nobg.png` (transparent background) — updated PWA icons (512, 192), apple-touch-icon, favicons (32, 16), Next.js icon, and OG brand image
@@ -32,15 +40,16 @@
 - Multiplayer stats score color now uses `--accent` instead of `--text-primary`
 - Slightly increased `.mp-stats-pill-win` border opacity (0.2 → 0.25)
 - Normalized line endings (CRLF → LF) across config and documentation files
-- Multiplayer layout is now single-board — removed opponent board (desktop expanded view and mini preview), centered the player board with a 640px max-width instead of the side-by-side 200%-width split
+- Multiplayer in-game layout now supports opponent visibility again while preserving the centered desktop shell — desktop uses a side-by-side local/opponent board split, and mobile uses a compact inline opponent card with expandable detail view
 
 ### Removed
-- Opponent board from multiplayer view — removed `OpponentPreview` component usage, desktop expanded grid, mini preview, and related state (`showOpponentExpanded`, `emptyOpponentState`, `localBoardRef`, `opponentDone`)
+
 - Unused `ThemeName` import from MultiplayerView
 
 ## [Previous] - 2026-03-20
 
 ### Added
+
 - Shareable invite links for "Play with a Friend" — click to generate a link, share it, friend opens it and auto-joins
 - `/play/[code]` route with OG metadata for rich link previews ("Join my 2048 match!")
 - Guest play support — non-authenticated users can play friendly matches (no ELO, stats, or leaderboard scores saved)
@@ -50,6 +59,7 @@
 - Haptic feedback and emoji particle animations now work in multiplayer matches (merge haptics, game over/win bursts)
 
 ### Fixed
+
 - Server now sends opponent's initial board state at game start — opponent board no longer appears empty until their first move
 - Auto-join via invite link waits for session to load — logged-in users no longer briefly connect as "Guest" with wrong identity
 - HUD scores initialize from server state immediately — no longer shows 0 until first move
@@ -64,21 +74,25 @@
 - Reverted build script to `next build` only — PartyKit deploys separately via `npm run party:deploy` (requires GitHub auth, cannot run in Vercel CI)
 
 ### Documentation
+
 - Expanded README deploy section with detailed PartyKit instructions — explains when to deploy, how GitHub auth works, and how to keep `NEXT_PUBLIC_PARTYKIT_HOST` in sync between PartyKit and Vercel
 
 ### Changed
+
 - "Play with a Friend" is now one click — immediately generates room + shareable link (no more Create/Join menu)
 - Joining a friend's game is link-only — removed manual room code input
 - Auth gate allows guests through for friendly mode (ranked still requires sign-in)
 - Multiplayer Game2048 now runs in fully server-authoritative mode — client sends move direction only, server computes grid/score/tiles, client renders server state. Eliminates client/server grid divergence and fixes "0-0 tie" results
 
 ### Removed
+
 - Room code display and manual code entry UI (replaced by invite links)
 - "Create Room" / "Join Room" choice screen (friend-menu)
 
 ## [Previous] - 2026-03-18
 
 ### Security
+
 - All API mutation routes now resolve user from session cookies instead of client-provided `userId`
 - Created shared `getAuthenticatedUser()` helper for consistent server-side auth
 - Added input validation to all API route payloads (`player-stats`, `active-match`, `leaderboard`, `username`)
@@ -90,6 +104,7 @@
 - Match results determined by server-computed state, not client-reported scores
 
 ### Removed
+
 - Deleted legacy polling-based multiplayer (`useMatchmaking.ts`, `useMultiplayerGame.ts`)
 - Deleted legacy API routes (`/api/matchmaking`, `/api/game-state`)
 - Deleted public debug endpoint (`/api/debug/matchmaking`)
@@ -101,6 +116,7 @@
 - Removed 3 state variables that were redundant mirrors of props (`showResultModal`, `botOpponent`, `show`)
 
 ### Architecture
+
 - Extracted pure game engine to `src/lib/game-engine.ts` — shared between browser and PartyKit server
 - Created feature-based folder structure (`src/features/auth`, `theme`, `single-player`, `multiplayer`)
 - Centralized `AppUser` type and `getDisplayName()` utility — eliminated 3 duplicate interface definitions
@@ -115,6 +131,7 @@
 - Updated multiplayer protocol: added `move`, `your_initial_state`, `your_game_state` message types
 
 ### React Best Practices
+
 - Replaced 8 ref-sync `useEffect` hooks in Game2048 with direct assignment during render (per React docs)
 - Replaced `showResultModal` state + effect with derived value from `isMatchResolved` in MultiplayerView
 - Replaced `botOpponent` state + effect with `useMemo` derivation from `opponentInfo` in MultiplayerView
@@ -123,6 +140,7 @@
 - Removed redundant `sendGameState` call on every multiplayer move (server-authoritative `sendMove` handles it)
 
 ### Accessibility
+
 - Removed zoom restrictions (`maximumScale: 1`, `userScalable: false`) from viewport
 - Added `prefers-reduced-motion` support — disables confetti animations and reduces transition durations
 - Added `:focus-visible` styles with accent-colored outlines for all interactive elements
@@ -130,11 +148,13 @@
 - Shared `Modal` component includes focus trap, Escape close, `aria-modal`, and focus restoration
 
 ### Performance
+
 - Switched to `next/font/google` for Fredoka and Nunito (eliminates render-blocking CSS import)
 - Removed redundant WebSocket traffic — multiplayer no longer sends both `state_update` and `move` per action
 - Debounced canvas resize handler (150ms) to prevent rapid redraws on orientation change
 
 ### Bug Fixes
+
 - Fixed blank canvas after screen off/on — added `visibilitychange` listener to re-render canvas
 - Fixed orientation change causing game freeze — debounced resize handler prevents cascading redraws
 - Fixed UsernamePrompt not auto-hiding after username save (now derived from session state)
@@ -149,6 +169,7 @@
 - Fixed game board not centered when desktop sidebar is visible — container now uses `flex: 1` to fill remaining space after sidebar offset
 
 ### Features
+
 - Added emoji particle burst system (`EmojiParticles.tsx`) — canvas-based particle engine with physics (gravity, drag, rotation, scale easing) and pre-cached emoji rendering
 - Added haptic feedback via `web-haptics` — triggers on tile merges (selection tick for small, medium buzz for 256+), plus win/game over/daily best events. Plain slides with no merge produce no haptic. Silently no-ops on unsupported platforms.
 - Emoji burst + haptic events: win (🎉🏆⭐ + success), beat daily leaderboard (👑🥇🏆 + heavy), game over (💀😵🫠 + error)
@@ -161,6 +182,7 @@
 - Fixed install banner covered by browser toolbar — raised z-index and padding for safe area
 
 ### PWA & SEO
+
 - Made the app a Progressive Web App — web app manifest (`manifest.ts`), service worker, and install banner for "Add to Home Screen"
 - Service worker v2: only caches static assets (images), never HTML or API responses — prevents stale content issues
 - Added automatic update detection — when a new service worker activates, a persistent "New version available [Refresh]" toast appears in both browser and installed PWA mode
@@ -175,6 +197,7 @@
 - Manifest specifies `orientation: "portrait"` for installed PWA mode
 
 ### Local Development
+
 - Added local Supabase support — `npm run db:start`, `db:stop`, `db:reset`, `db:status` scripts
 - Created proper migration ordering with Supabase timestamp format — all migrations now apply cleanly on `db reset`
 - Added missing `scores` table migration (`20240101000000_scores.sql`) and consolidated `profiles` + scores RLS into `20240101000001_profiles_and_scores_setup.sql`
@@ -183,6 +206,7 @@
 - Added dev-only "DEV: Win Setup" button — places two 1024 tiles for easy win-flow testing
 
 ### Code Quality
+
 - Added Prettier for consistent code formatting — double quotes, 2-space indent, 100 char width, trailing commas, LF endings
 - Added `eslint-config-prettier` to prevent ESLint/Prettier rule conflicts
 - Added `.editorconfig` for consistent editor settings across the team
@@ -193,11 +217,13 @@
 - Fixed `es-abstract` transitive dependency issue breaking ESLint
 
 ### Dependencies
+
 - Added `sonner` for toast notifications — error toasts shown on leaderboard fetch failures and timeouts
 - Added `web-haptics` for haptic feedback on mobile devices
 - Added `prettier` and `eslint-config-prettier` as dev dependencies
 - Added `supabase` as dev dependency for local database management
 
 ### Documentation
+
 - Rewrote `README.md` with stack, setup instructions, architecture overview, multiplayer protocol, auth model, and project structure
 - Created `.env.example` with all required environment variables

@@ -831,6 +831,39 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
         pendingAuthoritativeStateRef.current = state;
         return;
       }
+      if (initialReadOnlyRef.current) {
+        if (popupAnimFrame) {
+          cancelAnimationFrame(popupAnimFrame);
+          popupAnimFrame = null;
+        }
+        animating = false;
+        score = state.score;
+        prevScore = state.score;
+        gameOver = state.gameOver;
+        won = state.won;
+        scorePopups.length = 0;
+        tiles.length = 0;
+        for (let i = 0; i < state.grid.length; i++) {
+          prevGrid[i] = state.grid[i];
+          grid[i] = state.grid[i];
+          if (state.grid[i] !== 0) {
+            const r = (i / SIZE) | 0;
+            const c = i % SIZE;
+            tiles.push({
+              value: state.grid[i],
+              r,
+              c,
+              fromR: r,
+              fromC: c,
+              scale: 1,
+              merged: false,
+            });
+          }
+        }
+        updateScore();
+        render(1);
+        return;
+      }
       const oldScore = prevScore;
       const scoreDiff = state.score - oldScore;
       const wasGameOver = gameOver;

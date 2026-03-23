@@ -92,9 +92,9 @@ export default function OpponentPreview({
 
   return (
     <>
-      {/* Mobile: Mini opponent preview (floating button on left) */}
+      {/* Mobile: Inline opponent preview below the main board */}
       <div
-        className="mp-opponent-mini-preview"
+        className="mp-opponent-mobile-card"
         onClick={() => onToggleExpanded(true)}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
@@ -106,11 +106,31 @@ export default function OpponentPreview({
         tabIndex={0}
         aria-label={`View ${opponentName}'s board`}
       >
-        <div className="mp-mini-preview-inner">
-          <MiniGrid grid={grid} themeName={themeName} />
-          {!opponentConnected && <div className="mp-mini-preview-offline" />}
+        <div className="mp-opponent-mobile-header">
+          <div className="mp-opponent-mobile-meta">
+            <span className="mp-opponent-mobile-name">{opponentName}</span>
+            <span className="mp-opponent-mobile-score">{score.toLocaleString()}</span>
+          </div>
+          <span
+            className={`mp-opponent-mobile-status ${opponentConnected ? "connected" : "offline"}`}
+          >
+            {opponentConnected
+              ? "Live board"
+              : opponentEverConnected
+                ? "Disconnected"
+                : "Connecting..."}
+          </span>
         </div>
-        <span className="mp-mini-preview-label">{opponentName}</span>
+
+        <div className="mp-opponent-mobile-preview">
+          <div
+            className={`mp-mini-preview-inner ${opponentDone || timerExpired || hasForfeit ? "dimmed" : ""}`}
+          >
+            <MiniGrid grid={grid} themeName={themeName} />
+            {!opponentConnected && <div className="mp-mini-preview-offline" />}
+          </div>
+          <span className="mp-opponent-mobile-cta">Tap to expand</span>
+        </div>
       </div>
 
       {/* Mobile: Expanded opponent view modal */}

@@ -18,6 +18,7 @@ import type { GameMode } from "@/lib/party/messages";
 import MatchResultModal from "@/features/multiplayer/game/MatchResultModal";
 import LeaveWarningModal from "@/features/multiplayer/game/LeaveWarningModal";
 import MultiplayerHud from "@/features/multiplayer/game/MultiplayerHud";
+import OpponentPreview from "@/features/multiplayer/game/OpponentPreview";
 
 import { generateRoomCode, buildInviteUrl } from "@/lib/room-code";
 import { useGameFeedback } from "@/hooks/useGameFeedback";
@@ -33,6 +34,13 @@ interface MultiplayerViewProps {
   } | null;
   autoJoinCode?: string | null;
 }
+
+const emptyOpponentState: GameState = {
+  grid: Array(16).fill(0),
+  score: 0,
+  gameOver: false,
+  won: false,
+};
 
 export default function MultiplayerView({
   onMatchActiveChange,
@@ -179,7 +187,6 @@ export default function MultiplayerView({
     opponentElo,
     opponentIsBot,
     sendMove,
-    sendGameState,
     requestRematch,
     resetRematchState,
     declareForfeit,
@@ -236,6 +243,7 @@ export default function MultiplayerView({
     gameOver: boolean;
   } | null>(null);
   const [showLeaveWarning, setShowLeaveWarning] = useState(false);
+  const [showOpponentExpanded, setShowOpponentExpanded] = useState(false);
   const localGameResetRef = useRef<(() => void) | null>(null);
   const devEndGameRef = useRef<(() => void) | null>(null);
   const confettiFiredRef = useRef(false);
@@ -248,7 +256,6 @@ export default function MultiplayerView({
     if (!restoredLocalState) return;
     const applyRestore = () => {
       if (localGameRef.current) {
-        const shouldRelayRestore = suppressStateRef.current;
         localGameRef.current.updateState(restoredLocalState);
         setLocalGameResult({
           won: restoredLocalState.won,
@@ -256,9 +263,6 @@ export default function MultiplayerView({
           gameOver: restoredLocalState.gameOver,
         });
         suppressStateRef.current = false;
-        if (shouldRelayRestore) {
-          sendGameState(restoredLocalState);
-        }
         return true;
       }
       return false;
@@ -272,7 +276,7 @@ export default function MultiplayerView({
       }
     }, 100);
     return () => clearInterval(interval);
-  }, [restoredLocalState, sendGameState]);
+  }, [restoredLocalState]);
 
   // Load server-generated initial board when a new game starts
   useEffect(() => {
@@ -385,6 +389,7 @@ export default function MultiplayerView({
     if (gameStillLive) {
       declareForfeit();
     }
+    setShowOpponentExpanded(false);
     if (user?.id) clearMultiplayerSession();
     cancelMatchmaking();
     setFriendRoomId(null);
@@ -408,6 +413,7 @@ export default function MultiplayerView({
     if (user?.id) clearMultiplayerSession();
     cancelMatchmaking();
     setLocalGameResult(null);
+    setShowOpponentExpanded(false);
 
     confettiFiredRef.current = false;
     setLocalEloDelta(null);
@@ -422,6 +428,7 @@ export default function MultiplayerView({
 
   // Derive match resolution state (must be before early returns so hooks are stable)
   const localDone = !!(localGameResult?.gameOver || localGameResult?.won);
+  const opponentDone = !!(opponentState?.gameOver || opponentState?.won);
   const someoneWon2048 = !!(localGameResult?.won || opponentState?.won);
   const timerExpired = timeLeft === 0 && gameStarted;
   const hasForfeit = !!forfeitWin;
@@ -958,7 +965,39 @@ export default function MultiplayerView({
               </button>
             )}
           </div>
+
+          <div
+            className={`mp-board-slot mp-opponent-desktop ${opponentDone || timerExpired || hasForfeit ? "dimmed" : ""}`}
+          >
+            <div className="opponent-game-container">
+              {!opponentConnected && (
+                <div className="offline-overlay" role="status" aria-live="polite">
+                  {opponentEverConnected ? "Opponent disconnected..." : "Connecting..."}
+                </div>
+              )}
+              <Game2048
+                readOnlyState={opponentState || emptyOpponentState}
+                disableInputs
+                hideScore
+                themeName={themeName}
+                disableSave
+              />
+            </div>
+          </div>
         </div>
+
+        <OpponentPreview
+          opponentState={opponentState}
+          opponentName={displayOpponentName}
+          opponentConnected={opponentConnected}
+          opponentEverConnected={opponentEverConnected}
+          opponentDone={opponentDone}
+          timerExpired={timerExpired}
+          hasForfeit={hasForfeit}
+          themeName={themeName}
+          showExpanded={showOpponentExpanded}
+          onToggleExpanded={setShowOpponentExpanded}
+        />
 
         {/* Leave button at the bottom */}
         {!isMatchResolved && (

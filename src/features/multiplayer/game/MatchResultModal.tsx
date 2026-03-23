@@ -75,6 +75,10 @@ export default function MatchResultModal({
     : localWon
       ? "mp-elo-change mp-elo-change-positive"
       : "mp-elo-change mp-elo-change-negative";
+  const showMetaStack =
+    gameMode === "friendly" ||
+    localEloDelta !== null ||
+    (opponentWantsRematch && !localWantsRematch);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const confettiPieces = useMemo(() => generateConfetti(30), [show, localWon]);
@@ -127,31 +131,35 @@ export default function MatchResultModal({
         </div>
       </div>
 
-      {gameMode === "ranked" && localEloDelta !== null && (
-        <div className="mp-elo-section">
-          <span className={eloChangeClass}>
-            {localEloDelta >= 0 ? "+" : ""}
-            {localEloDelta} ELO
-          </span>
-          {localEloRank && localEloAfter !== null && (
-            <div className="mp-elo-rank-row" style={{ padding: 0 }}>
-              <span className={`elo-rank-badge elo-rank-${localEloRank.name.toLowerCase()}`}>
-                {localEloRank.name}
+      {showMetaStack && (
+        <div className="mp-result-meta-stack">
+          {gameMode === "ranked" && localEloDelta !== null && (
+            <div className="mp-elo-section">
+              <span className={eloChangeClass}>
+                {localEloDelta >= 0 ? "+" : ""}
+                {localEloDelta} ELO
               </span>
-              <span className="mp-elo-rating">{localEloAfter} ELO</span>
+              {localEloRank && localEloAfter !== null && (
+                <div className="mp-elo-rank-row">
+                  <span className={`elo-rank-badge elo-rank-${localEloRank.name.toLowerCase()}`}>
+                    {localEloRank.name}
+                  </span>
+                  <span className="mp-elo-rating">{localEloAfter} ELO</span>
+                </div>
+              )}
             </div>
           )}
+
+          {gameMode === "friendly" && (
+            <p className="mp-friendly-label">Friendly Match — no ELO change</p>
+          )}
+
+          {opponentWantsRematch && !localWantsRematch && (
+            <p className="mp-rematch-hint" role="status" aria-live="polite">
+              {opponentName} wants a rematch!
+            </p>
+          )}
         </div>
-      )}
-
-      {gameMode === "friendly" && (
-        <p className="mp-friendly-label">Friendly Match — no ELO change</p>
-      )}
-
-      {opponentWantsRematch && !localWantsRematch && (
-        <p className="mp-rematch-hint" role="status" aria-live="polite">
-          {opponentName} wants a rematch!
-        </p>
       )}
 
       <div className="mp-result-actions-stack">
@@ -163,14 +171,16 @@ export default function MatchResultModal({
             : "Rematch"}
         </Button>
         {localWantsRematch && !opponentConnected && gameMode === "friendly" && onShareInvite && (
-          <>
+          <div className="mp-result-share-block">
             <p className="mp-rematch-hint">Opponent left — share the link to invite them back</p>
             <Button variant="secondary" fullWidth onClick={onShareInvite}>
               Share Invite Link
             </Button>
-          </>
+          </div>
         )}
-        <div className="mp-result-actions-row">
+        <div
+          className={`mp-result-actions-row ${gameMode === "friendly" ? "mp-result-actions-row-single" : ""}`}
+        >
           {gameMode === "ranked" && (
             <Button variant="secondary" onClick={onNewOpponent}>
               New Opponent

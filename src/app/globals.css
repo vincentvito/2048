@@ -1081,6 +1081,11 @@ body {
   font-weight: 700;
   cursor: pointer;
   transition: background 0.15s ease;
+  list-style: none;
+}
+
+.how-to-play-toggle::-webkit-details-marker {
+  display: none;
 }
 
 .how-to-play-toggle:hover {
@@ -1092,8 +1097,22 @@ body {
   color: var(--accent);
 }
 
-.toggle-icon.open {
+.how-to-play[open] .toggle-icon {
   transform: rotate(180deg);
+}
+
+/* Controls: show desktop text by default, mobile text on touch devices */
+.controls-mobile {
+  display: none;
+}
+
+@media (pointer: coarse) and (max-width: 600px) {
+  .controls-desktop {
+    display: none;
+  }
+  .controls-mobile {
+    display: inline;
+  }
 }
 
 .how-to-play-content {
@@ -5813,13 +5832,41 @@ button:focus-visible,
 .site-footer {
   background: var(--bg-card);
   border-top: 1px solid var(--bg-card-border);
-  padding: 32px 16px;
+  margin-top: 48px;
+  padding: 40px 16px;
   text-align: center;
 }
 
 .site-footer-inner {
   max-width: 640px;
   margin: 0 auto;
+}
+
+.site-footer-about {
+  max-width: 520px;
+  margin: 0 auto 20px;
+  font-size: 0.85rem;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  opacity: 0.85;
+}
+
+.site-footer-about p {
+  margin: 0 0 8px;
+}
+
+.site-footer-about p:last-child {
+  margin-bottom: 0;
+}
+
+.site-footer-about a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.site-footer-about a:hover {
+  opacity: 0.8;
 }
 
 .site-footer-links {

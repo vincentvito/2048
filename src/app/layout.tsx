@@ -78,6 +78,29 @@ export default function RootLayout({
 }>): React.ReactElement {
   return (
     <html lang="en" className={`${fredoka.variable} ${nunito.variable} ${racingSansOne.variable}`}>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebApplication",
+              name: "The 2048 League",
+              url: "https://www.the2048league.com",
+              description:
+                "Play 2048 online for free. Compete on leaderboards and challenge friends in real-time multiplayer with ELO-based ranking.",
+              applicationCategory: "GameApplication",
+              genre: "Puzzle",
+              operatingSystem: "Any",
+              offers: {
+                "@type": "Offer",
+                price: "0",
+                priceCurrency: "USD",
+              },
+            }),
+          }}
+        />
+      </head>
       <body>
         <ThemeProvider>
           <ParticleProvider>{children}</ParticleProvider>

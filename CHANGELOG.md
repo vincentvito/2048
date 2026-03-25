@@ -7,7 +7,8 @@
 - SEO content pages: `/how-to-play` (rules and tutorial), `/strategy` (strategy guide with corner method, snake pattern, and multiplayer tips), and `/blog` (article listing)
 - Blog section with three initial articles: "How to Win at 2048: The Complete Strategy Guide", "What is ELO Rating in 2048?", and "Multiplayer 2048: Tips for Beginners"
 - `sitemap.ts` and `robots.ts` for search engine discoverability
-- Site footer with links to How to Play, Strategy Guide, and Blog (added to root layout)
+- Site footer with links to How to Play, Strategy Guide, and Blog, plus a server-rendered "about" blurb with SEO keywords (added to root layout)
+- JSON-LD structured data (WebApplication/Game schema) in the document head for rich search results
 - `--overlay-neutral` CSS variable across all themes for consistent neutral overlay backgrounds
 - Tablet breakpoint (521px-1079px) with dedicated layout rules for body padding, container widths, modal sizing, and multiplayer lobby
 - Focus trap in mobile menu drawer with Tab cycling, Escape-to-close, and focus restore on close
@@ -38,6 +39,7 @@
 - Auth card shadow uses theme variable `--board-shadow-a` instead of hardcoded `rgba`
 - Hardcoded overlay backgrounds replaced with `var(--overlay-neutral)` for theme consistency
 - Removed `transition: max-width 0.3s ease` from `.container` (unnecessary layout transition)
+- Refactored `HowToPlay` component from client-rendered (useState/useEffect) to server-rendered using native `<details>`/`<summary>`. Instructional text is now crawlable by search engines. Mobile/desktop controls text uses CSS media queries (`pointer: coarse`) instead of JavaScript detection
 
 ### Fixed
 

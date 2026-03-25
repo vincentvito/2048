@@ -220,7 +220,7 @@
 }
 
 [data-theme="midnight"] .brand-logo {
-  background: rgba(51, 65, 85, 0.7);
+  background: #fffff3;
   border: 1px solid rgba(139, 92, 246, 0.3);
   border-radius: 18px;
   padding: 10px 16px;

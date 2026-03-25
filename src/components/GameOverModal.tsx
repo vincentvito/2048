@@ -194,7 +194,7 @@ export default function GameOverModal({
         <div className="modal-rank-context">
           <div className="modal-rank-header">
             <span className="modal-rank-icon">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                 <path
                   d="M8 1L10.09 5.26L14.75 5.94L11.375 9.23L12.18 13.87L8 11.67L3.82 13.87L4.625 9.23L1.25 5.94L5.91 5.26L8 1Z"
                   fill="currentColor"
@@ -266,6 +266,7 @@ export default function GameOverModal({
           width="16"
           height="16"
           viewBox="0 0 24 24"
+          aria-hidden="true"
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
@@ -289,7 +290,7 @@ export default function GameOverModal({
             className="modal-btn-leaderboard"
             onClick={() => setShowEmail(true)}
           >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="modal-btn-icon">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="modal-btn-icon">
               <path
                 d="M4 12V10M8 12V8M12 12V6M2 4L8 2L14 4"
                 stroke="currentColor"

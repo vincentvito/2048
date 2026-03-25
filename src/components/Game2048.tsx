@@ -1312,8 +1312,9 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
         <canvas
           ref={canvasRef}
           className={`game-canvas${canvasReady ? "" : " game-canvas-hidden"}`}
-          role="grid"
-          aria-label="2048 game board"
+          role="application"
+          aria-label="2048 game board — use arrow keys to move tiles"
+          tabIndex={0}
         />
         <div
           ref={announcementRef}

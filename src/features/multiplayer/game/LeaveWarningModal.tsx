@@ -13,27 +13,15 @@ interface LeaveWarningModalProps {
 export default function LeaveWarningModal({ show, onCancel, onConfirm }: LeaveWarningModalProps) {
   return (
     <Modal open={show} onClose={onCancel} labelledBy="leave-warning-title">
-      <div style={{ textAlign: "center", padding: "4px 0" }}>
-        <h2
-          id="leave-warning-title"
-          style={{ margin: "0 0 12px", fontSize: "1.4rem", color: "var(--text-primary)" }}
-        >
+      <div className="modal-confirm-body">
+        <h2 id="leave-warning-title" className="modal-confirm-title">
           Leave Match?
         </h2>
-        <p style={{ margin: "0 0 8px", color: "var(--text-secondary)", fontSize: "0.95rem" }}>
-          Leaving now will count as a forfeit.
-        </p>
-        <p
-          style={{
-            margin: "0 0 20px",
-            color: "var(--color-danger)",
-            fontSize: "0.9rem",
-            fontWeight: 500,
-          }}
-        >
+        <p className="modal-confirm-desc">Leaving now will count as a forfeit.</p>
+        <p className="modal-confirm-desc" style={{ color: "var(--color-danger)" }}>
           Your ELO rating will decrease.
         </p>
-        <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+        <div className="modal-confirm-actions">
           <Button variant="secondary" onClick={onCancel}>
             Keep Playing
           </Button>

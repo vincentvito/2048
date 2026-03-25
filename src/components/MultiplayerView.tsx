@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useCallback, useEffect, useMemo } from "react";
-import confetti from "canvas-confetti";
+import type confettiModule from "canvas-confetti";
 import Game2048, { GameState, type Game2048Handle } from "./Game2048";
 import EmailSignIn from "./EmailSignIn";
 import { isSupabaseConfigured } from "@/lib/supabase-client";
@@ -268,14 +268,17 @@ export default function MultiplayerView({
       return false;
     };
     if (applyRestore()) return;
+    let rafId: number;
     let attempts = 0;
-    const interval = setInterval(() => {
-      if (applyRestore() || ++attempts >= 10) {
-        clearInterval(interval);
-        if (attempts >= 10) suppressStateRef.current = false;
+    const retry = () => {
+      if (applyRestore() || ++attempts >= 20) {
+        if (attempts >= 20) suppressStateRef.current = false;
+        return;
       }
-    }, 100);
-    return () => clearInterval(interval);
+      rafId = requestAnimationFrame(retry);
+    };
+    rafId = requestAnimationFrame(retry);
+    return () => cancelAnimationFrame(rafId);
   }, [restoredLocalState]);
 
   // Load server-generated initial board when a new game starts
@@ -295,11 +298,14 @@ export default function MultiplayerView({
       return false;
     };
     if (applyInitial()) return;
+    let rafId: number;
     let attempts = 0;
-    const interval = setInterval(() => {
-      if (applyInitial() || ++attempts >= 10) clearInterval(interval);
-    }, 100);
-    return () => clearInterval(interval);
+    const retry = () => {
+      if (applyInitial() || ++attempts >= 20) return;
+      rafId = requestAnimationFrame(retry);
+    };
+    rafId = requestAnimationFrame(retry);
+    return () => cancelAnimationFrame(rafId);
   }, [initialServerState]);
 
   // Sync server-authoritative state after each move to keep client and server grids aligned.
@@ -507,31 +513,34 @@ export default function MultiplayerView({
     gameMode,
   ]);
 
-  // Fire confetti when local player wins
+  // Fire confetti when local player wins (dynamic import to avoid bundling on load)
   useEffect(() => {
     if (isMatchResolved && localWon && !confettiFiredRef.current) {
       confettiFiredRef.current = true;
       const currentTheme = themeName;
       const confettiColors = themes[currentTheme]?.confettiColors ?? themes.classic.confettiColors;
-      const end = Date.now() + 2000;
-      const frame = () => {
-        confetti({
-          particleCount: 3,
-          angle: 60,
-          spread: 55,
-          origin: { x: 0, y: 0.6 },
-          colors: confettiColors,
-        });
-        confetti({
-          particleCount: 3,
-          angle: 120,
-          spread: 55,
-          origin: { x: 1, y: 0.6 },
-          colors: confettiColors,
-        });
-        if (Date.now() < end) requestAnimationFrame(frame);
-      };
-      frame();
+      import("canvas-confetti").then((mod) => {
+        const confetti = mod.default as typeof confettiModule;
+        const end = Date.now() + 2000;
+        const frame = () => {
+          confetti({
+            particleCount: 3,
+            angle: 60,
+            spread: 55,
+            origin: { x: 0, y: 0.6 },
+            colors: confettiColors,
+          });
+          confetti({
+            particleCount: 3,
+            angle: 120,
+            spread: 55,
+            origin: { x: 1, y: 0.6 },
+            colors: confettiColors,
+          });
+          if (Date.now() < end) requestAnimationFrame(frame);
+        };
+        frame();
+      });
     }
   }, [isMatchResolved, localWon, themeName]);
 
@@ -577,7 +586,7 @@ export default function MultiplayerView({
     return (
       <div className="mp-lobby">
         <h2 className="mp-lobby-title">Joining Game</h2>
-        <div className="loader" style={{ margin: "20px auto" }}></div>
+        <div className="loader loader-center"></div>
         <p className="hint">Connecting...</p>
         <button
           className="mp-back-btn"
@@ -733,7 +742,7 @@ export default function MultiplayerView({
             <span className="mp-invite-url">{inviteUrl}</span>
           </div>
 
-          <div className="loader" style={{ margin: "20px auto" }}></div>
+          <div className="loader loader-center"></div>
           <p className="hint">Waiting for friend to join...</p>
           <button className="mp-back-btn" onClick={handleCancelFriend}>
             Cancel
@@ -853,7 +862,7 @@ export default function MultiplayerView({
             </span>
           </div>
         )}
-        <div className="loader" style={{ margin: "20px auto" }}></div>
+        <div className="loader loader-center"></div>
         <div className="mp-search-timer">
           <p className="mp-search-timer-text">
             Looking for a human player...{" "}

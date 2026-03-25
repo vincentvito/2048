@@ -125,7 +125,7 @@ export default function InstallBanner(): React.ReactElement | null {
   return (
     <div className="install-banner">
       <div className="install-banner-content">
-        <img src="/icon-192x192.png" alt="" className="install-banner-icon" />
+        <img src="/icon-192x192.png" alt="" className="install-banner-icon" width={44} height={44} loading="lazy" />
         <div className="install-banner-text">
           <strong>Install 2048</strong>
           {isIOS ? (

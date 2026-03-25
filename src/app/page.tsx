@@ -134,9 +134,10 @@ function HomeInner(): React.ReactElement {
         onScoresLoaded={setLeaderboardScores}
       />
 
-      <div
+      <main
         className={`container${gameMode === "single" && activeGridSize === 8 ? " container-wide" : ""}`}
       >
+        <h1 className="sr-only">The 2048 League</h1>
         {/* Title - hidden during active match */}
         {!matchActive && (
           <div className="title-section">
@@ -153,10 +154,11 @@ function HomeInner(): React.ReactElement {
 
         {/* Mode toggle - hidden during active match */}
         {!matchActive && (
-          <div className="below-board-controls" style={{ marginBottom: "20px" }}>
-            <div className="grid-size-control" style={{ display: "flex", gap: "8px" }}>
+          <div className="below-board-controls below-board-controls-spaced">
+            <div className="grid-size-control grid-size-control-loose" role="group" aria-label="Game mode">
               <button
                 className={`grid-size-option${gameMode === "single" ? " grid-size-active" : ""}`}
+                aria-pressed={gameMode === "single"}
                 onClick={() => handleGridSizeChange(4)}
               >
                 Single Player
@@ -164,6 +166,7 @@ function HomeInner(): React.ReactElement {
               {isSupabaseConfigured() && (
                 <button
                   className={`grid-size-option${gameMode === "multi" ? " grid-size-active" : ""}`}
+                  aria-pressed={gameMode === "multi"}
                   onClick={() => {
                     setActiveGridSize(4);
                     setGameMode("multi");
@@ -220,29 +223,18 @@ function HomeInner(): React.ReactElement {
           }}
           labelledBy="rejoin-title"
         >
-          <div style={{ textAlign: "center", padding: "4px 0" }}>
-            <h2 id="rejoin-title" style={{ margin: "0 0 12px", fontSize: "1.4rem" }}>
+          <div className="modal-confirm-body">
+            <h2 id="rejoin-title" className="modal-confirm-title">
               Match In Progress
             </h2>
-            <p style={{ margin: "0 0 8px", color: "var(--text-secondary)", fontSize: "0.95rem" }}>
+            <p className="modal-confirm-desc">
               You have an active {pendingSession?.gameMode === "friendly" ? "friendly" : "ranked"}{" "}
               match
             </p>
             {pendingSession?.friendRoomCode && (
-              <p
-                style={{
-                  margin: "0 0 4px",
-                  fontFamily: "monospace",
-                  fontSize: "1.1rem",
-                  fontWeight: 600,
-                }}
-              >
-                Room: {pendingSession.friendRoomCode}
-              </p>
+              <p className="modal-room-code">Room: {pendingSession.friendRoomCode}</p>
             )}
-            <div
-              style={{ display: "flex", gap: "12px", justifyContent: "center", marginTop: "24px" }}
-            >
+            <div className="modal-confirm-actions">
               <Button
                 variant="primary"
                 onClick={() => {
@@ -264,7 +256,7 @@ function HomeInner(): React.ReactElement {
             </div>
           </div>
         </Modal>
-      </div>
+      </main>
     </div>
   );
 }

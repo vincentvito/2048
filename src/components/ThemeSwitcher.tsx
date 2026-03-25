@@ -13,7 +13,7 @@ export default function ThemeSwitcher({
   onChange,
 }: ThemeSwitcherProps): React.ReactElement {
   return (
-    <div className="theme-switcher">
+    <div className="theme-switcher" role="group" aria-label="Theme">
       {themeNames.map((name) => {
         const colors = themePreviewColors[name];
         const theme = themes[name];
@@ -22,6 +22,7 @@ export default function ThemeSwitcher({
           <button
             key={name}
             className={`theme-option${isActive ? " theme-option-active" : ""}`}
+            aria-pressed={isActive}
             onClick={() => onChange(name)}
             aria-label={`${themeLabels[name]} theme`}
             title={themeLabels[name]}

@@ -3,10 +3,11 @@
 import React, { useMemo } from "react";
 import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
+import { useTheme } from "@/features/theme/ThemeProvider";
+import { themes } from "@/lib/themes";
 
 /** Generate confetti pieces for win celebration */
-function generateConfetti(count: number) {
-  const colors = ["#fbbf24", "#f59e0b", "#34d399", "#60a5fa", "#f472b6", "#a78bfa"];
+function generateConfetti(count: number, colors: string[]) {
   return Array.from({ length: count }, (_, i) => ({
     id: i,
     left: Math.random() * 100,
@@ -80,8 +81,13 @@ export default function MatchResultModal({
     localEloDelta !== null ||
     (opponentWantsRematch && !localWantsRematch);
 
+  const { theme: themeName } = useTheme();
+  const themeColors = themes[themeName as keyof typeof themes] || themes.classic;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const confettiPieces = useMemo(() => generateConfetti(30), [show, localWon]);
+  const confettiPieces = useMemo(
+    () => generateConfetti(30, themeColors.confettiColors),
+    [show, localWon, themeName]
+  );
 
   return (
     <Modal open={show} labelledBy="match-result-title" className="mp-result-card-inner">

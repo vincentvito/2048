@@ -15,12 +15,12 @@ import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
 import { saveScore } from "@/lib/score-service";
 import { useTheme } from "@/features/theme/ThemeProvider";
+import { themes } from "@/lib/themes";
 import { type AppUser } from "@/features/auth/types";
 import { LeaderboardEntry } from "@/components/Leaderboard";
 import { useGameFeedback } from "@/hooks/useGameFeedback";
 
-function generateConfettiPieces(count: number) {
-  const colors = ["#edc22e", "#f2b179", "#f67c5f", "#e8d4b0", "#8f7a66"];
+function generateConfettiPieces(count: number, colors: string[]) {
   return Array.from({ length: count }, (_, i) => ({
     id: i,
     left: Math.random() * 100,
@@ -97,7 +97,12 @@ const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProp
       }
     }, [isDev]);
 
-    const confettiPieces = useMemo(() => generateConfettiPieces(35), [showConfetti]);
+    const themeColors = themes[theme as keyof typeof themes] || themes.classic;
+    const confettiPieces = useMemo(
+      () => generateConfettiPieces(35, themeColors.confettiColors),
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [showConfetti, theme]
+    );
 
     const handleResetReady = useCallback((resetFn: () => void) => {
       gameResetRef.current = resetFn;
@@ -313,17 +318,12 @@ const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProp
           onClose={() => setShowNewGameConfirm(false)}
           labelledBy="new-game-confirm-title"
         >
-          <div style={{ textAlign: "center", padding: "4px 0" }}>
-            <h2
-              id="new-game-confirm-title"
-              style={{ margin: "0 0 8px", fontSize: "1.4rem", color: "var(--text-primary)" }}
-            >
+          <div className="modal-confirm-body">
+            <h2 id="new-game-confirm-title" className="modal-confirm-title">
               Start New Game?
             </h2>
-            <p style={{ margin: "0 0 20px", color: "var(--text-secondary)", fontSize: "0.95rem" }}>
-              Your current game progress will be lost.
-            </p>
-            <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+            <p className="modal-confirm-desc">Your current game progress will be lost.</p>
+            <div className="modal-confirm-actions">
               <Button variant="secondary" onClick={() => setShowNewGameConfirm(false)}>
                 Keep Playing
               </Button>

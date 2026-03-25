@@ -8,11 +8,42 @@
 - Blog section with three initial articles: "How to Win at 2048: The Complete Strategy Guide", "What is ELO Rating in 2048?", and "Multiplayer 2048: Tips for Beginners"
 - `sitemap.ts` and `robots.ts` for search engine discoverability
 - Site footer with links to How to Play, Strategy Guide, and Blog (added to root layout)
+- `--overlay-neutral` CSS variable across all themes for consistent neutral overlay backgrounds
+- Tablet breakpoint (521px-1079px) with dedicated layout rules for body padding, container widths, modal sizing, and multiplayer lobby
+- Focus trap in mobile menu drawer with Tab cycling, Escape-to-close, and focus restore on close
+- Accessibility: game canvas uses `role="application"` with `tabIndex={0}` for proper keyboard interaction
+- Accessibility: leaderboard tabs use `role="tablist"`/`role="tab"` with `aria-selected`
+- Accessibility: theme switcher uses `role="group"` with `aria-pressed` on each option
+- Accessibility: game mode toggle buttons use `aria-pressed`
+- Accessibility: decorative SVG icons marked with `aria-hidden="true"` throughout components
+- Accessibility: replaced `outline: none` with `outline: 2px solid transparent` for visible focus rings on inputs and interactive elements
+- Visually hidden `<h1>` on main page for screen readers and SEO
+- `<main>` landmark wrapper on the home page (was a plain `<div>`)
+- Shared `.modal-confirm-body` / `.modal-confirm-title` / `.modal-confirm-desc` / `.modal-confirm-actions` CSS classes for consistent confirm dialog styling
+- `.loader` / `.loader-center` CSS classes for consistent spinner styling
+- `.auth-success` CSS styles for the post-login redirect page (replaces Tailwind utility classes)
+- `.below-board-controls-spaced` and `.grid-size-control-loose` utility classes
+
+### Changed
+
+- Confetti colors in single-player win modal and multiplayer result modal now use the active theme's palette instead of hardcoded colors
+- `canvas-confetti` is now dynamically imported in multiplayer (reduces initial bundle size)
+- Multiplayer state restore/initial-board retries use `requestAnimationFrame` instead of `setInterval` for smoother application
+- Mobile menu drawer breakpoint widened from 600px to 1079px (visible on tablets without desktop sidebar)
+- Mobile touch targets for "New Game" button and grid-size options increased to 44px minimum height
+- Auth success page uses semantic CSS classes instead of Tailwind utilities
+- Confirm dialogs (new game, rejoin match, leave warning) use shared `.modal-confirm-*` classes instead of inline styles
+- Multiplayer loader spinners use `.loader-center` class instead of inline margin styles
+- Install banner icon has explicit `width`/`height` and `loading="lazy"`
+- Auth card shadow uses theme variable `--board-shadow-a` instead of hardcoded `rgba`
+- Hardcoded overlay backgrounds replaced with `var(--overlay-neutral)` for theme consistency
+- Removed `transition: max-width 0.3s ease` from `.container` (unnecessary layout transition)
 
 ### Fixed
 
 - Centered "Sign in with email" and "Play with a Friend" buttons in multiplayer auth gate (added flex centering to `.mp-auth-card`)
 - Fixed multiplayer post-match "Menu" and "New Opponent" buttons being hard to read on hover (dark text on dark hover background). Buttons in the result actions row now use dark background with white text, consistent with the primary button style
+- Opponent side card now shows a visible `outline` on `:focus-visible` instead of suppressing it
 
 ## [Previous] - 2026-03-23
 

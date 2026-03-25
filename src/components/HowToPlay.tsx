@@ -34,6 +34,7 @@ export default function HowToPlay(): React.ReactElement {
           height="16"
           viewBox="0 0 16 16"
           fill="none"
+          aria-hidden="true"
         >
           <path
             d="M4 6L8 10L12 6"

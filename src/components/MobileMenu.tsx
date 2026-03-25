@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import Leaderboard from "./Leaderboard";
 import HowToPlay from "./HowToPlay";
 import EmailSignIn from "./EmailSignIn";
@@ -35,6 +35,8 @@ export default function MobileMenu({
   const [showSignIn, setShowSignIn] = useState(false);
   const { enabled: particlesEnabled, setEnabled: setParticlesEnabled } = useParticles();
   const { hapticsEnabled, setHapticsEnabled } = useHapticsEnabled();
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   const close = useCallback(() => {
     setOpen(false);
@@ -53,14 +55,53 @@ export default function MobileMenu({
     };
   }, [open]);
 
-  // Close on Escape
+  // Focus trap, Escape close, and focus restore
   useEffect(() => {
     if (!open) return;
+
+    previousFocusRef.current = document.activeElement as HTMLElement;
+
+    // Focus the close button after a tick
+    const timer = setTimeout(() => {
+      const firstBtn = drawerRef.current?.querySelector<HTMLElement>("button:not([disabled])");
+      firstBtn?.focus();
+    }, 50);
+
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
+      if (e.key === "Escape") {
+        close();
+        return;
+      }
+
+      if (e.key === "Tab" && drawerRef.current) {
+        const focusable = drawerRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length === 0) return;
+
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+
+    document.addEventListener("keydown", onKey);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("keydown", onKey);
+      previousFocusRef.current?.focus();
+    };
   }, [open, close]);
 
   const displayName = user ? getDisplayName(user) : null;
@@ -84,6 +125,7 @@ export default function MobileMenu({
 
       {/* Drawer */}
       <div
+        ref={drawerRef}
         className={`mobile-menu-drawer ${open ? "open" : ""}`}
         role="dialog"
         aria-modal="true"

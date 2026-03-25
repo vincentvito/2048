@@ -142,14 +142,18 @@ export default function Leaderboard({
 
   return (
     <div className="lb-container">
-      <div className="lb-tabs">
+      <div className="lb-tabs" role="tablist" aria-label="Leaderboard time period">
         <button
+          role="tab"
+          aria-selected={tab === "today"}
           onClick={() => setTab("today")}
           className={`lb-tab ${tab === "today" ? "lb-tab-active" : ""}`}
         >
           Today
         </button>
         <button
+          role="tab"
+          aria-selected={tab === "alltime"}
           onClick={() => setTab("alltime")}
           className={`lb-tab ${tab === "alltime" ? "lb-tab-active" : ""}`}
         >
@@ -169,7 +173,7 @@ export default function Leaderboard({
       ) : scores.length === 0 && !ghostRank ? (
         <div className="lb-empty-state">
           <div className="lb-empty-icon">
-            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
               <path
                 d="M16 4L20.18 12.52L29.5 13.88L22.75 20.46L24.36 29.74L16 25.34L7.64 29.74L9.25 20.46L2.5 13.88L11.82 12.52L16 4Z"
                 stroke="currentColor"

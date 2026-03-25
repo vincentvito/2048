@@ -4004,21 +4004,23 @@ button:focus-visible,
 }
 
 .mp-board-label {
-  color: var(--text-secondary);
-  font-size: 0.82rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
+  color: var(--text-primary);
+  font-family: var(--font-racing-sans-one), var(--font-fredoka), sans-serif;
+  font-size: 0.98rem;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
 .mp-side-stage {
-  width: 136px;
-  flex: 0 0 136px;
+  width: 118px;
+  flex: 0 0 118px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 12px;
+  justify-content: flex-start;
+  gap: 8px;
   transition: opacity 0.3s ease;
 }
 
@@ -4029,9 +4031,9 @@ button:focus-visible,
 .mp-versus-text {
   color: var(--accent);
   font-family: var(--font-racing-sans-one), var(--font-fredoka), sans-serif;
-  font-size: clamp(2rem, 6vw, 2.8rem);
+  font-size: clamp(1.9rem, 5vw, 2.5rem);
   line-height: 1;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.03em;
   text-shadow: 0 8px 18px rgba(245, 158, 11, 0.22);
 }
 
@@ -4040,33 +4042,25 @@ button:focus-visible,
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 12px 10px 14px;
-  border-radius: 24px;
-  border: 1px solid var(--accent-border-medium);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92));
-  box-shadow:
-    0 10px 24px rgba(15, 23, 42, 0.08),
-    0 2px 8px rgba(15, 23, 42, 0.04);
+  gap: 8px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   cursor: pointer;
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
-    border-color 0.2s ease;
+  transition: transform 0.2s ease;
 }
 
 .mp-opponent-side-card:hover,
 .mp-opponent-side-card:focus-visible {
-  transform: translateY(-2px);
-  border-color: rgba(245, 158, 11, 0.4);
-  box-shadow:
-    0 14px 28px rgba(15, 23, 42, 0.1),
-    0 4px 12px rgba(15, 23, 42, 0.06);
+  transform: translateY(-1px);
   outline: none;
 }
 
 .mp-opponent-side-card .opponent-game-container {
   width: 100%;
+  border-radius: 8px;
 }
 
 .mp-opponent-side-name {
@@ -4076,9 +4070,9 @@ button:focus-visible,
   white-space: nowrap;
   color: var(--text-primary);
   font-family: var(--font-racing-sans-one), var(--font-fredoka), sans-serif;
-  font-size: 1.15rem;
+  font-size: 0.92rem;
   line-height: 1;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.03em;
   text-align: center;
 }
 
@@ -4842,6 +4836,7 @@ button:focus-visible,
 
 .boards-split {
   display: flex;
+  flex-wrap: nowrap;
   align-items: stretch;
   justify-content: center;
   gap: 14px;
@@ -4874,12 +4869,18 @@ button:focus-visible,
 
 .board-section-mini {
   width: 100%;
-  max-width: 188px;
+  max-width: 96px;
 }
 
 .board-section-mini .game-container {
   display: flex;
   justify-content: center;
+}
+
+.board-section-mini .game-canvas,
+.board-section-mini .game-skeleton {
+  border-radius: 8px;
+  box-shadow: none;
 }
 
 .board-section-mini .overlay h2 {
@@ -5168,26 +5169,25 @@ button:focus-visible,
 
   .boards-split {
     align-items: flex-start;
-    gap: 10px;
+    gap: 8px;
   }
 
   .mp-side-stage {
-    width: 112px;
-    flex-basis: 112px;
-    gap: 10px;
+    width: 96px;
+    flex-basis: 96px;
+    gap: 7px;
   }
 
   .mp-opponent-side-card {
-    padding: 10px 8px 12px;
-    border-radius: 20px;
+    gap: 6px;
   }
 
   .mp-opponent-side-name {
-    font-size: 0.95rem;
+    font-size: 0.82rem;
   }
 
   .board-section-mini {
-    max-width: 156px;
+    max-width: 88px;
   }
 
   .mp-opponent-desktop {
@@ -5282,25 +5282,28 @@ button:focus-visible,
   }
 
   .mp-side-stage {
-    width: 96px;
-    flex-basis: 96px;
-    gap: 8px;
+    width: 88px;
+    flex-basis: 88px;
+    gap: 6px;
   }
 
   .mp-versus-text {
-    font-size: 1.55rem;
+    font-size: 1.7rem;
   }
 
   .board-section-mini {
-    max-width: 128px;
+    max-width: 84px;
   }
 
   .mp-opponent-side-card {
-    padding: 8px 6px 10px;
-    gap: 8px;
+    gap: 5px;
   }
 
   .mp-opponent-side-name {
-    font-size: 0.82rem;
+    font-size: 0.74rem;
+  }
+
+  .mp-board-label {
+    font-size: 0.84rem;
   }
 }

@@ -10,7 +10,8 @@ import React, {
 } from "react";
 import { ThemeColors, themes } from "@/lib/themes";
 
-const GAP = 12;
+const STANDARD_GAP = 8;
+const MINI_GAP = 4;
 const ANIM_DURATION = 50;
 const PULSE_DURATION = 120;
 const MOVE_DELAY = 60;
@@ -217,9 +218,10 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
     let animStart = 0;
     let authoritativeFallbackTimer: ReturnType<typeof setTimeout> | null = null;
     let authoritativeSnapshot: GameState | null = null;
+    const gap = miniMode ? MINI_GAP : STANDARD_GAP;
 
     function cellPos(i: number) {
-      return GAP + i * (CELL + GAP);
+      return gap + i * (CELL + gap);
     }
 
     function idx(r: number, c: number) {
@@ -237,11 +239,11 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
       // Reserve space for header (~200px), buttons below board (~100px), and browser chrome
       const reservedHeight = miniMode ? 0 : 300;
       const availableHeight = miniMode ? maxContainerWidth : window.innerHeight - reservedHeight;
-      const maxCellW = Math.floor((availableWidth - (SIZE + 1) * GAP) / SIZE);
-      const maxCellH = Math.floor((availableHeight - (SIZE + 1) * GAP) / SIZE);
+      const maxCellW = Math.floor((availableWidth - (SIZE + 1) * gap) / SIZE);
+      const maxCellH = Math.floor((availableHeight - (SIZE + 1) * gap) / SIZE);
       const idealCell = miniMode ? 32 : SIZE === 4 ? 100 : 64;
       CELL = Math.min(idealCell, maxCellW, Math.max(miniMode ? 24 : 30, maxCellH));
-      GRID_SIZE = SIZE * CELL + (SIZE + 1) * GAP;
+      GRID_SIZE = SIZE * CELL + (SIZE + 1) * gap;
       canvas.width = GRID_SIZE * dpr;
       canvas.height = GRID_SIZE * dpr;
       canvas.style.width = GRID_SIZE + "px";
@@ -435,16 +437,18 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
     // afterwards so popups are painted exactly once per frame.
     function renderBoard(t = 1) {
       const theme = themeRef.current;
+      const boardRadius = miniMode ? 8 : 16;
+      const cellRadius = miniMode ? 4 : 12;
       ctx.fillStyle = theme.bgGrid;
       ctx.beginPath();
-      ctx.roundRect(0, 0, GRID_SIZE, GRID_SIZE, 16);
+      ctx.roundRect(0, 0, GRID_SIZE, GRID_SIZE, boardRadius);
       ctx.fill();
 
       ctx.fillStyle = theme.bgCell;
       for (let r = 0; r < SIZE; r++) {
         for (let c = 0; c < SIZE; c++) {
           ctx.beginPath();
-          ctx.roundRect(cellPos(c), cellPos(r), CELL, CELL, 12);
+          ctx.roundRect(cellPos(c), cellPos(r), CELL, CELL, cellRadius);
           ctx.fill();
         }
       }
@@ -488,7 +492,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
 
         ctx.fillStyle = colors[0];
         ctx.beginPath();
-        ctx.roundRect(-CELL / 2, -CELL / 2, CELL, CELL, 12);
+        ctx.roundRect(-CELL / 2, -CELL / 2, CELL, CELL, cellRadius);
         ctx.fill();
 
         // Reset shadow so it doesn't affect text
@@ -497,8 +501,9 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
 
         ctx.fillStyle = colors[1];
         const digits = String(tile.value).length;
+        const minimumFontSize = miniMode ? 6 : 10;
         const fontSize = Math.max(
-          10,
+          minimumFontSize,
           Math.floor(
             CELL *
               (digits <= 1

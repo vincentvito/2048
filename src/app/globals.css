@@ -220,8 +220,8 @@
 }
 
 [data-theme="midnight"] .brand-logo {
-  background: var(--bg-card);
-  border: 1px solid var(--bg-card-border);
+  background: rgba(51, 65, 85, 0.7);
+  border: 1px solid rgba(139, 92, 246, 0.3);
   border-radius: 18px;
   padding: 10px 16px;
 }

@@ -27,6 +27,9 @@ export default function Footer() {
           <li>
             <Link href="/blog">Blog</Link>
           </li>
+          <li>
+            <Link href="/privacy">Privacy Policy</Link>
+          </li>
         </ul>
         <p className="site-footer-copy">
           &copy; {new Date().getFullYear()} The 2048 League

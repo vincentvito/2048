@@ -7,7 +7,8 @@
 - SEO content pages: `/how-to-play` (rules and tutorial), `/strategy` (strategy guide with corner method, snake pattern, and multiplayer tips), and `/blog` (article listing)
 - Blog section with three initial articles: "How to Win at 2048: The Complete Strategy Guide", "What is ELO Rating in 2048?", and "Multiplayer 2048: Tips for Beginners"
 - `sitemap.ts` and `robots.ts` for search engine discoverability
-- Site footer with links to How to Play, Strategy Guide, and Blog, plus a server-rendered "about" blurb with SEO keywords (added to root layout)
+- `/privacy` page with privacy policy covering account data, game data, cookies, third-party services (Supabase, Resend, PartyKit, Google Fonts), guest play, and data deletion rights
+- Site footer with links to How to Play, Strategy Guide, Blog, and Privacy Policy, plus a server-rendered "about" blurb with SEO keywords (added to root layout)
 - JSON-LD structured data (WebApplication/Game schema) in the document head for rich search results
 - `--overlay-neutral` CSS variable across all themes for consistent neutral overlay backgrounds
 - Tablet breakpoint (521px-1079px) with dedicated layout rules for body padding, container widths, modal sizing, and multiplayer lobby

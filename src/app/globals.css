@@ -2670,9 +2670,13 @@ button:focus-visible,
     width: 100%;
   }
 
+  .brand-logo {
+    height: 72px;
+  }
+
   /* Title section */
   .title-section {
-    padding: 16px 0 8px;
+    padding: 12px 0 6px;
   }
 
   .game-title {
@@ -2849,8 +2853,12 @@ button:focus-visible,
     padding: 0 10px;
   }
 
+  .brand-logo {
+    height: 60px;
+  }
+
   .title-section {
-    padding: 10px 0 6px;
+    padding: 8px 0 4px;
   }
 
   .game-title {

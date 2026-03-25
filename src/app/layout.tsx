@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/features/theme/ThemeProvider";
 import { Toaster } from "sonner";
 import { ParticleProvider } from "@/components/EmojiParticles";
 import InstallBanner from "@/components/InstallBanner";
+import Footer from "@/components/Footer";
 
 const fredoka = Fredoka({
   subsets: ["latin"],
@@ -84,6 +85,7 @@ export default function RootLayout({
             <span className="landscape-blocker-icon">📱</span>
             <p className="landscape-blocker-text">Please rotate your device to portrait mode</p>
           </div>
+          <Footer />
           <InstallBanner />
           <Toaster position="top-right" richColors />
         </ThemeProvider>

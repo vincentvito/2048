@@ -1,6 +1,20 @@
 # Changelog
 
-## [Unreleased] - 2026-03-23
+## [Unreleased] - 2026-03-25
+
+### Added
+
+- SEO content pages: `/how-to-play` (rules and tutorial), `/strategy` (strategy guide with corner method, snake pattern, and multiplayer tips), and `/blog` (article listing)
+- Blog section with three initial articles: "How to Win at 2048: The Complete Strategy Guide", "What is ELO Rating in 2048?", and "Multiplayer 2048: Tips for Beginners"
+- `sitemap.ts` and `robots.ts` for search engine discoverability
+- Site footer with links to How to Play, Strategy Guide, and Blog (added to root layout)
+
+### Fixed
+
+- Centered "Sign in with email" and "Play with a Friend" buttons in multiplayer auth gate (added flex centering to `.mp-auth-card`)
+- Fixed multiplayer post-match "Menu" and "New Opponent" buttons being hard to read on hover (dark text on dark hover background). Buttons in the result actions row now use dark background with white text, consistent with the primary button style
+
+## [Previous] - 2026-03-23
 
 ### Added
 

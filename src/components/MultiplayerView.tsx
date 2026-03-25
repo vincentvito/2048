@@ -619,8 +619,8 @@ export default function MultiplayerView({
   ) {
     if (!sessionLoaded) {
       return (
-        <div className="matchmaking-container">
-          <h2>Loading...</h2>
+        <div className="mp-lobby">
+          <h2 className="mp-lobby-title">Loading...</h2>
         </div>
       );
     }
@@ -630,59 +630,53 @@ export default function MultiplayerView({
       // If they navigated to friend menu, let them through
       if (lobbyScreen !== "create-room") {
         return (
-          <div className="matchmaking-container">
-            <h2>Login to play Multiplayer</h2>
-            <p>You need an account to be matched with online players.</p>
+          <div className="mp-lobby mp-auth-gate">
+            <div className="mp-auth-card">
+              <span className="mp-auth-eyebrow">Ranked multiplayer</span>
+              <h2 className="mp-lobby-title">Login to play Multiplayer</h2>
+              <p className="mp-lobby-subtitle mp-auth-copy">
+                You need an account to be matched with online players.
+              </p>
 
-            <div
-              style={{
-                marginTop: "20px",
-                display: "flex",
-                flexDirection: "column",
-                gap: "10px",
-                alignItems: "center",
-              }}
-            >
-              {!showSignIn ? (
-                <>
-                  <button
-                    type="button"
-                    className="modal-btn-leaderboard"
-                    style={{ width: "100%", maxWidth: "300px" }}
-                    onClick={() => setShowSignIn(true)}
-                  >
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 16 16"
-                      fill="none"
-                      className="modal-btn-icon"
+              <div className="mp-lobby-buttons mp-auth-actions">
+                {!showSignIn ? (
+                  <>
+                    <button
+                      type="button"
+                      className="modal-btn-leaderboard"
+                      onClick={() => setShowSignIn(true)}
                     >
-                      <path
-                        d="M4 12V10M8 12V8M12 12V6M2 4L8 2L14 4"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                    Sign in with email
-                  </button>
-                  <button
-                    className="mp-friend-btn"
-                    style={{ width: "100%", maxWidth: "300px" }}
-                    onClick={handlePlayWithFriend}
-                  >
-                    Play with a Friend
-                  </button>
-                </>
-              ) : (
-                <EmailSignIn
-                  variant="inline"
-                  maxWidth="300px"
-                  onCancel={() => setShowSignIn(false)}
-                />
-              )}
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 16 16"
+                        fill="none"
+                        className="modal-btn-icon"
+                      >
+                        <path
+                          d="M4 12V10M8 12V8M12 12V6M2 4L8 2L14 4"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      Sign in with email
+                    </button>
+                    <button className="mp-friend-btn" onClick={handlePlayWithFriend}>
+                      Play with a Friend
+                    </button>
+                  </>
+                ) : (
+                  <div className="mp-auth-inline-signin">
+                    <EmailSignIn
+                      variant="inline"
+                      maxWidth="300px"
+                      onCancel={() => setShowSignIn(false)}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         );

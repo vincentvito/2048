@@ -219,6 +219,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
     let authoritativeFallbackTimer: ReturnType<typeof setTimeout> | null = null;
     let authoritativeSnapshot: GameState | null = null;
     const gap = miniMode ? MINI_GAP : STANDARD_GAP;
+    const moveDuration = miniMode ? 100 : ANIM_DURATION;
 
     function cellPos(i: number) {
       return gap + i * (CELL + gap);
@@ -537,7 +538,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
     }
 
     function animate(now: number) {
-      const moveT = Math.min((now - animStart) / ANIM_DURATION, 1);
+      const moveT = Math.min((now - animStart) / moveDuration, 1);
       const ease = moveT < 0.5 ? 2 * moveT * moveT : 1 - Math.pow(-2 * moveT + 2, 2) / 2;
       const pulseT = (now - animStart) / PULSE_DURATION;
 

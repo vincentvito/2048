@@ -261,6 +261,8 @@
 }
 .ui-btn-secondary:hover {
   background: var(--bg-button-hover);
+  color: var(--text-on-accent);
+  border-color: transparent;
   transform: translateY(-1px);
 }
 .ui-btn-secondary:active {
@@ -4374,6 +4376,58 @@ button:focus-visible,
   text-align: center;
 }
 
+.mp-auth-gate {
+  max-width: 520px;
+  padding-top: 28px;
+}
+
+.mp-auth-card {
+  width: min(100%, 360px);
+  padding: 24px 22px 22px;
+  border: 1px solid var(--accent-border-light);
+  border-radius: 24px;
+  background: linear-gradient(180deg, var(--accent-bg-subtle) 0%, var(--bg-card) 100%);
+  box-shadow:
+    0 18px 40px rgba(120, 53, 15, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.mp-auth-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--accent-bg-light);
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mp-auth-copy {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 28ch;
+}
+
+.mp-auth-actions {
+  max-width: none;
+  margin-top: 22px;
+}
+
+.mp-auth-inline-signin {
+  width: 100%;
+}
+
+.mp-auth-card .modal-btn-leaderboard,
+.mp-auth-card .mp-friend-btn {
+  min-height: 52px;
+  border-radius: 14px;
+}
+
 .mp-lobby-title {
   margin: 0;
   font-family: var(--font-fredoka), "Fredoka", sans-serif;
@@ -5253,6 +5307,17 @@ button:focus-visible,
   .mp-friend-btn {
     height: 50px;
     font-size: 15px;
+  }
+
+  .mp-auth-card {
+    width: min(100%, 340px);
+    padding: 22px 18px 20px;
+    border-radius: 20px;
+  }
+
+  .mp-auth-card .modal-btn-leaderboard,
+  .mp-auth-card .mp-friend-btn {
+    min-height: 50px;
   }
 
   .mp-invite-url {

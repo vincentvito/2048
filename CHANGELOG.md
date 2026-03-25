@@ -47,6 +47,10 @@
 - Centered "Sign in with email" and "Play with a Friend" buttons in multiplayer auth gate (added flex centering to `.mp-auth-card`)
 - Fixed multiplayer post-match "Menu" and "New Opponent" buttons being hard to read on hover (dark text on dark hover background). Buttons in the result actions row now use dark background with white text, consistent with the primary button style
 - Opponent side card now shows a visible `outline` on `:focus-visible` instead of suppressing it
+- Fixed multiplayer HUD, stats card, and stats pills unreadable on midnight (purple) theme. Replaced hardcoded `rgba(255,255,255,...)` backgrounds with theme-aware `var(--bg-card)` so text remains visible on dark backgrounds
+- Fixed offline overlay and mini preview offline state using hardcoded white backgrounds. Now uses `var(--overlay-neutral)` for theme consistency
+- Fixed brand logo too large on mobile, pushing the board and below-board controls behind the browser chrome. Reduced to 72px on phones (520px and below) and 60px on tiny phones (360px and below)
+- Added more top padding to multiplayer boards container on mobile to prevent the board from hugging the top of the viewport during matches
 
 ## [Previous] - 2026-03-23
 

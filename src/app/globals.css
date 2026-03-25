@@ -5168,13 +5168,20 @@ button:focus-visible,
   }
 
   .boards-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 96px;
     align-items: flex-start;
     gap: 8px;
   }
 
+   .mp-board-stage {
+    width: 100%;
+   }
+
   .mp-side-stage {
     width: 96px;
-    flex-basis: 96px;
+    flex-basis: auto;
+    justify-self: end;
     gap: 7px;
   }
 
@@ -5278,12 +5285,13 @@ button:focus-visible,
   }
 
   .boards-split {
+    grid-template-columns: minmax(0, 1fr) 88px;
     gap: 8px;
   }
 
   .mp-side-stage {
     width: 88px;
-    flex-basis: 88px;
+    flex-basis: auto;
     gap: 6px;
   }
 

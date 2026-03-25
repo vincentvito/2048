@@ -4750,6 +4750,12 @@ button:focus-visible,
   border-radius: 12px;
   text-align: center;
   word-break: break-all;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.mp-invite-url-display:hover {
+  border-color: var(--accent);
 }
 
 .mp-invite-url {

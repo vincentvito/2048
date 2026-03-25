@@ -738,9 +738,23 @@ export default function MultiplayerView({
             {codeCopied ? "Link Copied!" : "Share Invite Link"}
           </button>
 
-          <div className="mp-invite-url-display">
-            <span className="mp-invite-url">{inviteUrl}</span>
-          </div>
+          <button
+            className="mp-invite-url-display"
+            type="button"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(inviteUrl);
+                setCodeCopied(true);
+                setTimeout(() => setCodeCopied(false), 2000);
+              } catch {
+                /* clipboard not available */
+              }
+            }}
+          >
+            <span className="mp-invite-url">
+              {codeCopied ? "Copied!" : inviteUrl}
+            </span>
+          </button>
 
           <div className="loader loader-center"></div>
           <p className="hint">Waiting for friend to join...</p>

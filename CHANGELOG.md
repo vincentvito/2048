@@ -9,6 +9,7 @@
 - "My Stats" link in DesktopSidebar and MobileMenu for authenticated users (navigates to `/stats`)
 - Client-side move preview for server-authoritative multiplayer — plays the tile slide animation locally while waiting for server confirmation, then applies the authoritative state once the animation completes. Prevents premature win triggers, haptic feedback, and screen shake during preview moves
 - Authoritative move rollback — if the server doesn't respond within 1.5s, the client restores the pre-move snapshot (grid, score, tiles) so the board never gets stuck in a pending state
+- Server-authoritative multiplayer inactivity timeout — after 5 seconds without a successful move, that player loses the match (`party/game.ts` — **requires PartyKit deploy**)
 
 ### Fixed
 
@@ -31,6 +32,8 @@
 - Doubled emoji particle celebration duration — win (100→200), personal best (90→180), daily best (95→190), and game over (60→120) bursts all last 2x longer
 - Fixed multiplayer post-match modal layout — rematch, new-opponent, and menu actions now stack with proper spacing, and the friendly-match “no ELO change” message now has dedicated breathing room instead of crowding the buttons
 - Fixed local multiplayer board tiles occasionally disappearing or jumping after moves — authoritative server updates no longer run the client-side merge animation path that could incorrectly spawn a local random tile during reconciliation
+- Fixed opponent board updates jumping between authoritative snapshots — multiplayer now forwards the server move direction so read-only opponent boards can animate the same slide direction before applying the authoritative state
+- Fixed read-only opponent boards showing local controls — multiplayer preview boards no longer render the `New Game` action
 
 ### Changed
 
@@ -44,6 +47,7 @@
 - Slightly increased `.mp-stats-pill-win` border opacity (0.2 → 0.25)
 - Normalized line endings (CRLF → LF) across config and documentation files
 - Multiplayer in-game layout now supports opponent visibility again while preserving the centered desktop shell — desktop uses a side-by-side local/opponent board split, and mobile uses a compact inline opponent card with expandable detail view
+- Multiplayer in-game shell now uses a compact side opponent rail on both desktop and mobile, refreshed HUD/stats card styling, and `Racing Sans One` typography for the `VS` / opponent presentation
 
 ### Removed
 

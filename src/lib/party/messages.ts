@@ -72,6 +72,7 @@ export type GameServerMessage =
       username: string;
       elo: number;
       isBot?: boolean;
+      direction?: number | null;
     }
   | { type: "opponent_connected"; connected: boolean }
   | { type: "rematch_requested"; by: "local" | "opponent" }
@@ -82,6 +83,6 @@ export type GameServerMessage =
       outcome: "win" | "loss" | "tie";
       yourScore: number;
       opponentScore: number;
-      reason: "score" | "2048" | "forfeit" | "timer" | "no_moves";
+      reason: "score" | "2048" | "forfeit" | "timer" | "no_moves" | "inactive";
     }
   | { type: "error"; message: string };

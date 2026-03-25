@@ -60,6 +60,7 @@ interface Game2048Props {
   onGameWon?: (score: number, gridSize: number) => void;
   onResetReady?: (resetFn: () => void) => void;
   readOnlyState?: GameState | null;
+  readOnlyMoveDirection?: number | null;
   onStateChange?: (state: GameState) => void;
   onMove?: (direction: number) => void;
   /** Called after a successful move with the highest merged tile value (0 if no merges). */
@@ -81,6 +82,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
     onGameWon,
     onResetReady,
     readOnlyState,
+    readOnlyMoveDirection,
     onStateChange,
     onMove,
     onMoveFeedback,
@@ -103,7 +105,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
 
   // Refs for closure functions exposed via imperative handle
   const initFnRef = useRef<() => void>(() => {});
-  const updateStateFnRef = useRef<(state: GameState) => void>(() => {});
+  const updateStateFnRef = useRef<(state: GameState, direction?: number | null) => void>(() => {});
   const keepPlayingFnRef = useRef<() => void>(() => {});
   const toggleSizeFnRef = useRef<(newSize: number) => void>(() => {});
   const getSizeFnRef = useRef<() => number>(() => 4);
@@ -145,6 +147,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
   const onDevTriggerWinReadyRef = useRef(onDevTriggerWinReady);
   const initialReadOnlyRef = useRef(!!readOnlyState);
   const latestReadOnlyStateRef = useRef<GameState | null>(readOnlyState ?? null);
+  const latestReadOnlyMoveDirectionRef = useRef<number | null>(readOnlyMoveDirection ?? null);
   const disableSaveRef = useRef(disableSave);
   const [canvasReady, setCanvasReady] = useState(false);
   const themeRef = useRef<ThemeColors>(themes[themeName as keyof typeof themes] || themes.classic);
@@ -162,6 +165,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
   onDevEndGameReadyRef.current = onDevEndGameReady;
   onDevTriggerWinReadyRef.current = onDevTriggerWinReady;
   latestReadOnlyStateRef.current = readOnlyState ?? null;
+  latestReadOnlyMoveDirectionRef.current = readOnlyMoveDirection ?? null;
 
   // Update theme ref and re-render canvas when theme changes
   useEffect(() => {
@@ -176,7 +180,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
         pendingExternalStateRef.current = readOnlyState;
         return;
       }
-      updateStateFnRef.current(readOnlyState);
+      updateStateFnRef.current(readOnlyState, latestReadOnlyMoveDirectionRef.current);
     }
   }, [readOnlyState]);
 
@@ -224,15 +228,19 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
 
     /** Recalculate canvas dimensions for the current SIZE without touching game state. */
     function recalcCanvas() {
-      const maxContainerWidth = SIZE === 4 ? 480 : 640;
-      const availableWidth = Math.min(window.innerWidth - 32, maxContainerWidth);
+      const maxContainerWidth = miniMode ? 188 : SIZE === 4 ? 480 : 640;
+      const measuredContainerWidth = Math.max(0, Math.floor(container.clientWidth));
+      const availableWidth = Math.min(
+        measuredContainerWidth || (miniMode ? maxContainerWidth : window.innerWidth - 32),
+        maxContainerWidth
+      );
       // Reserve space for header (~200px), buttons below board (~100px), and browser chrome
-      const reservedHeight = 300;
-      const availableHeight = window.innerHeight - reservedHeight;
+      const reservedHeight = miniMode ? 0 : 300;
+      const availableHeight = miniMode ? maxContainerWidth : window.innerHeight - reservedHeight;
       const maxCellW = Math.floor((availableWidth - (SIZE + 1) * GAP) / SIZE);
       const maxCellH = Math.floor((availableHeight - (SIZE + 1) * GAP) / SIZE);
-      const idealCell = SIZE === 4 ? 100 : 64;
-      CELL = Math.min(idealCell, maxCellW, Math.max(40, maxCellH));
+      const idealCell = miniMode ? 32 : SIZE === 4 ? 100 : 64;
+      CELL = Math.min(idealCell, maxCellW, Math.max(miniMode ? 24 : 30, maxCellH));
       GRID_SIZE = SIZE * CELL + (SIZE + 1) * GAP;
       canvas.width = GRID_SIZE * dpr;
       canvas.height = GRID_SIZE * dpr;
@@ -821,7 +829,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
     // React buttons can't access the useEffect closure, so we attach game functions to the container DOM node
     const prevGrid = new Uint16Array(SIZE * SIZE);
     let prevScore = 0;
-    const updateStateImpl = (state: GameState) => {
+    const updateStateImpl = (state: GameState, direction: number | null = null) => {
       if (authoritativeFallbackTimer) {
         clearTimeout(authoritativeFallbackTimer);
         authoritativeFallbackTimer = null;
@@ -832,11 +840,21 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
         return;
       }
       if (initialReadOnlyRef.current) {
+        const shouldAnimateReadOnlyMove =
+          typeof direction === "number" &&
+          serverAuthoritativeRef.current &&
+          state.grid.some((value, index) => value !== prevGrid[index]);
+        if (shouldAnimateReadOnlyMove && move(direction)) {
+          pendingAuthoritativeStateRef.current = state;
+          return;
+        }
         if (popupAnimFrame) {
           cancelAnimationFrame(popupAnimFrame);
           popupAnimFrame = null;
         }
         animating = false;
+        pendingAuthoritativeMoveRef.current = false;
+        pendingAuthoritativeStateRef.current = null;
         score = state.score;
         prevScore = state.score;
         gameOver = state.gameOver;
@@ -1091,6 +1109,8 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
       if (touchingBoard) e.preventDefault();
     }
 
+    const wasReadOnly = initialReadOnlyRef.current;
+
     document.addEventListener("keydown", onKeyDown);
     document.addEventListener("keyup", onKeyUp);
     // Only the active (non-read-only) board needs the document-level scroll
@@ -1156,7 +1176,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
     if (!initialReadOnlyRef.current) {
       if (!restoreState()) init();
     } else if (latestReadOnlyStateRef.current) {
-      updateStateImpl(latestReadOnlyStateRef.current);
+      updateStateImpl(latestReadOnlyStateRef.current, latestReadOnlyMoveDirectionRef.current);
     } else {
       // Read-only mode: just render the empty grid, no random tiles
       render(1);
@@ -1166,7 +1186,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
     if (pendingExternalStateRef.current) {
       const pendingState = pendingExternalStateRef.current;
       pendingExternalStateRef.current = null;
-      updateStateImpl(pendingState);
+      updateStateImpl(pendingState, latestReadOnlyMoveDirectionRef.current);
     }
 
     // Dev-only: fill board with random tiles and end the game
@@ -1193,76 +1213,6 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
       updateScore();
       render(1);
       onGameOverRef.current?.(score, SIZE);
-      onStateChangeRef.current?.({ grid: Array.from(grid), score, gameOver, won });
-    }
-
-    // Dev-only: preview all tile values to check font sizing
-    function devPreviewTiles() {
-      const allValues = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048];
-      tiles.length = 0;
-      const total = SIZE * SIZE;
-      gameOver = false;
-      won = false;
-      keepPlaying = false;
-      for (let i = 0; i < total; i++) {
-        grid[i] = allValues[i % allValues.length];
-        tiles.push({
-          value: grid[i],
-          r: (i / SIZE) | 0,
-          c: i % SIZE,
-          fromR: (i / SIZE) | 0,
-          fromC: i % SIZE,
-          scale: 1,
-          merged: false,
-        });
-      }
-      render(1);
-    }
-
-    // Dev-only: fill board to near game-over (one empty cell, no merges possible)
-    // After one move, the game will naturally end
-    function devAlmostGameOver() {
-      // Checkerboard pattern of non-adjacent values - no merges possible
-      const pattern = [
-        2,
-        4,
-        2,
-        4,
-        8,
-        16,
-        8,
-        16,
-        2,
-        4,
-        2,
-        4,
-        8,
-        16,
-        8,
-        0, // Last cell empty
-      ];
-      tiles.length = 0;
-      gameOver = false;
-      won = false;
-      keepPlaying = false;
-      score = Math.floor(Math.random() * 3000) + 1000;
-      for (let i = 0; i < pattern.length && i < SIZE * SIZE; i++) {
-        grid[i] = pattern[i];
-        if (grid[i] !== 0) {
-          tiles.push({
-            value: grid[i],
-            r: (i / SIZE) | 0,
-            c: i % SIZE,
-            fromR: (i / SIZE) | 0,
-            fromC: i % SIZE,
-            scale: 1,
-            merged: false,
-          });
-        }
-      }
-      updateScore();
-      render(1);
-      // Notify multiplayer of the state change
       onStateChangeRef.current?.({ grid: Array.from(grid), score, gameOver, won });
     }
 
@@ -1308,7 +1258,7 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
       isGameReadyRef.current = false;
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("keyup", onKeyUp);
-      if (!initialReadOnlyRef.current) {
+      if (!wasReadOnly) {
         document.removeEventListener("touchmove", preventScrollOnBoard, {
           passive: false,
         } as EventListenerOptions);
@@ -1395,11 +1345,13 @@ const Game2048 = forwardRef<Game2048Handle, Game2048Props>(function Game2048(
       </div>
 
       {/* Controls */}
-      <div className="button-row">
-        <button onClick={handleInit} className="game-btn">
-          New Game
-        </button>
-      </div>
+      {!readOnlyState && (
+        <div className="button-row">
+          <button onClick={handleInit} className="game-btn">
+            New Game
+          </button>
+        </div>
+      )}
     </div>
   );
 });

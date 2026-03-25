@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Fredoka, Nunito } from "next/font/google";
+import { Fredoka, Nunito, Racing_Sans_One } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/features/theme/ThemeProvider";
 import { Toaster } from "sonner";
@@ -17,6 +17,13 @@ const nunito = Nunito({
   subsets: ["latin"],
   weight: ["400", "600", "700", "800"],
   variable: "--font-nunito",
+  display: "swap",
+});
+
+const racingSansOne = Racing_Sans_One({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-racing-sans-one",
   display: "swap",
 });
 
@@ -69,7 +76,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>): React.ReactElement {
   return (
-    <html lang="en" className={`${fredoka.variable} ${nunito.variable}`}>
+    <html lang="en" className={`${fredoka.variable} ${nunito.variable} ${racingSansOne.variable}`}>
       <body>
         <ThemeProvider>
           <ParticleProvider>{children}</ParticleProvider>

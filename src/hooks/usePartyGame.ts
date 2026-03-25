@@ -19,6 +19,7 @@ export function usePartyGame(
   botOpponent?: { username: string; elo: number } | null
 ) {
   const [opponentState, setOpponentState] = useState<GameState | null>(null);
+  const [opponentMoveDirection, setOpponentMoveDirection] = useState<number | null>(null);
   const [restoredLocalState, setRestoredLocalState] = useState<GameState | null>(null);
   const [initialServerState, setInitialServerState] = useState<GameState | null>(null);
   const [serverGameState, setServerGameState] = useState<GameState | null>(null);
@@ -34,7 +35,7 @@ export function usePartyGame(
     outcome: "win" | "loss" | "tie";
     yourScore: number;
     opponentScore: number;
-    reason: "score" | "2048" | "forfeit" | "timer" | "no_moves";
+    reason: "score" | "2048" | "forfeit" | "timer" | "no_moves" | "inactive";
   } | null>(null);
 
   const gameDurationRef = useRef(GAME_DURATION);
@@ -63,26 +64,34 @@ export function usePartyGame(
 
   // Reset all state when roomId changes
   useEffect(() => {
-    setOpponentState(null);
-    setRestoredLocalState(null);
-    setInitialServerState(null);
-    setServerGameState(null);
-    setOpponentConnected(false);
-    setOpponentEverConnected(false);
-    setOpponentName(null);
-    setOpponentElo(null);
-    setOpponentIsBot(false);
-    setLocalWantsRematch(false);
-    setOpponentWantsRematch(false);
-    setForfeitWin(null);
-    setServerResult(null);
     gameDurationRef.current = GAME_DURATION;
-    setTimeLeft(GAME_DURATION);
-    setGameStarted(false);
     initializedRef.current = false;
     socketReadyRef.current = false;
     pendingStateRef.current = null;
     timerExpiredSentRef.current = false;
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setOpponentState(null);
+      setOpponentMoveDirection(null);
+      setRestoredLocalState(null);
+      setInitialServerState(null);
+      setServerGameState(null);
+      setOpponentConnected(false);
+      setOpponentEverConnected(false);
+      setOpponentName(null);
+      setOpponentElo(null);
+      setOpponentIsBot(false);
+      setLocalWantsRematch(false);
+      setOpponentWantsRematch(false);
+      setForfeitWin(null);
+      setServerResult(null);
+      setTimeLeft(GAME_DURATION);
+      setGameStarted(false);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [roomId]);
 
   // Use refs for values that may change but shouldn't cause reconnection
@@ -91,11 +100,14 @@ export function usePartyGame(
   const myEloRef = useRef(myElo);
   const gameModeRef = useRef(gameMode);
   const botOpponentRef = useRef(botOpponent);
-  userIdRef.current = userId;
-  myNameRef.current = myName;
-  myEloRef.current = myElo;
-  gameModeRef.current = gameMode;
-  botOpponentRef.current = botOpponent;
+
+  useEffect(() => {
+    userIdRef.current = userId;
+    myNameRef.current = myName;
+    myEloRef.current = myElo;
+    gameModeRef.current = gameMode;
+    botOpponentRef.current = botOpponent;
+  }, [userId, myName, myElo, gameMode, botOpponent]);
 
   // Connect to game room — only reconnect when roomId changes
   useEffect(() => {
@@ -206,6 +218,7 @@ export function usePartyGame(
               (state) => state.id !== userIdRef.current
             )?.state;
             if (opponentState) {
+              setOpponentMoveDirection(null);
               setOpponentState({
                 grid: opponentState.grid || Array(16).fill(0),
                 score: opponentState.score,
@@ -252,6 +265,9 @@ export function usePartyGame(
             }
             setOpponentConnected(true);
             setOpponentEverConnected(true);
+            setOpponentMoveDirection(
+              typeof message.direction === "number" ? message.direction : null
+            );
             setOpponentState({
               grid: message.state.grid || Array(16).fill(0),
               score: message.state.score,
@@ -287,6 +303,7 @@ export function usePartyGame(
             setServerResult(null);
             setForfeitWin(null);
             setOpponentState(null);
+            setOpponentMoveDirection(null);
             setServerGameState(null);
             setInitialServerState(null);
             break;
@@ -320,7 +337,9 @@ export function usePartyGame(
     socket.onerror = (e) => {
       console.error("[usePartyGame] Socket error:", e);
     };
+  }, [roomId, userId, myName, myElo, gameMode, botOpponent]);
 
+  useEffect(() => {
     return () => {
       clearTimer();
       if (socketRef.current) {
@@ -329,7 +348,6 @@ export function usePartyGame(
       }
       initializedRef.current = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, clearTimer]);
 
   // Timer countdown
@@ -395,6 +413,7 @@ export function usePartyGame(
     setLocalWantsRematch(false);
     setOpponentWantsRematch(false);
     setOpponentState(null);
+    setOpponentMoveDirection(null);
     setTimeLeft(gameDurationRef.current);
     setGameStarted(false);
     setForfeitWin(null);
@@ -418,6 +437,7 @@ export function usePartyGame(
 
   return {
     opponentState,
+    opponentMoveDirection,
     restoredLocalState,
     initialServerState,
     serverGameState,

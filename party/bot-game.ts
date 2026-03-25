@@ -78,6 +78,11 @@ export interface BotGameState {
   elo: number;
 }
 
+export interface BotMoveResult {
+  state: BotGameState;
+  direction: number | null;
+}
+
 function idx(r: number, c: number): number {
   return r * SIZE + c;
 }
@@ -207,8 +212,8 @@ export function createInitialBotState(elo: number = 1200): BotGameState {
   };
 }
 
-export function botMakeMove(state: BotGameState): BotGameState {
-  if (state.gameOver || state.won) return state;
+export function botMakeMove(state: BotGameState): BotMoveResult {
+  if (state.gameOver || state.won) return { state, direction: null };
 
   const smartProb = getSmartMoveProbability(state.elo);
   const useSmart = Math.random() < smartProb;
@@ -217,20 +222,22 @@ export function botMakeMove(state: BotGameState): BotGameState {
   const { moved, scoreGained, newGrid } = simulateMove(state.grid, SIZE, dir);
 
   if (!moved) {
-    return { ...state, gameOver: true };
+    return { state: { ...state, gameOver: true }, direction: null };
   }
 
   addRandomTile(newGrid, SIZE);
-
   const newScore = state.score + scoreGained;
   const won = checkWin(newGrid);
   const gameOver = !canMove(newGrid, SIZE);
 
   return {
-    grid: newGrid,
-    score: newScore,
-    gameOver,
-    won: won || state.won,
-    elo: state.elo,
+    state: {
+      grid: newGrid,
+      score: newScore,
+      gameOver,
+      won,
+      elo: state.elo,
+    },
+    direction: dir,
   };
 }

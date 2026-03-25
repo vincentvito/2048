@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Game2048 from "@/components/Game2048";
 import { themes, ThemeName } from "@/lib/themes";
 
 /** Get tile colors from theme */
@@ -62,6 +63,7 @@ export function ExpandedGrid({ grid, themeName }: { grid: number[]; themeName: T
 
 interface OpponentPreviewProps {
   opponentState: { grid: number[]; score: number; gameOver: boolean; won: boolean } | null;
+  opponentMoveDirection?: number | null;
   opponentName: string;
   opponentConnected: boolean;
   opponentEverConnected: boolean;
@@ -77,6 +79,7 @@ const emptyGrid = Array(16).fill(0);
 
 export default function OpponentPreview({
   opponentState,
+  opponentMoveDirection,
   opponentName,
   opponentConnected,
   opponentEverConnected,
@@ -87,53 +90,10 @@ export default function OpponentPreview({
   showExpanded,
   onToggleExpanded,
 }: OpponentPreviewProps) {
-  const grid = opponentState?.grid || emptyGrid;
   const score = opponentState?.score || 0;
 
   return (
     <>
-      {/* Mobile: Inline opponent preview below the main board */}
-      <div
-        className="mp-opponent-mobile-card"
-        onClick={() => onToggleExpanded(true)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onToggleExpanded(true);
-          }
-        }}
-        role="button"
-        tabIndex={0}
-        aria-label={`View ${opponentName}'s board`}
-      >
-        <div className="mp-opponent-mobile-header">
-          <div className="mp-opponent-mobile-meta">
-            <span className="mp-opponent-mobile-name">{opponentName}</span>
-            <span className="mp-opponent-mobile-score">{score.toLocaleString()}</span>
-          </div>
-          <span
-            className={`mp-opponent-mobile-status ${opponentConnected ? "connected" : "offline"}`}
-          >
-            {opponentConnected
-              ? "Live board"
-              : opponentEverConnected
-                ? "Disconnected"
-                : "Connecting..."}
-          </span>
-        </div>
-
-        <div className="mp-opponent-mobile-preview">
-          <div
-            className={`mp-mini-preview-inner ${opponentDone || timerExpired || hasForfeit ? "dimmed" : ""}`}
-          >
-            <MiniGrid grid={grid} themeName={themeName} />
-            {!opponentConnected && <div className="mp-mini-preview-offline" />}
-          </div>
-          <span className="mp-opponent-mobile-cta">Tap to expand</span>
-        </div>
-      </div>
-
-      {/* Mobile: Expanded opponent view modal */}
       {showExpanded && (
         <div
           className="mp-opponent-expanded-backdrop"
@@ -162,7 +122,17 @@ export default function OpponentPreview({
                   {opponentEverConnected ? "Opponent disconnected..." : "Connecting..."}
                 </div>
               )}
-              <ExpandedGrid grid={grid} themeName={themeName} />
+              <Game2048
+                readOnlyState={
+                  opponentState || { grid: emptyGrid, score: 0, gameOver: false, won: false }
+                }
+                readOnlyMoveDirection={opponentMoveDirection}
+                disableInputs
+                hideScore
+                themeName={themeName}
+                disableSave
+                serverAuthoritative
+              />
             </div>
           </div>
         </div>

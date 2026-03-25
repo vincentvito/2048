@@ -82,21 +82,11 @@ export default function MultiplayerHud({
 
         {/* Opponent */}
         <div className="mp-hud-opponent">
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              justifyContent: "flex-end",
-              width: "100%",
-            }}
-          >
+          <div className="mp-hud-opponent-meta">
             <span className={`mp-hud-status ${connectionStatusClass}`} aria-label={connectionLabel}>
               <span className="blob" aria-hidden="true" />
             </span>
-            <span className="mp-hud-name" style={{ maxWidth: "none", flexShrink: 1 }}>
-              {opponentName}
-            </span>
+            <span className="mp-hud-name mp-hud-opponent-name">{opponentName}</span>
           </div>
           <span className="mp-hud-score">{opponentScore.toLocaleString()}</span>
         </div>

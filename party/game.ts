@@ -25,6 +25,7 @@ interface Player {
   wantsRematch: boolean;
   forfeited: boolean;
   lastSeen: number;
+  lastMoveAt: number;
   isBot?: boolean;
 }
 
@@ -36,6 +37,7 @@ interface GameState {
   mode: "ranked" | "friendly";
   botState?: BotGameState;
   botMoveInterval?: ReturnType<typeof setInterval>;
+  botMoveAt?: number;
   nextSlowMoveAt?: number;
 }
 
@@ -48,6 +50,7 @@ const BOT_SLOW_MOVE_MAX_GAP = 20000;
 const RANKED_DURATION = 5 * 60;
 const FRIENDLY_DURATION = 5 * 60;
 const DISCONNECT_TIMEOUT = 15000;
+const INACTIVITY_TIMEOUT = 5000;
 
 export default class GameServer implements Party.Server {
   private state: GameState = {
@@ -68,6 +71,8 @@ export default class GameServer implements Party.Server {
       resultSent?: boolean;
       mode?: "ranked" | "friendly";
       botState?: BotGameState;
+      botMoveAt?: number;
+      nextSlowMoveAt?: number;
     }>("gameState");
 
     if (stored) {
@@ -78,11 +83,17 @@ export default class GameServer implements Party.Server {
         resultSent: stored.resultSent || false,
         mode: stored.mode || "ranked",
         botState: stored.botState,
+        botMoveAt: stored.botMoveAt,
+        nextSlowMoveAt: stored.nextSlowMoveAt,
       };
 
       const isBotGame = this.room.id.startsWith("bot_");
-      if (isBotGame && this.state.botState && !this.state.resultSent) {
-        this.scheduleBotMove();
+      if (this.state.gameStarted && !this.state.resultSent) {
+        if (isBotGame && this.state.botState && !this.state.botMoveAt) {
+          await this.scheduleBotMove();
+        } else {
+          await this.scheduleNextAlarm();
+        }
       }
     }
   }
@@ -113,7 +124,7 @@ export default class GameServer implements Party.Server {
           await this.handleForfeit(sender);
           break;
         case "timer_expired":
-          await this.handleTimerExpired(sender);
+          await this.handleTimerExpired();
           break;
         case "heartbeat":
           this.handleHeartbeat(sender);
@@ -153,6 +164,9 @@ export default class GameServer implements Party.Server {
     if (existing) {
       existing.connectionId = sender.id;
       existing.lastSeen = Date.now();
+      if (!existing.lastMoveAt) {
+        existing.lastMoveAt = Date.now();
+      }
       this.ensureHumanPlayerState(existing);
 
       this.broadcastToOthers(sender.id, {
@@ -223,6 +237,7 @@ export default class GameServer implements Party.Server {
               username: opponent.username,
               elo: opponent.elo,
               isBot: opponent.isBot,
+              direction: null,
             })
           );
         }
@@ -240,6 +255,7 @@ export default class GameServer implements Party.Server {
         wantsRematch: false,
         forfeited: false,
         lastSeen: Date.now(),
+        lastMoveAt: Date.now(),
         isBot: false,
       };
 
@@ -286,6 +302,9 @@ export default class GameServer implements Party.Server {
       }
       this.state.gameStarted = true;
       this.state.gameStartedAt = Date.now();
+      for (const player of players) {
+        player.lastMoveAt = this.state.gameStartedAt;
+      }
 
       const duration = this.state.mode === "friendly" ? FRIENDLY_DURATION : RANKED_DURATION;
       this.room.broadcast(
@@ -343,6 +362,7 @@ export default class GameServer implements Party.Server {
                   username: opponent.username,
                   elo: opponent.elo,
                   isBot: opponent.isBot,
+                  direction: null,
                 })
               );
             }
@@ -356,9 +376,12 @@ export default class GameServer implements Party.Server {
 
       if (isBotGame) {
         this.startBotMoves();
+      } else {
+        await this.scheduleNextAlarm();
       }
     }
 
+    await this.scheduleNextAlarm();
     await this.saveState();
   }
 
@@ -381,6 +404,7 @@ export default class GameServer implements Party.Server {
       wantsRematch: false,
       forfeited: false,
       lastSeen: Date.now(),
+      lastMoveAt: Date.now(),
       isBot: true,
     };
 
@@ -404,7 +428,7 @@ export default class GameServer implements Party.Server {
     const firstSlowGap =
       BOT_SLOW_MOVE_MIN_GAP + Math.random() * (BOT_SLOW_MOVE_MAX_GAP - BOT_SLOW_MOVE_MIN_GAP);
     this.state.nextSlowMoveAt = Date.now() + firstSlowGap;
-    this.scheduleBotMove();
+    void this.scheduleBotMove();
   }
 
   private async scheduleBotMove() {
@@ -423,13 +447,18 @@ export default class GameServer implements Party.Server {
         BOT_MIN_MOVE_INTERVAL + Math.random() * (BOT_MAX_MOVE_INTERVAL - BOT_MIN_MOVE_INTERVAL);
     }
 
-    await this.room.storage.setAlarm(now + delay);
+    this.state.botMoveAt = now + delay;
+    await this.scheduleNextAlarm(now);
   }
 
   private lastAlarmTime = 0;
   async onAlarm() {
     const now = Date.now();
     this.lastAlarmTime = now;
+
+    if (this.state.gameStarted && !this.state.resultSent) {
+      await this.handleInactivityTimeout(now);
+    }
 
     const playersToRemove: string[] = [];
 
@@ -459,10 +488,18 @@ export default class GameServer implements Party.Server {
       this.resetMatchState();
     }
 
-    if (this.state.botState && !this.state.resultSent && this.state.gameStarted) {
+    if (
+      this.state.botState &&
+      !this.state.resultSent &&
+      this.state.gameStarted &&
+      this.state.botMoveAt &&
+      now >= this.state.botMoveAt
+    ) {
+      this.state.botMoveAt = undefined;
       await this.performBotMove();
     }
 
+    await this.scheduleNextAlarm(now);
     await this.saveState();
   }
 
@@ -481,7 +518,8 @@ export default class GameServer implements Party.Server {
 
     if (!botPlayer) return;
 
-    this.state.botState = botMakeMove(this.state.botState);
+    const botMove = botMakeMove(this.state.botState);
+    this.state.botState = botMove.state;
 
     // Sync bot's engine state
     botPlayer.engineState = {
@@ -491,6 +529,7 @@ export default class GameServer implements Party.Server {
       won: this.state.botState.won,
       size: GAME_SIZE,
     };
+    botPlayer.lastMoveAt = Date.now();
 
     this.room.broadcast(
       JSON.stringify({
@@ -504,6 +543,7 @@ export default class GameServer implements Party.Server {
         username: botPlayer.username,
         elo: botPlayer.elo,
         isBot: true,
+        direction: botMove.direction,
       })
     );
 
@@ -538,6 +578,7 @@ export default class GameServer implements Party.Server {
 
     if (stateChanged) {
       player.engineState = newState;
+      player.lastMoveAt = Date.now();
     }
     player.lastSeen = Date.now();
 
@@ -555,7 +596,11 @@ export default class GameServer implements Party.Server {
       })
     );
 
-    if (!stateChanged) return;
+    if (!stateChanged) {
+      await this.scheduleNextAlarm();
+      await this.saveState();
+      return;
+    }
 
     this.broadcastToOthers(sender.id, {
       type: "opponent_state",
@@ -567,9 +612,11 @@ export default class GameServer implements Party.Server {
       },
       username: player.username,
       elo: player.elo,
+      direction,
     });
 
     await this.tryResolveMatch(authoritativeState.won ? "2048" : "score");
+    await this.scheduleNextAlarm();
     await this.saveState();
   }
 
@@ -592,6 +639,7 @@ export default class GameServer implements Party.Server {
 
     if (!player) return;
     player.lastSeen = Date.now();
+    player.lastMoveAt = Date.now();
 
     // Relay to opponent for display, but don't update server state
     this.broadcastToOthers(sender.id, {
@@ -599,7 +647,97 @@ export default class GameServer implements Party.Server {
       state: data.state,
       username: player.username,
       elo: player.elo,
+      direction: null,
     });
+  }
+
+  private async handleInactivityTimeout(now: number) {
+    if (this.state.resultSent) return;
+
+    const players = Array.from(this.state.players.values());
+    if (players.length !== 2) return;
+
+    const timedOutPlayers = players.filter(
+      (player) =>
+        !player.isBot &&
+        !player.engineState.gameOver &&
+        !player.engineState.won &&
+        now - player.lastMoveAt >= INACTIVITY_TIMEOUT
+    );
+
+    if (timedOutPlayers.length === 0) return;
+
+    this.state.resultSent = true;
+
+    let winnerId: string | null = null;
+    if (timedOutPlayers.length === 1) {
+      winnerId =
+        players.find((player) => player.userId !== timedOutPlayers[0].userId)?.userId ?? null;
+    } else {
+      const [p1, p2] = players;
+      if (p1.engineState.score > p2.engineState.score) winnerId = p1.userId;
+      else if (p2.engineState.score > p1.engineState.score) winnerId = p2.userId;
+    }
+
+    for (const player of players) {
+      const opponent = players.find((candidate) => candidate.userId !== player.userId)!;
+      const outcome: "win" | "loss" | "tie" =
+        winnerId === null ? "tie" : winnerId === player.userId ? "win" : "loss";
+      const conn = this.room.getConnection(player.connectionId);
+      if (conn) {
+        conn.send(
+          JSON.stringify({
+            type: "game_result",
+            outcome,
+            yourScore: player.engineState.score,
+            opponentScore: opponent.engineState.score,
+            reason: "inactive",
+          })
+        );
+      }
+    }
+
+    log(
+      `[Game] Match resolved: ${winnerId ? `winner=${winnerId}` : "tie"} (inactive) ${players[0]?.username}=${players[0]?.engineState.score} vs ${players[1]?.username}=${players[1]?.engineState.score}`
+    );
+  }
+
+  private async scheduleNextAlarm(referenceTime = Date.now()) {
+    if (this.state.players.size === 0) return;
+
+    const deadlines: number[] = [];
+
+    for (const player of this.state.players.values()) {
+      if (player.isBot) continue;
+
+      const connection = this.room.getConnection(player.connectionId);
+      if (!connection) {
+        deadlines.push(player.lastSeen + DISCONNECT_TIMEOUT);
+      }
+
+      if (
+        this.state.gameStarted &&
+        !this.state.resultSent &&
+        !player.engineState.gameOver &&
+        !player.engineState.won
+      ) {
+        deadlines.push(player.lastMoveAt + INACTIVITY_TIMEOUT);
+      }
+    }
+
+    if (
+      this.state.botMoveAt &&
+      this.state.botState &&
+      this.state.gameStarted &&
+      !this.state.resultSent
+    ) {
+      deadlines.push(this.state.botMoveAt);
+    }
+
+    if (deadlines.length === 0) return;
+
+    const nextAlarmAt = Math.min(...deadlines);
+    await this.room.storage.setAlarm(Math.max(referenceTime + 1, nextAlarmAt));
   }
 
   private async tryResolveMatch(reason: "score" | "2048" | "timer") {
@@ -662,7 +800,7 @@ export default class GameServer implements Party.Server {
     );
   }
 
-  private async handleTimerExpired(sender: Party.Connection) {
+  private async handleTimerExpired() {
     if (this.state.resultSent) return;
     await this.tryResolveMatch("timer");
     await this.saveState();
@@ -710,9 +848,11 @@ export default class GameServer implements Party.Server {
         }
         p.wantsRematch = false;
         p.forfeited = false;
+        p.lastMoveAt = Date.now();
       }
       this.state.resultSent = false;
       this.state.gameStartedAt = Date.now();
+      this.state.botMoveAt = undefined;
 
       this.room.broadcast(JSON.stringify({ type: "rematch_start" }));
 
@@ -762,6 +902,7 @@ export default class GameServer implements Party.Server {
                   username: opponent.username,
                   elo: opponent.elo,
                   isBot: opponent.isBot,
+                  direction: null,
                 })
               );
             }
@@ -773,6 +914,8 @@ export default class GameServer implements Party.Server {
 
       if (isBotGame) {
         this.startBotMoves();
+      } else {
+        await this.scheduleNextAlarm();
       }
     } else {
       this.broadcastToOthers(sender.id, {
@@ -855,7 +998,7 @@ export default class GameServer implements Party.Server {
       connected: false,
     });
 
-    await this.room.storage.setAlarm(Date.now() + DISCONNECT_TIMEOUT);
+    await this.scheduleNextAlarm();
   }
 
   private broadcastToOthers(senderId: string, message: object) {
@@ -892,6 +1035,7 @@ export default class GameServer implements Party.Server {
     this.state.resultSent = false;
     this.state.mode = "ranked";
     this.state.botState = undefined;
+    this.state.botMoveAt = undefined;
     this.state.nextSlowMoveAt = undefined;
   }
 
@@ -910,6 +1054,8 @@ export default class GameServer implements Party.Server {
       resultSent: this.state.resultSent,
       mode: this.state.mode,
       botState: this.state.botState,
+      botMoveAt: this.state.botMoveAt,
+      nextSlowMoveAt: this.state.nextSlowMoveAt,
     });
   }
 }

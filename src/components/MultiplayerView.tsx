@@ -24,6 +24,7 @@ import { generateRoomCode, buildInviteUrl } from "@/lib/room-code";
 import { useGameFeedback } from "@/hooks/useGameFeedback";
 
 type LobbyScreen = "main" | "create-room";
+const MOVE_TIMEOUT_SECONDS = 5;
 
 interface MultiplayerViewProps {
   onMatchActiveChange?: (isActive: boolean) => void;
@@ -80,7 +81,6 @@ export default function MultiplayerView({
 
   // ELO state for result modal
   const [localEloDelta, setLocalEloDelta] = useState<number | null>(null);
-  const [opponentEloDelta, setOpponentEloDelta] = useState<number | null>(null);
   const [localEloAfter, setLocalEloAfter] = useState<number | null>(null);
   const [eloProcessed, setEloProcessed] = useState(false);
 
@@ -178,6 +178,7 @@ export default function MultiplayerView({
 
   const {
     opponentState,
+    opponentMoveDirection,
     restoredLocalState,
     initialServerState,
     serverGameState,
@@ -185,7 +186,6 @@ export default function MultiplayerView({
     opponentEverConnected,
     opponentName,
     opponentElo,
-    opponentIsBot,
     sendMove,
     requestRematch,
     resetRematchState,
@@ -398,15 +398,9 @@ export default function MultiplayerView({
     setLobbyScreen("main");
     setCodeCopied(false);
     setLocalGameResult(null);
-    setAutoJoinError(null);
 
     confettiFiredRef.current = false;
-    setLocalEloDelta(null);
-    setOpponentEloDelta(null);
-    setLocalEloAfter(null);
-    setEloProcessed(false);
     setIsReconnecting(false);
-    // botOpponent is derived from opponentInfo, no need to reset
   };
 
   const handleNewOpponent = () => {
@@ -417,7 +411,6 @@ export default function MultiplayerView({
 
     confettiFiredRef.current = false;
     setLocalEloDelta(null);
-    setOpponentEloDelta(null);
     setLocalEloAfter(null);
     setEloProcessed(false);
     setIsReconnecting(false);
@@ -471,7 +464,6 @@ export default function MultiplayerView({
       if (gameMode === "friendly") return;
 
       const localScore = serverResult?.yourScore ?? localGameResult?.score ?? 0;
-      const opponentScore = serverResult?.opponentScore ?? opponentState?.score ?? 0;
 
       const outcome: "win" | "loss" | "tie" = isTie ? "tie" : localWon ? "win" : "loss";
       const oppElo = opponentElo ?? DEFAULT_ELO;
@@ -479,7 +471,6 @@ export default function MultiplayerView({
       const result = calculateElo(myElo, oppElo, outcome);
 
       setLocalEloDelta(result.playerDelta);
-      setOpponentEloDelta(result.opponentDelta);
       setLocalEloAfter(result.newPlayerElo);
 
       // Update stats in Supabase
@@ -542,7 +533,7 @@ export default function MultiplayerView({
       };
       frame();
     }
-  }, [isMatchResolved, localWon]);
+  }, [isMatchResolved, localWon, themeName]);
 
   // When both players accept rematch, reset the game
   useEffect(() => {
@@ -552,7 +543,6 @@ export default function MultiplayerView({
 
       confettiFiredRef.current = false;
       setLocalEloDelta(null);
-      setOpponentEloDelta(null);
       setLocalEloAfter(null);
       setEloProcessed(false);
       localGameResetRef.current?.();
@@ -567,7 +557,6 @@ export default function MultiplayerView({
 
       confettiFiredRef.current = false;
       setLocalEloDelta(null);
-      setOpponentEloDelta(null);
       setLocalEloAfter(null);
       setEloProcessed(false);
       localGameResetRef.current?.();
@@ -805,14 +794,20 @@ export default function MultiplayerView({
 
         {playerStats && !statsLoading && (
           <div className="mp-stats-card">
-            {/* ELO hero */}
-            <div className="mp-stats-elo-hero">
-              {eloRank && (
-                <span className={`elo-rank-badge elo-rank-${eloRank.name.toLowerCase()}`}>
-                  {eloRank.name}
-                </span>
-              )}
-              <span className="mp-stats-elo-number">{playerStats.elo}</span>
+            <div className="mp-stats-card-header">
+              <div className="mp-stats-card-identity">
+                <span className="mp-stats-card-caption">Your multiplayer stats</span>
+                <span className="mp-stats-card-name">{myName}</span>
+              </div>
+              {/* ELO hero */}
+              <div className="mp-stats-elo-hero">
+                {eloRank && (
+                  <span className={`elo-rank-badge elo-rank-${eloRank.name.toLowerCase()}`}>
+                    {eloRank.name}
+                  </span>
+                )}
+                <span className="mp-stats-elo-number">{playerStats.elo}</span>
+              </div>
             </div>
 
             {/* W / L / T pills */}
@@ -883,6 +878,8 @@ export default function MultiplayerView({
   let statusText = "";
   if (!isMatchResolved) {
     if (timerExpired) statusText = "Time's up! Waiting for result...";
+    else if (gameStarted)
+      statusText = `Move at least once every ${MOVE_TIMEOUT_SECONDS} seconds or lose.`;
   } else if (timerExpired && !hasForfeit) {
     statusText = "Time's up!";
   }
@@ -901,6 +898,10 @@ export default function MultiplayerView({
   const getResultSubtitle = (): string | null => {
     if (forfeitWin === "local") return "Opponent Forfeited";
     if (forfeitWin === "opponent") return "You Forfeited";
+    if (serverResult?.reason === "inactive")
+      return localWon
+        ? `${displayOpponentName} ran out of move time!`
+        : "You ran out of move time!";
     if (serverResult?.reason === "2048" || someoneWon2048)
       return localWon ? "You reached 2048!" : `${displayOpponentName} reached 2048!`;
     if (serverResult?.reason === "no_moves")
@@ -941,53 +942,76 @@ export default function MultiplayerView({
         />
 
         <div className="boards-split">
-          <div
-            className={`mp-board-slot ${localDone || timerExpired || hasForfeit ? "dimmed" : ""}`}
-          >
-            <Game2048
-              ref={localGameRef}
-              onGameOver={handleLocalGameOver}
-              onGameWon={handleLocalGameWon}
-              onResetReady={handleResetReady}
-              onStateChange={handleLocalStateChange}
-              onMove={handleLocalMove}
-              onMoveFeedback={onMoveFeedback}
-              disableInputs={disableLocalInputs}
-              serverAuthoritative
-              onDevEndGameReady={isDev ? handleDevEndGameReady : undefined}
-              hideScore
-              themeName={themeName}
-              disableSave
-            />
-            {isDev && !localDone && (
-              <button className="dev-end-game-btn" onClick={() => devEndGameRef.current?.()}>
-                DEV: End Game
-              </button>
-            )}
-          </div>
-
-          <div
-            className={`mp-board-slot mp-opponent-desktop ${opponentDone || timerExpired || hasForfeit ? "dimmed" : ""}`}
-          >
-            <div className="opponent-game-container">
-              {!opponentConnected && (
-                <div className="offline-overlay" role="status" aria-live="polite">
-                  {opponentEverConnected ? "Opponent disconnected..." : "Connecting..."}
-                </div>
-              )}
+          <div className="mp-board-stage">
+            <div
+              className={`mp-board-slot mp-local-board-slot ${localDone || timerExpired || hasForfeit ? "dimmed" : ""}`}
+            >
               <Game2048
-                readOnlyState={opponentState || emptyOpponentState}
-                disableInputs
+                ref={localGameRef}
+                onGameOver={handleLocalGameOver}
+                onGameWon={handleLocalGameWon}
+                onResetReady={handleResetReady}
+                onStateChange={handleLocalStateChange}
+                onMove={handleLocalMove}
+                onMoveFeedback={onMoveFeedback}
+                disableInputs={disableLocalInputs}
+                serverAuthoritative
+                onDevEndGameReady={isDev ? handleDevEndGameReady : undefined}
                 hideScore
                 themeName={themeName}
                 disableSave
               />
+              {isDev && !localDone && (
+                <button className="dev-end-game-btn" onClick={() => devEndGameRef.current?.()}>
+                  DEV: End Game
+                </button>
+              )}
+            </div>
+            <span className="mp-board-label">You</span>
+          </div>
+
+          <div
+            className={`mp-side-stage ${opponentDone || timerExpired || hasForfeit ? "dimmed" : ""}`}
+          >
+            <span className="mp-versus-text">VS</span>
+            <div
+              className="mp-opponent-side-card"
+              onClick={() => setShowOpponentExpanded(true)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setShowOpponentExpanded(true);
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              aria-label={`View ${displayOpponentName}'s board`}
+            >
+              <div className="opponent-game-container">
+                {!opponentConnected && (
+                  <div className="offline-overlay" role="status" aria-live="polite">
+                    {opponentEverConnected ? "Opponent disconnected..." : "Connecting..."}
+                  </div>
+                )}
+                <Game2048
+                  readOnlyState={opponentState || emptyOpponentState}
+                  readOnlyMoveDirection={opponentMoveDirection}
+                  disableInputs
+                  hideScore
+                  themeName={themeName}
+                  disableSave
+                  serverAuthoritative
+                  miniMode
+                />
+              </div>
+              <span className="mp-opponent-side-name">{displayOpponentName}</span>
             </div>
           </div>
         </div>
 
         <OpponentPreview
           opponentState={opponentState}
+          opponentMoveDirection={opponentMoveDirection}
           opponentName={displayOpponentName}
           opponentConnected={opponentConnected}
           opponentEverConnected={opponentEverConnected}

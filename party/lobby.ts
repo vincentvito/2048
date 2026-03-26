@@ -14,6 +14,7 @@ interface WaitingPlayer {
   elo: number;
   connectionId: string;
   joinedAt: number;
+  allowBotMatch: boolean;
   botMatchScheduled?: boolean;
 }
 
@@ -26,7 +27,12 @@ export default class LobbyServer implements Party.Server {
     const stored = await this.room.storage.get<WaitingPlayer[]>("queue");
     if (stored && stored.length > 0) {
       const now = Date.now();
-      this.waitingPlayers = stored.filter((p) => now - p.joinedAt < 300000);
+      this.waitingPlayers = stored
+        .filter((p) => now - p.joinedAt < 300000)
+        .map((player) => ({
+          ...player,
+          allowBotMatch: player.allowBotMatch !== false,
+        }));
       await this.saveQueue();
     }
     log(`[Lobby] Ready with ${this.waitingPlayers.length} players in queue`);
@@ -60,10 +66,11 @@ export default class LobbyServer implements Party.Server {
   }
 
   private async handleJoinQueue(
-    data: { userId: string; username: string; elo: number },
+    data: { userId: string; username: string; elo: number; allowBotMatch?: boolean },
     sender: Party.Connection
   ) {
     const { userId, username, elo } = data;
+    const allowBotMatch = data.allowBotMatch ?? true;
 
     // Remove if already in queue (reconnection)
     this.waitingPlayers = this.waitingPlayers.filter((p) => p.userId !== userId);
@@ -101,6 +108,7 @@ export default class LobbyServer implements Party.Server {
         elo,
         connectionId: sender.id,
         joinedAt: Date.now(),
+        allowBotMatch,
         botMatchScheduled: false,
       };
       this.waitingPlayers.push(player);
@@ -112,8 +120,10 @@ export default class LobbyServer implements Party.Server {
         })
       );
 
-      await this.room.storage.setAlarm(Date.now() + BOT_MATCH_TIMEOUT);
-      player.botMatchScheduled = true;
+      if (allowBotMatch) {
+        await this.room.storage.setAlarm(Date.now() + BOT_MATCH_TIMEOUT);
+        player.botMatchScheduled = true;
+      }
 
       await this.saveQueue();
     }
@@ -124,7 +134,7 @@ export default class LobbyServer implements Party.Server {
 
     const playersToMatch: WaitingPlayer[] = [];
     for (const player of this.waitingPlayers) {
-      if (now - player.joinedAt >= BOT_MATCH_TIMEOUT) {
+      if (player.allowBotMatch && now - player.joinedAt >= BOT_MATCH_TIMEOUT) {
         playersToMatch.push(player);
       }
     }
@@ -151,7 +161,13 @@ export default class LobbyServer implements Party.Server {
     }
 
     if (this.waitingPlayers.length > 0) {
-      const oldestPlayer = this.waitingPlayers.reduce((oldest, p) =>
+      const botEligiblePlayers = this.waitingPlayers.filter((player) => player.allowBotMatch);
+      if (botEligiblePlayers.length === 0) {
+        await this.saveQueue();
+        return;
+      }
+
+      const oldestPlayer = botEligiblePlayers.reduce((oldest, p) =>
         p.joinedAt < oldest.joinedAt ? p : oldest
       );
       const timeUntilBotMatch = BOT_MATCH_TIMEOUT - (now - oldestPlayer.joinedAt);

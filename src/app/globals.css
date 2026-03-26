@@ -469,10 +469,13 @@ body {
   font-weight: 700;
   font-family: inherit;
   cursor: pointer;
-  width: 100%;
+  width: auto;
   box-sizing: border-box;
   text-align: center;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   transition: background 0.15s ease;
 }
 
@@ -2063,6 +2066,21 @@ body {
   border-radius: 8px;
 }
 
+.otp-boxes-compact {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.otp-boxes-compact .otp-box {
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  aspect-ratio: 1 / 1.08;
+  font-size: clamp(18px, 5vw, 24px);
+}
+
 /* ---- Confirmation Dialog Body (shared by simple confirm modals) ---- */
 .modal-confirm-body {
   text-align: center;
@@ -3379,6 +3397,9 @@ button:focus-visible,
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   transition: background 0.15s ease;
 }
 
@@ -4108,11 +4129,13 @@ button:focus-visible,
 
 .sidebar-auth-actions {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
-  flex: 0 0 104px;
-  width: 104px;
+  flex: 1 1 auto;
+  width: auto;
   max-width: 100%;
 }
 
@@ -4127,7 +4150,7 @@ button:focus-visible,
   font-family: inherit;
   text-decoration: none;
   display: block;
-  width: 100%;
+  width: auto;
   box-sizing: border-box;
   text-align: center;
   white-space: nowrap;
@@ -4143,8 +4166,10 @@ button:focus-visible,
 
 .mobile-menu-auth-actions {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
   flex-shrink: 0;
 }
@@ -4159,6 +4184,9 @@ button:focus-visible,
   font-weight: 700;
   text-decoration: none;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .mobile-menu-profile-link:active,
@@ -4941,6 +4969,37 @@ button:focus-visible,
   font-variant-numeric: tabular-nums;
 }
 
+.mp-matchmaking-option {
+  width: min(100%, 360px);
+  margin-top: 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.mp-matchmaking-option input {
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}
+
+.mp-matchmaking-option span {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.mp-matchmaking-option-searching {
+  margin-top: 0;
+  margin-bottom: 18px;
+  justify-content: center;
+}
+
 .mp-hud {
   display: flex;
   flex-direction: row;
@@ -5062,6 +5121,54 @@ button:focus-visible,
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.12em;
+}
+
+.mp-move-window {
+  width: 100%;
+  max-width: 760px;
+  margin: -4px auto 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.mp-move-window-track {
+  width: 100%;
+  height: 20px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--accent-bg-light);
+  border: 1px solid var(--accent-border-medium);
+  overflow: hidden;
+}
+
+.mp-move-window-bar {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--bg-button) 0%, var(--accent) 100%);
+  transform-origin: left center;
+  animation-name: mpMoveWindowDrain;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+.mp-move-window-label {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+@keyframes mpMoveWindowDrain {
+  from {
+    transform: scaleX(1);
+  }
+
+  to {
+    transform: scaleX(0);
+  }
 }
 
 .mp-status-bar {
@@ -5481,6 +5588,15 @@ button:focus-visible,
 }
 
 @media screen and (max-width: 520px) {
+  .otp-boxes-compact {
+    gap: 6px;
+  }
+
+  .otp-boxes-compact .otp-box {
+    border-radius: 10px;
+    font-size: 1.15rem;
+  }
+
   .mp-stats-card {
     padding: 18px;
   }
@@ -5555,6 +5671,14 @@ button:focus-visible,
 
   .mp-hud-timer-display {
     font-size: 1.8rem;
+  }
+
+  .mp-move-window-track {
+    height: 16px;
+  }
+
+  .mp-move-window-label {
+    font-size: 0.88rem;
   }
 
   .boards-split {

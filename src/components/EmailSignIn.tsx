@@ -27,11 +27,13 @@ function OtpBoxes({
   onChange,
   onComplete,
   disabled,
+  className,
 }: {
   value: string;
   onChange: (v: string) => void;
   onComplete: () => void;
   disabled?: boolean;
+  className?: string;
 }) {
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -101,7 +103,10 @@ function OtpBoxes({
   }
 
   return (
-    <fieldset className="otp-boxes" style={{ border: "none", padding: 0, margin: 0 }}>
+    <fieldset
+      className={className ? `otp-boxes ${className}` : "otp-boxes"}
+      style={{ border: "none", padding: 0, margin: 0 }}
+    >
       <legend className="sr-only">Verification code</legend>
       {Array.from({ length: OTP_LENGTH }, (_, i) => (
         <input
@@ -260,6 +265,7 @@ export default function EmailSignIn({
         };
 
   const wrapperStyle = maxWidth ? { width: "100%", maxWidth } : undefined;
+  const otpBoxesClassName = variant === "inline" ? "otp-boxes-compact" : undefined;
 
   if (step === "email") {
     return (
@@ -308,6 +314,7 @@ export default function EmailSignIn({
     <div className={cls.section} style={wrapperStyle}>
       <p className={cls.label}>Code sent to {email}</p>
       <OtpBoxes
+        className={otpBoxesClassName}
         value={otpCode}
         onChange={setOtpCode}
         onComplete={handleVerifyOtp}

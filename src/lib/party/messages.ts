@@ -18,7 +18,13 @@ export interface GameStateMessage {
 // ============ Lobby Messages (Client -> Server) ============
 
 export type LobbyClientMessage =
-  | { type: "join_queue"; userId: string; username: string; elo: number }
+  | {
+      type: "join_queue";
+      userId: string;
+      username: string;
+      elo: number;
+      allowBotMatch?: boolean;
+    }
   | { type: "leave_queue" };
 
 // ============ Lobby Messages (Server -> Client) ============

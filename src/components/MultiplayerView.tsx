@@ -83,6 +83,8 @@ export default function MultiplayerView({
   const [localEloDelta, setLocalEloDelta] = useState<number | null>(null);
   const [localEloAfter, setLocalEloAfter] = useState<number | null>(null);
   const [eloProcessed, setEloProcessed] = useState(false);
+  const [allowBotMatch, setAllowBotMatch] = useState(true);
+  const [moveWindowResetKey, setMoveWindowResetKey] = useState<number | null>(null);
 
   // Guest support for friendly mode
   const guestId = useRef(`guest_${crypto.randomUUID()}`);
@@ -257,6 +259,7 @@ export default function MultiplayerView({
     const applyRestore = () => {
       if (localGameRef.current) {
         localGameRef.current.updateState(restoredLocalState);
+        setMoveWindowResetKey(Date.now());
         setLocalGameResult({
           won: restoredLocalState.won,
           score: restoredLocalState.score,
@@ -285,6 +288,7 @@ export default function MultiplayerView({
   useEffect(() => {
     if (!initialServerState) return;
     // Sync localGameResult so HUD shows correct score immediately
+    setMoveWindowResetKey(Date.now());
     setLocalGameResult({
       won: initialServerState.won,
       score: initialServerState.score,
@@ -313,6 +317,7 @@ export default function MultiplayerView({
   useEffect(() => {
     if (!serverGameState || !localGameRef.current) return;
     localGameRef.current.updateState(serverGameState);
+    setMoveWindowResetKey(Date.now());
     setLocalGameResult({
       won: serverGameState.won,
       score: serverGameState.score,
@@ -414,6 +419,7 @@ export default function MultiplayerView({
     cancelMatchmaking();
     setLocalGameResult(null);
     setShowOpponentExpanded(false);
+    setMoveWindowResetKey(null);
 
     confettiFiredRef.current = false;
     setLocalEloDelta(null);
@@ -421,9 +427,20 @@ export default function MultiplayerView({
     setEloProcessed(false);
     setIsReconnecting(false);
     if (user?.id) {
-      startMatchmaking(user.id, myName, myElo);
+      startMatchmaking(user.id, myName, myElo, allowBotMatch);
     }
   };
+
+  const handleAllowBotMatchChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const checked = event.target.checked;
+      setAllowBotMatch(checked);
+      if (matchmakingState === "searching" && user?.id) {
+        startMatchmaking(user.id, myName, myElo, checked);
+      }
+    },
+    [matchmakingState, myElo, myName, startMatchmaking, user?.id]
+  );
 
   // Derive match resolution state (must be before early returns so hooks are stable)
   const localDone = !!(localGameResult?.gameOver || localGameResult?.won);
@@ -751,9 +768,7 @@ export default function MultiplayerView({
               }
             }}
           >
-            <span className="mp-invite-url">
-              {codeCopied ? "Copied!" : inviteUrl}
-            </span>
+            <span className="mp-invite-url">{codeCopied ? "Copied!" : inviteUrl}</span>
           </button>
 
           <div className="loader loader-center"></div>
@@ -774,7 +789,7 @@ export default function MultiplayerView({
           {user ? (
             <button
               className="mp-find-btn"
-              onClick={() => user.id && startMatchmaking(user.id, myName, myElo)}
+              onClick={() => user.id && startMatchmaking(user.id, myName, myElo, allowBotMatch)}
             >
               Play Online
             </button>
@@ -787,6 +802,13 @@ export default function MultiplayerView({
             Play with a Friend
           </button>
         </div>
+
+        {user && (
+          <label className="mp-matchmaking-option">
+            <input type="checkbox" checked={allowBotMatch} onChange={handleAllowBotMatchChange} />
+            <span>Match with computer if a human player is not available</span>
+          </label>
+        )}
 
         {!user && showSignIn && (
           <div style={{ marginTop: 16, width: "100%", maxWidth: "300px" }}>
@@ -878,11 +900,21 @@ export default function MultiplayerView({
         )}
         <div className="loader loader-center"></div>
         <div className="mp-search-timer">
-          <p className="mp-search-timer-text">
-            Looking for a human player...{" "}
-            <span className="mp-search-timer-count">{searchTimeLeft}s</span>
-          </p>
+          {allowBotMatch ? (
+            <p className="mp-search-timer-text">
+              Looking for a human player...{" "}
+              <span className="mp-search-timer-count">{searchTimeLeft}s</span>
+            </p>
+          ) : (
+            <p className="mp-search-timer-text">
+              Looking for a human player only. Bot fallback is off.
+            </p>
+          )}
         </div>
+        <label className="mp-matchmaking-option mp-matchmaking-option-searching">
+          <input type="checkbox" checked={allowBotMatch} onChange={handleAllowBotMatchChange} />
+          <span>Match with computer if a human player is not available</span>
+        </label>
         <button className="game-btn match-btn secondary" onClick={cancelMatchmaking}>
           Cancel
         </button>
@@ -895,8 +927,6 @@ export default function MultiplayerView({
   let statusText = "";
   if (!isMatchResolved) {
     if (timerExpired) statusText = "Time's up! Waiting for result...";
-    else if (gameStarted)
-      statusText = `Move at least once every ${MOVE_TIMEOUT_SECONDS} seconds or lose.`;
   } else if (timerExpired && !hasForfeit) {
     statusText = "Time's up!";
   }
@@ -956,6 +986,8 @@ export default function MultiplayerView({
           opponentConnected={opponentConnected}
           opponentEverConnected={opponentEverConnected}
           statusText={statusText}
+          moveWindowResetKey={isMatchResolved ? null : moveWindowResetKey}
+          moveTimeoutSeconds={MOVE_TIMEOUT_SECONDS}
         />
 
         <div className="boards-split">

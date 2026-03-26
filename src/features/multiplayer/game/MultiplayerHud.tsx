@@ -19,6 +19,8 @@ interface MultiplayerHudProps {
   opponentConnected: boolean;
   opponentEverConnected: boolean;
   statusText: string;
+  moveWindowResetKey: number | null;
+  moveTimeoutSeconds: number;
 }
 
 export default function MultiplayerHud({
@@ -31,6 +33,8 @@ export default function MultiplayerHud({
   opponentConnected,
   opponentEverConnected,
   statusText,
+  moveWindowResetKey,
+  moveTimeoutSeconds,
 }: MultiplayerHudProps) {
   const timerWarning = timeLeft < 30;
   const timerCritical = timeLeft < 10;
@@ -91,6 +95,18 @@ export default function MultiplayerHud({
           <span className="mp-hud-score">{opponentScore.toLocaleString()}</span>
         </div>
       </div>
+      {gameStarted && moveWindowResetKey !== null && (
+        <div className="mp-move-window" aria-live="polite">
+          <div className="mp-move-window-track" aria-hidden="true">
+            <div
+              key={moveWindowResetKey}
+              className="mp-move-window-bar"
+              style={{ animationDuration: `${moveTimeoutSeconds}s` }}
+            />
+          </div>
+          <div className="mp-move-window-label">You have {moveTimeoutSeconds} seconds to move</div>
+        </div>
+      )}
       {statusText && (
         <div className="mp-status-bar" role="status" aria-live="polite">
           {statusText}

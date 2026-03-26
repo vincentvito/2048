@@ -2,7 +2,7 @@ import React from "react";
 
 export default function HowToPlay(): React.ReactElement {
   return (
-    <details className="how-to-play">
+    <details className="how-to-play" open>
       <summary className="how-to-play-toggle">
         <span>How to Play</span>
         <svg

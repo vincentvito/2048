@@ -25,6 +25,10 @@
 - `.loader` / `.loader-center` CSS classes for consistent spinner styling
 - `.auth-success` CSS styles for the post-login redirect page (replaces Tailwind utility classes)
 - `.below-board-controls-spaced` and `.grid-size-control-loose` utility classes
+- "Match with computer" opt-out checkbox in multiplayer lobby and search screen. When unchecked, bot fallback is disabled and the player waits for a human opponent indefinitely. Preference is sent to the lobby server via `allowBotMatch` flag
+- Move window progress bar in multiplayer HUD. An animated bar drains over the inactivity timeout period, resetting on every server-confirmed move. Gives players a clear visual of how much time they have before forfeiting
+- Tap-to-copy on the multiplayer invite URL display. Tapping the link copies it to clipboard with "Copied!" feedback
+- Compact OTP input layout (`.otp-boxes-compact`) for inline email sign-in. Uses a responsive grid with aspect-ratio boxes instead of fixed-width inputs
 
 ### Changed
 
@@ -41,6 +45,10 @@
 - Hardcoded overlay backgrounds replaced with `var(--overlay-neutral)` for theme consistency
 - Removed `transition: max-width 0.3s ease` from `.container` (unnecessary layout transition)
 - Refactored `HowToPlay` component from client-rendered (useState/useEffect) to server-rendered using native `<details>`/`<summary>`. Instructional text is now crawlable by search engines. Mobile/desktop controls text uses CSS media queries (`pointer: coarse`) instead of JavaScript detection
+- Lobby server (`party/lobby.ts`) respects `allowBotMatch` flag per player. Players who opt out are skipped during bot match scheduling and alarm processing (**requires PartyKit deploy**)
+- Multiplayer matchmaking passes `allowBotMatch` to lobby server. Search timer only counts down when bot match is enabled
+- Removed inline "move every N seconds or lose" status text from multiplayer HUD (replaced by the visual move window bar)
+- Brand logo on midnight theme gets a warm off-white (`#fffff3`) card background for contrast against the dark page
 
 ### Fixed
 

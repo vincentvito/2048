@@ -5,7 +5,7 @@ import type { LobbyServerMessage } from "@/lib/party/messages";
 export type MatchmakingState = "idle" | "searching" | "matched";
 
 const PARTYKIT_HOST = process.env.NEXT_PUBLIC_PARTYKIT_HOST || "localhost:1999";
-const BOT_MATCH_TIMEOUT = 15; // seconds until bot match
+export const BOT_MATCH_TIMEOUT = 15; // seconds until bot match
 
 export function usePartyMatchmaking() {
   const [state, setState] = useState<MatchmakingState>("idle");
@@ -33,7 +33,7 @@ export function usePartyMatchmaking() {
   }, []);
 
   const startMatchmaking = useCallback(
-    (userId: string, username: string, elo: number) => {
+    (userId: string, username: string, elo: number, allowBotMatch = true) => {
       if (!userId) {
         console.error("[usePartyMatchmaking] No userId provided");
         return;
@@ -45,15 +45,17 @@ export function usePartyMatchmaking() {
       setState("searching");
       setRoomId(null);
       setOpponentInfo(null);
-      setSearchTimeLeft(BOT_MATCH_TIMEOUT);
+      setSearchTimeLeft(allowBotMatch ? BOT_MATCH_TIMEOUT : 0);
 
-      // Start countdown timer
-      timerRef.current = setInterval(() => {
-        setSearchTimeLeft((prev) => {
-          if (prev <= 1) return 0;
-          return prev - 1;
-        });
-      }, 1000);
+      if (allowBotMatch) {
+        // Start countdown timer
+        timerRef.current = setInterval(() => {
+          setSearchTimeLeft((prev) => {
+            if (prev <= 1) return 0;
+            return prev - 1;
+          });
+        }, 1000);
+      }
 
       // Connect to lobby
       const socket = new PartySocket({
@@ -73,6 +75,7 @@ export function usePartyMatchmaking() {
             userId,
             username,
             elo,
+            allowBotMatch,
           })
         );
       };

@@ -85,7 +85,7 @@ export default async function LeaderboardPage() {
               <tbody>
                 {scores.map((entry, i) => (
                   <tr key={entry.id}>
-                    <td className="leaderboard-col-rank">{i + 1}</td>
+                    <td className="leaderboard-col-rank">{i === 0 ? "👑" : i + 1}</td>
                     <td className="leaderboard-col-username">{entry.username}</td>
                     <td className="leaderboard-col-score">{entry.score.toLocaleString()}</td>
                     <td className="leaderboard-col-date">

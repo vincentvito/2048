@@ -30,16 +30,24 @@ const racingSansOne = Racing_Sans_One({
 
 export const metadata: Metadata = {
   title: {
-    default: "The 2048 League — Play, Compete, Win",
+    default: "Play 2048 Online | The 2048 League",
     template: "%s | The 2048 League",
   },
   description:
-    "Play 2048 — the classic sliding tile puzzle. Compete on leaderboards and challenge friends in real-time multiplayer.",
-  keywords: ["2048", "puzzle", "game", "multiplayer", "leaderboard", "tiles"],
+    "Play 2048 online for free. Compete on the leaderboard, challenge friends in real-time multiplayer, and climb the ranks. Start playing now!",
+  keywords: [
+    "play 2048 online",
+    "2048 game",
+    "2048 multiplayer",
+    "2048 leaderboard",
+    "2048 puzzle",
+    "2048 online free",
+  ],
   authors: [{ name: "The 2048 League" }],
   openGraph: {
-    title: "The 2048 League",
-    description: "Play 2048 — slide tiles, hit 2048, and compete on leaderboards.",
+    title: "Play 2048 Online | The 2048 League",
+    description:
+      "Play 2048 online for free. Compete on the leaderboard, challenge friends in real-time multiplayer, and climb the ranks.",
     url: "https://www.the2048league.com",
     siteName: "The 2048 League",
     images: [{ url: "/brand.png", width: 1024, height: 512 }],
@@ -47,8 +55,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "The 2048 League",
-    description: "Play 2048 — slide tiles, hit 2048, and compete on leaderboards.",
+    title: "Play 2048 Online | The 2048 League",
+    description:
+      "Play 2048 online for free. Compete on the leaderboard, challenge friends in real-time multiplayer, and climb the ranks.",
     images: ["/brand.png"],
   },
   appleWebApp: {

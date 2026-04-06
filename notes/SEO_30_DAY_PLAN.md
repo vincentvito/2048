@@ -60,7 +60,7 @@ Use these keywords when writing content, metadata, and titles.
   - Refactored `HowToPlay` to server-rendered `<details>`/`<summary>` (crawlable)
   - Added content page and blog CSS styles to `globals.css`
 
-- [ ] **Day 2: Meta tags audit**
+- [x] **Day 2: Meta tags audit**
   Read this file, then follow these instructions:
   1. Read every file under `src/app/` that exports `metadata`. List them all.
   2. For each page, verify:
@@ -83,7 +83,7 @@ Use these keywords when writing content, metadata, and titles.
   5. Run `npx tsc --noEmit`.
   6. Mark this task `[x]` and update `CHANGELOG.md`.
 
-- [ ] **Day 3: Performance audit**
+- [x] **Day 3: Performance audit**
   1. Read `src/app/layout.tsx` and verify fonts use `display: "swap"`.
   2. Grep for all `<img>` tags in the codebase. Verify each has `width`, `height`, and `alt`. Fix missing ones.
   3. Grep for inline `style=` objects in TSX files. Convert large inline styles to CSS classes in `globals.css`.
@@ -91,7 +91,7 @@ Use these keywords when writing content, metadata, and titles.
   5. Run `npx tsc --noEmit`.
   6. Mark this task `[x]` and update `CHANGELOG.md`.
 
-- [ ] **Day 4-5: Google Search Console (MANUAL)**
+- [x] **Day 4-5: Google Search Console (MANUAL)**
   This cannot be done by an agent. The project owner must:
   1. Go to https://search.google.com/search-console
   2. Add and verify `the2048league.com`
@@ -101,7 +101,7 @@ Use these keywords when writing content, metadata, and titles.
 
 ### Week 2: Content Expansion
 
-- [ ] **Day 6: Write "How to Play 2048 with Friends Online"**
+- [x] **Day 6: Write "How to Play 2048 with Friends Online"**
   1. Create `src/app/blog/how-to-play-2048-with-friends-online/page.tsx`.
   2. Follow the **Blog Article Template** at the bottom of this file.
   3. Details:
@@ -125,7 +125,7 @@ Use these keywords when writing content, metadata, and titles.
   6. Run `npx tsc --noEmit`.
   7. Mark this task `[x]` and update `CHANGELOG.md`.
 
-- [ ] **Day 7: Write "2048 Game Modes Explained"**
+- [x] **Day 7: Write "2048 Game Modes Explained"**
   1. Create `src/app/blog/2048-game-modes-explained/page.tsx`.
   2. Follow the **Blog Article Template**.
   3. Details:
@@ -148,7 +148,7 @@ Use these keywords when writing content, metadata, and titles.
   6. Run `npx tsc --noEmit`.
   7. Mark this task `[x]` and update `CHANGELOG.md`.
 
-- [ ] **Day 8: Write "2048 Board Sizes: 4x4 vs 8x8"**
+- [x] **Day 8: Write "2048 Board Sizes: 4x4 vs 8x8"**
   1. Create `src/app/blog/2048-board-sizes-4x4-vs-8x8/page.tsx`.
   2. Follow the **Blog Article Template**.
   3. Details:
@@ -171,7 +171,7 @@ Use these keywords when writing content, metadata, and titles.
   6. Run `npx tsc --noEmit`.
   7. Mark this task `[x]` and update `CHANGELOG.md`.
 
-- [ ] **Day 9: Write "Top 10 Mistakes Beginners Make in 2048"**
+- [x] **Day 9: Write "Top 10 Mistakes Beginners Make in 2048"**
   1. Create `src/app/blog/top-10-mistakes-beginners-make-in-2048/page.tsx`.
   2. Follow the **Blog Article Template**.
   3. Details:
@@ -200,7 +200,7 @@ Use these keywords when writing content, metadata, and titles.
   6. Run `npx tsc --noEmit`.
   7. Mark this task `[x]` and update `CHANGELOG.md`.
 
-- [ ] **Day 10-12: Build public /leaderboard page**
+- [x] **Day 10-12: Build public /leaderboard page**
   1. Create `src/app/leaderboard/page.tsx` as a server component (no `"use client"`).
   2. Requirements:
      - Export `metadata`: title "2048 Leaderboard: Top Scores and Rankings", keywords "2048 leaderboard", "2048 high scores", "2048 top players".
@@ -222,7 +222,7 @@ Use these keywords when writing content, metadata, and titles.
 
 ### Week 3: Linking and Outreach
 
-- [ ] **Day 13-14: Internal linking audit**
+- [x] **Day 13-14: Internal linking audit**
   1. Read every page under `src/app/` (skip `api/`, `auth/`).
   2. For each page, list all `<Link>` hrefs. Verify each page links to at least 2 other pages.
   3. Add a "Related Articles" section before the CTA in each blog article:

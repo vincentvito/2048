@@ -2,25 +2,58 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Blog",
+  title: "2048 Blog: Tips, Strategy, and News",
   description:
-    "Tips, strategies, and news from The 2048 League. Learn how to improve your 2048 game, understand the ELO ranking system, and stay up to date with new features.",
+    "Read the latest 2048 tips, strategy guides, and news from The 2048 League. Sharpen your skills and climb the leaderboard. Explore articles now!",
   keywords: [
     "2048 blog",
     "2048 tips",
     "2048 news",
     "2048 strategy",
     "2048 multiplayer tips",
+    "2048 guides",
   ],
   openGraph: {
-    title: "Blog | The 2048 League",
+    title: "2048 Blog: Tips, Strategy, and News",
     description:
-      "Tips, strategies, and news from The 2048 League. Improve your game and climb the ranks.",
+      "Read the latest 2048 tips, strategy guides, and news from The 2048 League. Sharpen your skills and climb the leaderboard.",
     url: "https://www.the2048league.com/blog",
   },
 };
 
 const posts = [
+  {
+    slug: "how-to-play-2048-with-friends-online",
+    title: "How to Play 2048 with Friends Online",
+    description:
+      "Learn how to invite a friend and play 2048 together in real time. A step-by-step guide to creating a room, sharing the link, and starting a match.",
+    date: "2026-04-06",
+    tag: "Guide",
+  },
+  {
+    slug: "2048-game-modes-explained",
+    title: "2048 Game Modes Explained: Single Player, Ranked, and Friendly",
+    description:
+      "Compare single player, ranked multiplayer, and friendly mode in The 2048 League. Learn what each mode offers and when to use it.",
+    date: "2026-04-06",
+    tag: "Guide",
+  },
+  {
+    slug: "2048-board-sizes-4x4-vs-8x8",
+    title: "2048 Board Sizes: 4x4 vs 8x8 Grid Comparison",
+    description:
+      "Compare the classic 4x4 and the larger 8x8 2048 boards. Learn how strategy, scoring, and difficulty change with board size.",
+    date: "2026-04-06",
+    tag: "Guide",
+  },
+  {
+    slug: "top-10-mistakes-beginners-make-in-2048",
+    title: "Top 10 Mistakes Beginners Make in 2048",
+    description:
+      "Struggling with 2048? Here are the 10 most common mistakes beginners make and exactly how to fix each one.",
+    date: "2026-04-06",
+    tag: "Strategy",
+  },
   {
     slug: "how-to-win-2048-complete-strategy-guide",
     title: "How to Win at 2048: The Complete Strategy Guide",

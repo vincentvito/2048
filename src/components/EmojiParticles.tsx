@@ -232,13 +232,7 @@ export function ParticleProvider({ children }: { children: React.ReactNode }) {
       {children}
       <canvas
         ref={canvasRef}
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 99999,
-          pointerEvents: "none",
-          userSelect: "none",
-        }}
+        className="emoji-particle-canvas"
       />
     </ParticleContext.Provider>
   );

@@ -224,14 +224,7 @@ const SinglePlayerScreen = forwardRef<SinglePlayerHandle, SinglePlayerScreenProp
           </div>
         )}
 
-        <div
-          style={{
-            position: "relative",
-            touchAction: "none",
-            display: "flex",
-            justifyContent: "center",
-          }}
-        >
+        <div className="sp-board-wrapper">
           <Game2048
             ref={gameRef}
             onGameOver={handleGameOver}

@@ -83,14 +83,7 @@ export default function UsernamePrompt(): React.ReactElement | null {
         <h2 id="username-prompt-title" className="modal-result" style={{ marginBottom: "4px" }}>
           Choose a Username
         </h2>
-        <p
-          style={{
-            color: "var(--text-secondary)",
-            fontSize: "14px",
-            margin: "0 0 16px",
-            lineHeight: 1.5,
-          }}
-        >
+        <p className="username-prompt-desc">
           This is how you&apos;ll appear on the leaderboard and to opponents.
         </p>
 

@@ -1,8 +1,25 @@
 # Changelog
 
-## [Unreleased] - 2026-03-25
+## [Unreleased] - 2026-04-06
 
 ### Added
+
+- SEO Day 2: Meta tags audit across all pages. Added primary keywords, CTAs, and openGraph metadata to every page. Added `openGraph.type: "article"` to all blog posts. Expanded keyword arrays to 6-8 terms per page
+- SEO Day 3: Performance audit. Fixed empty alt text on install banner image, extracted 7 large inline style blocks into CSS classes in globals.css, verified font display swap and service worker caching
+- SEO Day 6: Blog article "How to Play 2048 with Friends Online" covering friendly mode, room creation, invite sharing, and match mechanics
+- SEO Day 7: Blog article "2048 Game Modes Explained: Single Player, Ranked, and Friendly" with comparison table
+- SEO Day 8: Blog article "2048 Board Sizes: 4x4 vs 8x8 Grid Comparison" covering strategy differences and a comparison grid
+- SEO Day 9: Blog article "Top 10 Mistakes Beginners Make in 2048" with 10 detailed mistake/fix sections
+- All new blog articles added to sitemap.ts and blog listing page
+- SEO Day 10-12: Public `/leaderboard` page (server-rendered, top 20 scores from Supabase, theme-aware striped table, responsive). Added to footer nav and sitemap
+- SEO Day 13-14: Internal linking audit. Added "Related Articles" sections to all 7 blog posts with 3 cross-links each. Added `/blog` link to `/how-to-play` and `/strategy` CTA sections. Verified `/leaderboard` links to `/strategy`
+
+### Fixed
+
+- Leaderboard page: silenced noisy console error on Supabase API failures (page already shows friendly fallback message)
+- Leaderboard page: replaced 6 inline style objects in CTA section with existing CSS classes (`content-cta`, `content-btn-primary`, `content-btn-secondary`)
+
+### Changed
 
 - SEO content pages: `/how-to-play` (rules and tutorial), `/strategy` (strategy guide with corner method, snake pattern, and multiplayer tips), and `/blog` (article listing)
 - Blog section with three initial articles: "How to Win at 2048: The Complete Strategy Guide", "What is ELO Rating in 2048?", and "Multiplayer 2048: Tips for Beginners"

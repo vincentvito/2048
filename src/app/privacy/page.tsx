@@ -4,10 +4,17 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
-    "Privacy policy for The 2048 League. Learn what data we collect, how we use it, and how we protect your information.",
+    "Privacy policy for The 2048 League. Learn what data we collect, how we use it, and how we keep your information safe.",
+  keywords: [
+    "2048 league privacy policy",
+    "2048 data policy",
+    "2048 league privacy",
+    "2048 game privacy",
+  ],
   openGraph: {
     title: "Privacy Policy | The 2048 League",
-    description: "Privacy policy for The 2048 League.",
+    description:
+      "Privacy policy for The 2048 League. Learn what data we collect, how we use it, and how we keep your information safe.",
     url: "https://www.the2048league.com/privacy",
   },
 };

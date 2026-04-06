@@ -2,21 +2,22 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "How to Play 2048",
+  title: "How to Play 2048: Rules, Controls, and Tips",
   description:
-    "Learn how to play 2048, the classic sliding tile puzzle game. Understand the rules, controls, and scoring to start merging tiles and reaching 2048.",
+    "Learn how to play 2048 with this beginner-friendly tutorial. Master the rules, controls, and scoring, then jump in and start playing today!",
   keywords: [
     "how to play 2048",
     "2048 rules",
     "2048 tutorial",
-    "2048 game guide",
     "2048 controls",
+    "2048 game guide",
     "learn 2048",
+    "2048 beginner tips",
   ],
   openGraph: {
-    title: "How to Play 2048 | The 2048 League",
+    title: "How to Play 2048: Rules, Controls, and Tips",
     description:
-      "Learn the rules, controls, and scoring of 2048. Start sliding tiles, merging numbers, and reaching the 2048 tile.",
+      "Learn how to play 2048 with this beginner-friendly tutorial. Master the rules, controls, and scoring, then start playing today!",
     url: "https://www.the2048league.com/how-to-play",
   },
 };
@@ -125,6 +126,9 @@ export default function HowToPlayPage() {
             </Link>
             <Link href="/strategy" className="content-btn-secondary">
               Learn Strategy
+            </Link>
+            <Link href="/blog" className="content-btn-secondary">
+              Read the Blog
             </Link>
           </div>
         </section>

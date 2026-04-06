@@ -2,22 +2,24 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "What is ELO Rating in 2048?",
+  title: "What is ELO Rating in 2048? Ranking System Explained",
   description:
-    "Understand how the ELO rating system works in The 2048 League. Learn how your rank is calculated, what affects your rating, and how to climb the competitive ladder.",
+    "Learn how the 2048 ELO rating system works. Understand how your rank is calculated, what affects your score, and how to climb the ladder. Check your rank now!",
   keywords: [
     "2048 ELO rating",
+    "2048 ranking",
+    "competitive 2048",
     "2048 ranking system",
-    "2048 competitive ranking",
     "2048 league ranks",
     "ELO system explained",
     "2048 multiplayer ranking",
   ],
   openGraph: {
-    title: "What is ELO Rating in 2048? | The 2048 League",
+    title: "What is ELO Rating in 2048? Ranking System Explained",
     description:
-      "Understand how the ELO rating system works in competitive 2048. Learn how ranks are calculated and how to climb the ladder.",
+      "Learn how the 2048 ELO rating system works. Understand how your rank is calculated and how to climb the competitive ladder.",
     url: "https://www.the2048league.com/blog/what-is-elo-rating-2048",
+    type: "article",
   },
 };
 
@@ -131,6 +133,15 @@ export default function EloRatingPost() {
               are a great way to practice or have fun without worrying about your rating. Only ranked
               matchmaking games count toward your ELO.
             </p>
+          </section>
+
+          <section className="content-section">
+            <h2 className="content-heading">Related Articles</h2>
+            <ul className="content-list">
+              <li><Link href="/blog/2048-game-modes-explained" className="content-inline-link">2048 Game Modes Explained</Link></li>
+              <li><Link href="/blog/multiplayer-2048-tips-for-beginners" className="content-inline-link">Multiplayer 2048: Tips for Beginners</Link></li>
+              <li><Link href="/blog/how-to-play-2048-with-friends-online" className="content-inline-link">How to Play 2048 with Friends Online</Link></li>
+            </ul>
           </section>
 
           <section className="content-section content-cta">

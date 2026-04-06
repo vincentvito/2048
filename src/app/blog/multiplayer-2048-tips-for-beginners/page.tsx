@@ -2,23 +2,24 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Multiplayer 2048: Tips for Beginners",
+  title: "2048 Multiplayer: Beginner Tips for Competitive Play",
   description:
-    "New to competitive 2048? Learn the key differences between single-player and multiplayer, how ranked matches work, and tips to win your first online game.",
+    "New to 2048 multiplayer? Learn how ranked matches work, key differences from solo play, and tips to win your first competitive game. Jump in today!",
   keywords: [
     "2048 multiplayer",
-    "2048 multiplayer tips",
     "play 2048 online",
     "2048 competitive",
+    "2048 multiplayer tips",
     "2048 ranked tips",
-    "2048 vs other players",
     "2048 online game",
+    "2048 vs other players",
   ],
   openGraph: {
-    title: "Multiplayer 2048: Tips for Beginners | The 2048 League",
+    title: "2048 Multiplayer: Beginner Tips for Competitive Play",
     description:
-      "New to competitive 2048? Learn how ranked matches work and get tips to win your first online game.",
+      "New to 2048 multiplayer? Learn how ranked matches work and get tips to win your first competitive game.",
     url: "https://www.the2048league.com/blog/multiplayer-2048-tips-for-beginners",
+    type: "article",
   },
 };
 
@@ -151,6 +152,15 @@ export default function MultiplayerTipsPost() {
                 <strong>Quitting early.</strong> Forfeiting a ranked match counts as a loss and costs
                 ELO points. Even if the game looks bad, you might still win. Play it out.
               </li>
+            </ul>
+          </section>
+
+          <section className="content-section">
+            <h2 className="content-heading">Related Articles</h2>
+            <ul className="content-list">
+              <li><Link href="/blog/what-is-elo-rating-2048" className="content-inline-link">What is ELO Rating in 2048?</Link></li>
+              <li><Link href="/blog/how-to-play-2048-with-friends-online" className="content-inline-link">How to Play 2048 with Friends Online</Link></li>
+              <li><Link href="/blog/2048-game-modes-explained" className="content-inline-link">2048 Game Modes Explained</Link></li>
             </ul>
           </section>
 

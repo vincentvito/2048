@@ -811,21 +811,14 @@ export default function MultiplayerView({
         )}
 
         {!user && showSignIn && (
-          <div style={{ marginTop: 16, width: "100%", maxWidth: "300px" }}>
+          <div className="mp-inline-signin-wrapper">
             <EmailSignIn variant="inline" maxWidth="300px" onCancel={() => setShowSignIn(false)} />
           </div>
         )}
 
         {statsLoading && (
-          <div className="mp-stats-card" style={{ marginTop: 20 }}>
-            <p
-              style={{
-                margin: 0,
-                color: "var(--text-secondary)",
-                fontSize: "13px",
-                textAlign: "center",
-              }}
-            >
+          <div className="mp-stats-card mp-stats-card--loading">
+            <p className="mp-stats-loading-text">
               Loading stats...
             </p>
           </div>

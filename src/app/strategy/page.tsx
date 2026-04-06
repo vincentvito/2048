@@ -2,23 +2,23 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "2048 Strategy Guide",
+  title: "2048 Strategy Guide: Corner Method, Tips, and Tricks",
   description:
-    "Master 2048 with proven strategies and tips. Learn the corner method, how to build tile chains, and advanced techniques to consistently reach 2048 and beyond.",
+    "Boost your score with this 2048 strategy guide. Learn the corner method, tile chains, and advanced tips to reach 2048 and beyond. Start winning now!",
   keywords: [
     "2048 strategy",
     "2048 tips",
-    "2048 tricks",
     "how to win 2048",
-    "2048 guide",
     "2048 corner method",
+    "2048 tricks",
+    "2048 guide",
     "2048 high score",
     "beat 2048",
   ],
   openGraph: {
-    title: "2048 Strategy Guide | The 2048 League",
+    title: "2048 Strategy Guide: Corner Method, Tips, and Tricks",
     description:
-      "Master 2048 with proven strategies. Learn the corner method, tile chains, and advanced techniques to reach 2048 and beyond.",
+      "Boost your score with this 2048 strategy guide. Learn the corner method, tile chains, and advanced tips to reach 2048 and beyond.",
     url: "https://www.the2048league.com/strategy",
   },
 };
@@ -184,6 +184,9 @@ export default function StrategyPage() {
             </Link>
             <Link href="/how-to-play" className="content-btn-secondary">
               Learn the Rules
+            </Link>
+            <Link href="/blog" className="content-btn-secondary">
+              Read the Blog
             </Link>
           </div>
         </section>

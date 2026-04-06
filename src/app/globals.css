@@ -6214,3 +6214,150 @@ button:focus-visible,
     font-size: 1.2rem;
   }
 }
+
+/* ========== Performance audit: extracted inline styles ========== */
+
+/* UsernamePrompt description text */
+.username-prompt-desc {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+
+/* Single-player board wrapper */
+.sp-board-wrapper {
+  position: relative;
+  touch-action: none;
+  display: flex;
+  justify-content: center;
+}
+
+/* Emoji particle canvas overlay */
+.emoji-particle-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Multiplayer inline sign-in wrapper */
+.mp-inline-signin-wrapper {
+  margin-top: 16px;
+  width: 100%;
+  max-width: 300px;
+}
+
+/* Multiplayer stats loading state */
+.mp-stats-card--loading {
+  margin-top: 20px;
+}
+
+.mp-stats-loading-text {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* Invalid invite error page */
+.invite-error-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: 16px;
+  padding: 20px;
+  text-align: center;
+}
+
+.invite-error-title {
+  font-size: 1.5rem;
+  margin: 0;
+}
+
+.invite-error-desc {
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.invite-error-cta {
+  margin-top: 12px;
+  padding: 10px 24px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #fff;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+/* ========== Leaderboard Table ========== */
+
+.leaderboard-table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 12px;
+  border: 1px solid var(--bg-card-border);
+}
+
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--bg-card);
+  font-size: 0.95rem;
+}
+
+.leaderboard-table thead {
+  background: var(--bg-card);
+  border-bottom: 2px solid var(--bg-card-border);
+}
+
+.leaderboard-table th {
+  padding: 12px 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.leaderboard-table td {
+  padding: 10px 16px;
+  color: var(--text-body);
+  white-space: nowrap;
+}
+
+.leaderboard-table tbody tr {
+  border-bottom: 1px solid var(--bg-card-border);
+}
+
+.leaderboard-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.leaderboard-table tbody tr:nth-child(even) {
+  background: var(--bg-page);
+}
+
+.leaderboard-col-rank {
+  width: 48px;
+  text-align: center !important;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.leaderboard-col-username {
+  min-width: 120px;
+}
+
+.leaderboard-col-score {
+  text-align: right !important;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.leaderboard-col-date {
+  color: var(--text-secondary);
+  text-align: right !important;
+}

@@ -13,6 +13,7 @@
 - All new blog articles added to sitemap.ts and blog listing page
 - SEO Day 10-12: Public `/leaderboard` page (server-rendered, top 20 scores from Supabase, theme-aware striped table, responsive). Added to footer nav and sitemap
 - SEO Day 13-14: Internal linking audit. Added "Related Articles" sections to all 7 blog posts with 3 cross-links each. Added `/blog` link to `/how-to-play` and `/strategy` CTA sections. Verified `/leaderboard` links to `/strategy`
+- Leaderboard page: global stats strip above the top-20 table showing total games played (single-player saved runs plus ranked multiplayer matches) and total ranked player count, fetched server-side alongside the existing leaderboard query
 
 ### Fixed
 

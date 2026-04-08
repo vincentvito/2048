@@ -6295,6 +6295,59 @@ button:focus-visible,
 
 /* ========== Leaderboard Table ========== */
 
+.leaderboard-stats-strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  padding: 20px 24px;
+  margin-bottom: 24px;
+  border-radius: 12px;
+  border: 1px solid var(--bg-card-border);
+  background: var(--bg-card);
+}
+
+.leaderboard-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.leaderboard-stat-value {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.leaderboard-stat-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+
+.leaderboard-stat-divider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--bg-card-border);
+}
+
+@media (max-width: 480px) {
+  .leaderboard-stats-strip {
+    gap: 20px;
+    padding: 16px 20px;
+  }
+
+  .leaderboard-stat-value {
+    font-size: 22px;
+  }
+}
+
 .leaderboard-table-wrapper {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;

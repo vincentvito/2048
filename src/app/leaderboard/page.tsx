@@ -28,27 +28,50 @@ interface ScoreRow {
   created_at: string;
 }
 
-async function fetchTopScores(): Promise<ScoreRow[] | null> {
+interface LeaderboardStats {
+  totalGames: number;
+  rankedPlayers: number;
+}
+
+async function fetchLeaderboardData(): Promise<{
+  scores: ScoreRow[] | null;
+  stats: LeaderboardStats | null;
+}> {
   try {
     const supabase = createAdminClient();
-    if (!supabase) return null;
+    if (!supabase) return { scores: null, stats: null };
 
-    const { data, error } = await supabase
-      .from("scores")
-      .select("id, username, score, created_at")
-      .order("score", { ascending: false })
-      .limit(20);
+    const [topScoresRes, scoresCountRes, playerStatsRes] = await Promise.all([
+      supabase
+        .from("scores")
+        .select("id, username, score, created_at")
+        .order("score", { ascending: false })
+        .limit(20),
+      supabase.from("scores").select("id", { count: "exact", head: true }),
+      supabase.from("player_stats").select("games_played"),
+    ]);
 
-    if (error) return null;
+    const scores = topScoresRes.error ? null : (topScoresRes.data as ScoreRow[]);
 
-    return data as ScoreRow[];
+    let stats: LeaderboardStats | null = null;
+    if (!scoresCountRes.error && !playerStatsRes.error) {
+      const singlePlayerGames = scoresCountRes.count ?? 0;
+      const playerRows = (playerStatsRes.data ?? []) as Array<{ games_played: number | null }>;
+      const rankedGames = playerRows.reduce((sum, row) => sum + (row.games_played ?? 0), 0);
+      stats = {
+        totalGames: singlePlayerGames + rankedGames,
+        rankedPlayers: playerRows.length,
+      };
+    }
+
+    return { scores, stats };
   } catch {
-    return null;
+    return { scores: null, stats: null };
   }
 }
 
 export default async function LeaderboardPage() {
-  const scores = await fetchTopScores();
+  const { scores, stats } = await fetchLeaderboardData();
 
   return (
     <main className="content-page">
@@ -62,6 +85,22 @@ export default async function LeaderboardPage() {
           The top 20 scores from players around the world. Think you can do better? Jump into a game
           and prove it.
         </p>
+
+        {stats && stats.totalGames > 0 && (
+          <div className="leaderboard-stats-strip">
+            <div className="leaderboard-stat">
+              <span className="leaderboard-stat-value">{stats.totalGames.toLocaleString()}</span>
+              <span className="leaderboard-stat-label">Games played</span>
+            </div>
+            <div className="leaderboard-stat-divider" aria-hidden="true" />
+            <div className="leaderboard-stat">
+              <span className="leaderboard-stat-value">{stats.rankedPlayers.toLocaleString()}</span>
+              <span className="leaderboard-stat-label">
+                Ranked player{stats.rankedPlayers === 1 ? "" : "s"}
+              </span>
+            </div>
+          </div>
+        )}
 
         {scores === null ? (
           <div className="content-section">

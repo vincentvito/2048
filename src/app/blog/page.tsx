@@ -23,6 +23,14 @@ export const metadata: Metadata = {
 
 const posts = [
   {
+    slug: "highest-score-ever-in-2048",
+    title: "The Highest Score Ever Achieved in 2048",
+    description:
+      "Explore the theoretical maximum of 3,932,100 points, verified AI records, and why most high score claims are fake.",
+    date: "2026-04-10",
+    tag: "Culture",
+  },
+  {
     slug: "how-to-play-2048-with-friends-online",
     title: "How to Play 2048 with Friends Online",
     description:

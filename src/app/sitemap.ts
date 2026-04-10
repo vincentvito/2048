@@ -4,6 +4,7 @@ const BASE_URL = "https://www.the2048league.com";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const blogSlugs = [
+    "highest-score-ever-in-2048",
     "2048-board-sizes-4x4-vs-8x8",
     "2048-game-modes-explained",
     "how-to-play-2048-with-friends-online",

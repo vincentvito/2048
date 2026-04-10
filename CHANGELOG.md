@@ -1,9 +1,10 @@
 # Changelog
 
-## [Unreleased] - 2026-04-06
+## [Unreleased] - 2026-04-10
 
 ### Added
 
+- Blog article "The Highest Score Ever Achieved in 2048" covering theoretical maximum score (3,932,100), AI records (839,732 by nneonneo's solver), human records, the 131,072 tile, and how to spot fake scores. Includes inline source links to Wikipedia, Dr. Randal Olson, Alvin Wan, and GitHub. Added to blog listing and sitemap
 - SEO Day 2: Meta tags audit across all pages. Added primary keywords, CTAs, and openGraph metadata to every page. Added `openGraph.type: "article"` to all blog posts. Expanded keyword arrays to 6-8 terms per page
 - SEO Day 3: Performance audit. Fixed empty alt text on install banner image, extracted 7 large inline style blocks into CSS classes in globals.css, verified font display swap and service worker caching
 - SEO Day 6: Blog article "How to Play 2048 with Friends Online" covering friendly mode, room creation, invite sharing, and match mechanics

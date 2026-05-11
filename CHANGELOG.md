@@ -4,6 +4,9 @@
 
 ### Added
 
+- SEO Day 20: Blog article "The History of 2048: From Side Project to Global Phenomenon" covering the 2014 origin, viral growth, lasting appeal, and The 2048 League's multiplayer evolution. Added to blog listing and sitemap
+- SEO Day 21: Blog article "How to Reach the 4096 Tile (and Beyond)" covering post-2048 play, snake pattern discipline, second-row management, risk evaluation, and the path to 8192. Added to blog listing and sitemap
+- Internal links from existing blog articles to the new history and 4096 tile articles, plus a fresh internal-link route check
 - Blog article "The Highest Score Ever Achieved in 2048" covering theoretical maximum score (3,932,100), AI records (839,732 by nneonneo's solver), human records, the 131,072 tile, and how to spot fake scores. Includes inline source links to Wikipedia, Dr. Randal Olson, Alvin Wan, and GitHub. Added to blog listing and sitemap
 - SEO Day 2: Meta tags audit across all pages. Added primary keywords, CTAs, and openGraph metadata to every page. Added `openGraph.type: "article"` to all blog posts. Expanded keyword arrays to 6-8 terms per page
 - SEO Day 3: Performance audit. Fixed empty alt text on install banner image, extracted 7 large inline style blocks into CSS classes in globals.css, verified font display swap and service worker caching

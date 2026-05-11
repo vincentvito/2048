@@ -198,7 +198,7 @@ export default function Top10MistakesPost() {
             <ul className="content-list">
               <li><Link href="/blog/how-to-win-2048-complete-strategy-guide" className="content-inline-link">How to Win at 2048: The Complete Strategy Guide</Link></li>
               <li><Link href="/blog/2048-board-sizes-4x4-vs-8x8" className="content-inline-link">2048 Board Sizes: 4x4 vs 8x8</Link></li>
-              <li><Link href="/blog/what-is-elo-rating-2048" className="content-inline-link">What is ELO Rating in 2048?</Link></li>
+              <li><Link href="/blog/how-to-reach-4096-tile" className="content-inline-link">How to Reach the 4096 Tile</Link></li>
             </ul>
           </section>
 

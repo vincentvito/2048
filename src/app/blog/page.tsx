@@ -23,6 +23,22 @@ export const metadata: Metadata = {
 
 const posts = [
   {
+    slug: "history-of-2048",
+    title: "The History of 2048: From Side Project to Global Phenomenon",
+    description:
+      "Explore how 2048 began as a small browser puzzle, went viral, and evolved into competitive multiplayer with The 2048 League.",
+    date: "2026-05-11",
+    tag: "Culture",
+  },
+  {
+    slug: "how-to-reach-4096-tile",
+    title: "How to Reach the 4096 Tile (and Beyond)",
+    description:
+      "Reaching 2048 is just the beginning. Learn advanced habits for building the 4096 tile, 8192, and beyond.",
+    date: "2026-05-11",
+    tag: "Strategy",
+  },
+  {
     slug: "highest-score-ever-in-2048",
     title: "The Highest Score Ever Achieved in 2048",
     description:

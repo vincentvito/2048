@@ -174,7 +174,7 @@ export default function BoardSizesPost() {
             <ul className="content-list">
               <li><Link href="/blog/how-to-win-2048-complete-strategy-guide" className="content-inline-link">How to Win at 2048: The Complete Strategy Guide</Link></li>
               <li><Link href="/blog/top-10-mistakes-beginners-make-in-2048" className="content-inline-link">Top 10 Mistakes Beginners Make in 2048</Link></li>
-              <li><Link href="/blog/2048-game-modes-explained" className="content-inline-link">2048 Game Modes Explained</Link></li>
+              <li><Link href="/blog/how-to-reach-4096-tile" className="content-inline-link">How to Reach the 4096 Tile</Link></li>
             </ul>
           </section>
 

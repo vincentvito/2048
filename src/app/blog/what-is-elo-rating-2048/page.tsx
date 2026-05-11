@@ -139,7 +139,7 @@ export default function EloRatingPost() {
             <h2 className="content-heading">Related Articles</h2>
             <ul className="content-list">
               <li><Link href="/blog/2048-game-modes-explained" className="content-inline-link">2048 Game Modes Explained</Link></li>
-              <li><Link href="/blog/multiplayer-2048-tips-for-beginners" className="content-inline-link">Multiplayer 2048: Tips for Beginners</Link></li>
+              <li><Link href="/blog/history-of-2048" className="content-inline-link">The History of 2048</Link></li>
               <li><Link href="/blog/how-to-play-2048-with-friends-online" className="content-inline-link">How to Play 2048 with Friends Online</Link></li>
             </ul>
           </section>

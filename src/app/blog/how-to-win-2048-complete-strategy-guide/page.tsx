@@ -156,7 +156,7 @@ export default function HowToWinPost() {
             <ul className="content-list">
               <li><Link href="/blog/top-10-mistakes-beginners-make-in-2048" className="content-inline-link">Top 10 Mistakes Beginners Make in 2048</Link></li>
               <li><Link href="/blog/2048-board-sizes-4x4-vs-8x8" className="content-inline-link">2048 Board Sizes: 4x4 vs 8x8</Link></li>
-              <li><Link href="/blog/multiplayer-2048-tips-for-beginners" className="content-inline-link">Multiplayer 2048: Tips for Beginners</Link></li>
+              <li><Link href="/blog/how-to-reach-4096-tile" className="content-inline-link">How to Reach the 4096 Tile</Link></li>
             </ul>
           </section>
 

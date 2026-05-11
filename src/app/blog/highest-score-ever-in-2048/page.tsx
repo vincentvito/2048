@@ -321,10 +321,10 @@ export default function HighestScorePost() {
               </li>
               <li>
                 <Link
-                  href="/blog/2048-board-sizes-4x4-vs-8x8"
+                  href="/blog/how-to-reach-4096-tile"
                   className="content-inline-link"
                 >
-                  2048 Board Sizes: 4x4 vs 8x8
+                  How to Reach the 4096 Tile
                 </Link>
               </li>
             </ul>

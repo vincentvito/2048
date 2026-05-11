@@ -187,7 +187,7 @@ export default function GameModesExplainedPost() {
             <ul className="content-list">
               <li><Link href="/blog/how-to-play-2048-with-friends-online" className="content-inline-link">How to Play 2048 with Friends Online</Link></li>
               <li><Link href="/blog/what-is-elo-rating-2048" className="content-inline-link">What is ELO Rating in 2048?</Link></li>
-              <li><Link href="/blog/multiplayer-2048-tips-for-beginners" className="content-inline-link">Multiplayer 2048: Tips for Beginners</Link></li>
+              <li><Link href="/blog/history-of-2048" className="content-inline-link">The History of 2048</Link></li>
             </ul>
           </section>
 

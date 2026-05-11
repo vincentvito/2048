@@ -250,7 +250,7 @@ Use these keywords when writing content, metadata, and titles.
 
 ### Week 4: More Content and Optimization
 
-- [ ] **Day 20: Write "The History of 2048"**
+- [x] **Day 20: Write "The History of 2048"**
   1. Create `src/app/blog/history-of-2048/page.tsx`.
   2. Follow the **Blog Article Template**.
   3. Details:
@@ -273,7 +273,7 @@ Use these keywords when writing content, metadata, and titles.
   6. Run `npx tsc --noEmit`.
   7. Mark this task `[x]` and update `CHANGELOG.md`.
 
-- [ ] **Day 21: Write "How to Reach the 4096 Tile"**
+- [x] **Day 21: Write "How to Reach the 4096 Tile"**
   1. Create `src/app/blog/how-to-reach-4096-tile/page.tsx`.
   2. Follow the **Blog Article Template**.
   3. Details:

@@ -6,6 +6,7 @@ import { Toaster } from "sonner";
 import { ParticleProvider } from "@/components/EmojiParticles";
 import InstallBanner from "@/components/InstallBanner";
 import Footer from "@/components/Footer";
+import GoogleAnalytics from "@/components/GoogleAnalytics";
 
 const fredoka = Fredoka({
   subsets: ["latin"],
@@ -111,6 +112,7 @@ export default function RootLayout({
         />
       </head>
       <body>
+        <GoogleAnalytics measurementId="G-K0JVX8741F" />
         <ThemeProvider>
           <ParticleProvider>{children}</ParticleProvider>
           <div className="landscape-blocker">
